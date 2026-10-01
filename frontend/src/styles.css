@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+:root { font-family: "Segoe UI", Arial, sans-serif; color: #eef0e7; background: #12180f; font-synthesis: none; text-rendering: optimizeLegibility; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+a { color: inherit; }
+.site-shell { max-width: 1280px; margin: auto; padding: 0 48px; }
+.skip-link { position: absolute; top: -80px; left: 20px; background: #d9f378; color: #12180f; padding: 12px; z-index: 10; }
+.skip-link:focus { top: 16px; }
+.site-header { display: flex; justify-content: space-between; align-items: center; gap: 24px; min-height: 102px; border-bottom: 1px solid #34402d; }
+.wordmark { display: flex; align-items: center; gap: 12px; font-size: 12px; font-weight: 700; letter-spacing: 1.3px; text-decoration: none; }
+.brand-icon { color: #d9f378; font-size: 32px; }
+.brand-secondary { color: #abb69e; }
+.connection { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #c5cebc; }
+.connection-dot { height: 6px; width: 6px; border-radius: 50%; background: #d9f378; }
+.connection-dot.offline { background: #f5bf81; }
+.hero { display: grid; grid-template-columns: 1.15fr 1fr; gap: 40px; align-items: center; padding: 78px 0 68px; }
+.eyebrow { font-family: Consolas, monospace; font-size: 11px; letter-spacing: 1.6px; color: #b4c0a7; margin: 0 0 24px; }
+h1 { font-size: clamp(40px, 4.6vw, 64px); font-weight: 650; line-height: 1.07; letter-spacing: -2.7px; margin: 0; }
+h1 span { color: #d9f378; }
+.hero-description { max-width: 425px; color: #b4bea9; font-size: 16px; line-height: 1.8; margin: 28px 0 32px; }
+.access-note { border-left: 2px solid #d9f378; background: #1d2618; padding: 18px 20px; display: flex; gap: 16px; max-width: 425px; }
+.note-icon { color: #d9f378; font-size: 22px; }
+.access-note strong { font-size: 14px; font-weight: 600; }
+.access-note p { font-size: 12px; line-height: 1.6; color: #b4bea9; margin: 6px 0 0; }
+.hunt-map { position: relative; height: 420px; background: #182014; border: 1px solid #34402d; overflow: hidden; color: #80915c; }
+.map-grid { position: absolute; inset: 0; background-image: linear-gradient(#293322 1px, transparent 1px), linear-gradient(90deg, #293322 1px, transparent 1px); background-size: 40px 40px; opacity: .6; }
+.map-route { position: absolute; width: 100%; height: 100%; }
+.map-label, .map-clue, .map-coordinate, .map-caption { position: absolute; font-family: Consolas, monospace; font-size: 10px; letter-spacing: 1px; }
+.label-start { left: 10%; bottom: 20%; background: #182014; padding: 6px; }
+.map-clue { left: 30%; top: 35%; padding: 12px; border: 1px solid #4d6040; color: #c4d0ad; background: #202c1b; transform: rotate(-6deg); font-size: 14px; }
+.map-marker { position: absolute; right: 17%; top: 12%; font-size: 42px; color: #d9f378; }
+.treasure { position: absolute; right: 19%; bottom: 19%; display: flex; align-items: center; flex-direction: column; color: #d9f378; transform: rotate(5deg); }
+.treasure span { font-size: 74px; line-height: 1; }
+.treasure small { font: 9px Consolas, monospace; margin-top: 14px; }
+.map-coordinate { left: 20px; top: 20px; }
+.map-caption { right: 20px; bottom: 20px; }
+.round-section { padding: 0 0 58px; }
+.section-heading { border-top: 1px solid #34402d; padding-top: 34px; }
+.section-heading .eyebrow { margin-bottom: 12px; }
+h2 { font-size: 24px; font-weight: 500; letter-spacing: -.5px; margin: 0 0 30px; }
+.round-list { display: grid; grid-template-columns: repeat(5, 1fr); padding: 0; margin: 0; list-style: none; }
+.round-list li { border-left: 1px solid #34402d; padding: 0 20px; }
+.round-list li:first-child { border-left: 0; padding-left: 0; }
+.round-number { color: #d9f378; font: 12px Consolas, monospace; }
+h3 { font-size: 14px; font-weight: 600; margin: 18px 0 10px; }
+.round-list p { color: #b4bea9; line-height: 1.7; font-size: 12px; margin: 0; }
+footer { display: flex; justify-content: space-between; gap: 20px; border-top: 1px solid #34402d; padding: 24px 0; color: #a5b197; font-size: 10px; letter-spacing: .6px; }
+@media (max-width: 850px) { .site-shell { padding: 0 24px; } .hero { grid-template-columns: 1fr; padding-top: 48px; } .hunt-map { height: 340px; max-width: 520px; width: 100%; } .round-list { grid-template-columns: repeat(2, 1fr); gap: 28px 0; } .round-list li:nth-child(odd) { border-left: 0; padding-left: 0; } h1 { font-size: 54px; } }
+@media (max-width: 480px) { .site-header { align-items: flex-start; flex-direction: column; justify-content: center; gap: 12px; padding: 18px 0; } .brand-secondary { font-size: 10px; } h1 { font-size: 43px; letter-spacing: -1.8px; } .hero { gap: 32px; padding-bottom: 42px; } .hero-description { font-size: 14px; } .hunt-map { height: 300px; } .round-list li { padding-right: 12px; } footer { flex-direction: column; gap: 10px; } }
