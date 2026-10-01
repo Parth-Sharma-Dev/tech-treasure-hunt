@@ -1,0 +1,453 @@
+import secrets
+import uuid
+
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.db import models
+from django.db.models import F, Q
+
+
+def mission_token():
+    return secrets.token_urlsafe(32)
+
+
+def fallback_code():
+    return "".join(secrets.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(8))
+
+
+def staff_reference(**kwargs):
+    return models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+", **kwargs
+    )
+
+
+class ImmutableEvidence(models.Model):
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        abstract = True
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValidationError("Evidence is immutable; append a new revision instead.")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("Original evidence cannot be deleted.")
+
+
+class Round(models.Model):
+    class State(models.TextChoices):
+        DRAFT = "DRAFT"
+        READY = "READY"
+        LOBBY = "LOBBY"
+        LIVE = "LIVE"
+        FROZEN = "FROZEN"
+        ENDED = "ENDED"
+        PROVISIONAL = "PROVISIONAL"
+        FINALIZED = "FINALIZED"
+
+    class Delivery(models.TextChoices):
+        ONLINE_HUNT = "ONLINE_HUNT", "Online treasure hunt"
+        EXTERNAL = "EXTERNAL", "Externally judged"
+
+    class PlayMode(models.TextChoices):
+        ONLINE = "ONLINE"
+        PAPER = "PAPER"
+
+    number = models.PositiveSmallIntegerField()
+    attempt_no = models.PositiveSmallIntegerField(default=1)
+    attempt_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    title = models.CharField(max_length=120)
+    delivery_mode = models.CharField(max_length=20, choices=Delivery, blank=True)
+    state = models.CharField(max_length=16, choices=State, default=State.DRAFT)
+    play_mode = models.CharField(max_length=8, choices=PlayMode, default=PlayMode.ONLINE)
+    rules_version = models.CharField(max_length=40, blank=True)
+    rules = models.JSONField(default=dict, blank=True)
+    rules_digest = models.CharField(max_length=64, blank=True, editable=False)
+    owners = models.JSONField(default=dict, blank=True)
+    approved_by = staff_reference(null=True, blank=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    advancement_count = models.PositiveIntegerField(null=True, blank=True)
+    active_budget_ms = models.PositiveBigIntegerField(default=90 * 60 * 1000)
+    accumulated_active_ms = models.PositiveBigIntegerField(default=0)
+    live_started_at = models.DateTimeField(null=True, blank=True)
+    deadline_at = models.DateTimeField(null=True, blank=True)
+    control_version = models.PositiveIntegerField(default=0)
+    is_demo = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["number", "attempt_no"], name="round_attempt_unique"),
+            models.CheckConstraint(condition=Q(number__gte=1, number__lte=5), name="round_number"),
+            models.CheckConstraint(condition=Q(attempt_no__gte=1), name="round_attempt_positive"),
+            models.CheckConstraint(
+                condition=Q(active_budget_ms__gt=0), name="round_budget_positive"
+            ),
+            models.CheckConstraint(
+                condition=Q(advancement_count__isnull=True) | Q(advancement_count__gt=0),
+                name="round_cut_positive",
+            ),
+        ]
+        permissions = [
+            ("prepare_content", "Prepare competition content"),
+            ("control_round", "Control a live round"),
+            ("adjudicate", "Propose score corrections"),
+            ("verify_evidence", "Independently verify evidence"),
+            ("publish_results", "Publish verified results"),
+        ]
+
+    def __str__(self):
+        return f"Round {self.number} / attempt {self.attempt_no}: {self.title}"
+
+
+class RoundPhase(ImmutableEvidence):
+    round = models.ForeignKey(Round, on_delete=models.PROTECT)
+    phase_type = models.CharField(max_length=8, choices=[("LIVE", "Live"), ("FROZEN", "Frozen")])
+    play_mode = models.CharField(max_length=8, choices=Round.PlayMode)
+    started_at = models.DateTimeField()
+    ended_at = models.DateTimeField()
+    reason = models.TextField()
+    actor = staff_reference()
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(ended_at__gte=F("started_at")), name="phase_time_order"
+            )
+        ]
+
+
+class Team(models.Model):
+    class Status(models.TextChoices):
+        ACTIVE = "ACTIVE"
+        WITHDRAWN = "WITHDRAWN"
+        DISQUALIFIED = "DISQUALIFIED"
+
+    code = models.CharField(max_length=24, unique=True)
+    name = models.CharField(max_length=100)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    leader_name = models.CharField(max_length=100, blank=True)
+    roster_reference = models.CharField(max_length=200, blank=True)
+    roster_digest = models.CharField(max_length=64, blank=True)
+    member_count = models.PositiveSmallIntegerField()
+    status = models.CharField(max_length=16, choices=Status, default=Status.ACTIVE)
+    session_version = models.PositiveIntegerField(default=1)
+    is_demo = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(member_count__gte=3, member_count__lte=4), name="team_member_count"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.code}: {self.name}"
+
+
+class TeamSession(models.Model):
+    team = models.ForeignKey(Team, on_delete=models.PROTECT)
+    session_key = models.CharField(max_length=40, unique=True)
+    session_version = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    last_seen_at = models.DateTimeField()
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["team", "revoked_at", "expires_at"])]
+
+
+class Mission(models.Model):
+    round = models.ForeignKey(Round, on_delete=models.PROTECT)
+    public_id = models.CharField(max_length=24)
+    token = models.CharField(max_length=64, default=mission_token, unique=True, editable=False)
+    fallback_code = models.CharField(
+        max_length=12, default=fallback_code, unique=True, editable=False
+    )
+    hint = models.TextField()
+    symbol = models.CharField(max_length=100, blank=True)
+    qr_location = models.CharField(max_length=200)
+    clue_location = models.CharField(max_length=200)
+    difficulty = models.CharField(max_length=20, blank=True)
+    points = models.PositiveSmallIntegerField(default=1)
+    answer_verifiers = models.JSONField(default=list)
+    keyword = models.CharField(max_length=100)
+    volunteer_owner = staff_reference(null=True, blank=True)
+    available = models.BooleanField(default=True)
+    is_void = models.BooleanField(default=False)
+    is_practice = models.BooleanField(default=False)
+    verified_by = staff_reference(null=True, blank=True)
+    verified_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["round", "public_id"], name="mission_public_id_unique"),
+            models.CheckConstraint(condition=Q(points=1), name="mission_one_point"),
+        ]
+
+    def __str__(self):
+        return f"{self.public_id} (round {self.round_id})"
+
+
+class Visit(models.Model):
+    team = models.ForeignKey(Team, on_delete=models.PROTECT)
+    mission = models.ForeignKey(Mission, on_delete=models.PROTECT)
+    first_opened_at = models.DateTimeField()
+    last_opened_at = models.DateTimeField()
+    count = models.PositiveIntegerField(default=1)
+    access_method = models.CharField(
+        max_length=12, choices=[("QR", "QR"), ("FALLBACK", "Fallback")]
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["team", "mission"], name="visit_team_mission_unique"),
+            models.CheckConstraint(condition=Q(count__gte=1), name="visit_count_positive"),
+            models.CheckConstraint(
+                condition=Q(last_opened_at__gte=F("first_opened_at")), name="visit_time_order"
+            ),
+        ]
+
+
+class AttemptState(models.Model):
+    team = models.ForeignKey(Team, on_delete=models.PROTECT)
+    mission = models.ForeignKey(Mission, on_delete=models.PROTECT)
+    evaluated_wrong_count = models.PositiveIntegerField(default=0)
+    cooldown_until_active_ms = models.PositiveBigIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["team", "mission"], name="attempt_team_mission_unique")
+        ]
+
+
+class SubmissionDecision(ImmutableEvidence):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    team = models.ForeignKey(Team, on_delete=models.PROTECT)
+    round = models.ForeignKey(Round, on_delete=models.PROTECT)
+    mission = models.ForeignKey(Mission, on_delete=models.PROTECT)
+    idempotency_key = models.UUIDField()
+    request_fingerprint = models.CharField(max_length=64)
+    answer_hmac = models.CharField(max_length=64, blank=True)
+    ingress_at = models.DateTimeField()
+    admitted_at = models.DateTimeField()
+    active_elapsed_ms = models.PositiveBigIntegerField()
+    rules_version = models.CharField(max_length=40)
+    answer_key_version = models.CharField(max_length=40, blank=True)
+    outcome = models.CharField(max_length=32)
+    reason = models.CharField(max_length=200, blank=True)
+    response_snapshot = models.JSONField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["team", "round", "idempotency_key"], name="decision_key_unique"
+            )
+        ]
+        indexes = [
+            models.Index(fields=["team", "round", "admitted_at"]),
+            models.Index(fields=["round", "outcome", "admitted_at"]),
+        ]
+
+    def clean(self):
+        if self.mission_id and self.round_id and self.mission.round_id != self.round_id:
+            raise ValidationError("Mission does not belong to the decision's round.")
+
+
+class Incident(models.Model):
+    round = models.ForeignKey(Round, on_delete=models.PROTECT)
+    category = models.CharField(max_length=40)
+    affected_scope = models.JSONField(default=dict)
+    opened_at = models.DateTimeField()
+    closed_at = models.DateTimeField(null=True, blank=True)
+    evidence_references = models.JSONField(default=list)
+    decision = models.TextField(blank=True)
+    owner = staff_reference()
+    material = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(closed_at__isnull=True) | Q(closed_at__gte=F("opened_at")),
+                name="incident_time_order",
+            )
+        ]
+
+
+class MissionResolution(ImmutableEvidence):
+    mission = models.ForeignKey(Mission, on_delete=models.PROTECT)
+    correction_type = models.CharField(max_length=32)
+    affected_scope = models.JSONField(default=dict)
+    evidence_references = models.JSONField(default=list)
+    source_decisions = models.JSONField(default=list)
+    reason = models.TextField()
+    maker = staff_reference()
+    approver = staff_reference()
+    incident = models.ForeignKey(Incident, on_delete=models.PROTECT)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=~Q(maker=F("approver")), name="resolution_two_reviewers"
+            )
+        ]
+
+
+class Completion(models.Model):
+    team = models.ForeignKey(Team, on_delete=models.PROTECT)
+    mission = models.ForeignKey(Mission, on_delete=models.PROTECT)
+    source_decision = models.ForeignKey(
+        SubmissionDecision, on_delete=models.PROTECT, null=True, blank=True
+    )
+    source_resolution = models.ForeignKey(
+        MissionResolution, on_delete=models.PROTECT, null=True, blank=True
+    )
+    effective_at = models.DateTimeField()
+    effective_active_ms = models.PositiveBigIntegerField()
+    revision = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["team", "mission"], name="completion_unique"),
+            models.CheckConstraint(
+                condition=(
+                    Q(source_decision__isnull=False, source_resolution__isnull=True)
+                    | Q(source_decision__isnull=True, source_resolution__isnull=False)
+                ),
+                name="completion_one_source",
+            ),
+        ]
+
+    def clean(self):
+        if self.source_decision_id:
+            source = self.source_decision
+            if source.team_id != self.team_id or source.mission_id != self.mission_id:
+                raise ValidationError("Completion source belongs to a different team or mission.")
+            if source.outcome != "accepted":
+                raise ValidationError("A direct completion requires an accepted decision.")
+        if self.source_resolution_id and self.source_resolution.mission_id != self.mission_id:
+            raise ValidationError("Completion resolution belongs to a different mission.")
+        if self.mission_id and self.mission.is_practice:
+            raise ValidationError("Practice missions cannot create competitive completions.")
+
+
+class ImportBatch(models.Model):
+    round = models.ForeignKey(Round, on_delete=models.PROTECT)
+    file_digest = models.CharField(max_length=64)
+    schema_version = models.CharField(max_length=40)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    dry_run_errors = models.JSONField(default=list)
+    preview = models.JSONField(default=list)
+    maker = staff_reference()
+    verifier = staff_reference(null=True, blank=True)
+    committed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["round", "file_digest"], name="import_file_unique"),
+            models.CheckConstraint(
+                condition=Q(verifier__isnull=True) | ~Q(maker=F("verifier")),
+                name="import_two_reviewers",
+            ),
+            models.CheckConstraint(
+                condition=Q(committed_at__isnull=True) | Q(verifier__isnull=False),
+                name="import_commit_verified",
+            ),
+        ]
+
+
+class ScoreRevision(ImmutableEvidence):
+    round = models.ForeignKey(Round, on_delete=models.PROTECT)
+    team = models.ForeignKey(Team, on_delete=models.PROTECT)
+    score = models.DecimalField(max_digits=10, decimal_places=3)
+    max_score = models.DecimalField(max_digits=10, decimal_places=3)
+    tie_metrics = models.JSONField(default=dict)
+    source_reference = models.CharField(max_length=200)
+    import_batch = models.ForeignKey(ImportBatch, on_delete=models.PROTECT, null=True, blank=True)
+    reason = models.TextField()
+    maker = staff_reference()
+    verifier = staff_reference()
+    supersedes = models.OneToOneField("self", on_delete=models.PROTECT, null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(score__gte=0, max_score__gt=0, score__lte=F("max_score")),
+                name="score_range",
+            ),
+            models.CheckConstraint(condition=~Q(maker=F("verifier")), name="score_two_reviewers"),
+        ]
+
+    def clean(self):
+        if self.import_batch_id and self.import_batch.round_id != self.round_id:
+            raise ValidationError("Import belongs to a different round.")
+        if self.supersedes_id:
+            previous = self.supersedes
+            if previous.team_id != self.team_id or previous.round_id != self.round_id:
+                raise ValidationError("A revision must supersede the same team and round.")
+
+
+class ResultSnapshot(ImmutableEvidence):
+    round = models.ForeignKey(Round, on_delete=models.PROTECT)
+    revision = models.PositiveIntegerField()
+    status = models.CharField(
+        max_length=12, choices=[("PROVISIONAL", "Provisional"), ("FINAL", "Final")]
+    )
+    ranked_entries = models.JSONField(default=list)
+    qualifier_codes = models.JSONField(default=list)
+    cut_count = models.PositiveIntegerField(null=True, blank=True)
+    rules_digest = models.CharField(max_length=64)
+    evidence_digest = models.CharField(max_length=64)
+    maker = staff_reference()
+    approver = staff_reference()
+    appeal_deadline = models.DateTimeField(null=True, blank=True)
+    published_at = models.DateTimeField()
+    supersedes = models.OneToOneField("self", on_delete=models.PROTECT, null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["round", "revision"], name="snapshot_revision_unique"),
+            models.CheckConstraint(
+                condition=~Q(maker=F("approver")), name="snapshot_two_reviewers"
+            ),
+        ]
+
+    def clean(self):
+        if self.supersedes_id and self.supersedes.round_id != self.round_id:
+            raise ValidationError("A result snapshot must supersede the same round.")
+
+
+class PaperWindow(ImmutableEvidence):
+    round = models.OneToOneField(Round, on_delete=models.PROTECT)
+    incident = models.ForeignKey(Incident, on_delete=models.PROTECT)
+    official_start = models.DateTimeField()
+    official_end = models.DateTimeField()
+    active_offset_ms = models.PositiveBigIntegerField()
+    remaining_budget_ms = models.PositiveBigIntegerField()
+    assigned_desks = models.JSONField()
+    clock_evidence = models.JSONField()
+    writer_isolation_evidence = models.JSONField()
+    recorder = staff_reference()
+    verifier = staff_reference()
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(official_end__gte=F("official_start")), name="paper_time_order"
+            ),
+            models.CheckConstraint(
+                condition=~Q(recorder=F("verifier")), name="paper_two_reviewers"
+            ),
+        ]
+
+
+class AuditEvent(ImmutableEvidence):
+    action_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    actor = staff_reference()
+    action = models.CharField(max_length=80)
+    before = models.JSONField(default=dict)
+    after = models.JSONField(default=dict)
+    reason = models.TextField()
+    incident = models.ForeignKey(Incident, on_delete=models.PROTECT, null=True, blank=True)

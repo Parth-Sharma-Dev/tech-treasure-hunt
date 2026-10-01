@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "competition",
 ]
 MIDDLEWARE = [
     "config.middleware.RequestIdMiddleware",
