@@ -1,7 +1,18 @@
 from django.db import DatabaseError, connection
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
+from django.views.csrf import csrf_failure as default_csrf_failure
 from django.views.decorators.http import require_GET
+
+from competition.api import ApiProblem, problem_response
+
+
+def csrf_failure(request, reason=""):
+    if request.path.startswith("/api/"):
+        return problem_response(
+            request, ApiProblem("csrf_failed", "Refresh the page and try again.", 403)
+        )
+    return default_csrf_failure(request, reason=reason)
 
 
 @require_GET

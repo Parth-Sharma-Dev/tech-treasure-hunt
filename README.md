@@ -4,7 +4,7 @@ Competition website for the AI Nexus Club, CSE Department, SKIT Jaipur, Tech-Pra
 
 The website is being built to support team login, QR-based missions, answer submission, Round 1 scoring, and organizer-reviewed results and qualification through five rounds.
 
-The current implementation includes a responsive event page, a Django API, database-backed session configuration, competition/evidence models, and draft content preparation and rule approval in Django admin. Team login and gameplay are not implemented yet. Production deployment is not configured.
+The current implementation includes a responsive event page, competition/evidence models, draft content preparation and rule approval in Django admin, and API support for team login, session management and isolated practice. The participant lobby interface is being built; competitive gameplay and production deployment are not implemented yet.
 
 ## Requirements
 
@@ -86,5 +86,15 @@ Browser tests cover desktop/mobile layouts and connected/unavailable states with
 |---|---|
 | `GET /api/health` | Returns `200` when a database probe succeeds, or a redacted `503` when unavailable. |
 | `GET /api/auth/csrf` | Provides a CSRF token and sets its cookie for future authenticated write requests. |
+| `POST /api/auth/login` | Signs in using `team_code` and `password`; accepts a validated `return_to` path. |
+| `POST /api/auth/logout` | Revokes this browser's team session and signs out. |
+| `GET /api/me` | Returns the authenticated team's identity, session count and permitted round status. |
+| `GET /api/practice` | Returns the isolated practice clue for this team's environment. |
+| `POST /api/practice/submit` | Evaluates a four-digit practice answer without scoring or competitive evidence. |
+| `POST /api/staff/teams/{team}/sessions/{session}/revoke` | Audited staff removal using `action_id` and `reason`; requires round-control permission. |
+
+Team login permits four active browser sessions, allocated under a PostgreSQL team lock. Five incorrect passwords within a 60-second login window temporarily block further login attempts for that team; this is separate from gameplay limits. Browser sessions expire after 12 hours. Staff can inspect and revoke stale browsers through Django admin without seeing their session keys. Revocation leaves other teammates signed in, and session-version changes invalidate old access. Team credentials cannot enter staff administration.
+
+Authenticated API writes need an `X-CSRFToken` header obtained from `/api/auth/csrf`; login rotates that token and includes the current `csrf_token` in its response. Team identity is always derived from the authenticated session, never a supplied team ID. Later-round access requires qualification in the preceding round's final published snapshot.
 
 API responses include a generated `X-Request-ID` header and `Cache-Control: no-store`. PostgreSQL is the only configured database; there is no SQLite fallback. Secrets, local database data and development-only planning documents are not committed.

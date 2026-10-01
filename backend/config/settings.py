@@ -90,7 +90,10 @@ SESSION_ENGINE = "django.contrib.sessions.backends.db"
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_AGE = 12 * 60 * 60
 CSRF_COOKIE_SECURE = not DEBUG
+CSRF_FAILURE_VIEW = "config.views.csrf_failure"
+DATA_UPLOAD_MAX_MEMORY_SIZE = 16 * 1024
 X_FRAME_OPTIONS = "DENY"
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],

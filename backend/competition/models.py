@@ -194,6 +194,12 @@ class TeamSession(models.Model):
         indexes = [models.Index(fields=["team", "revoked_at", "expires_at"])]
 
 
+class TeamLoginWindow(models.Model):
+    team = models.OneToOneField(Team, on_delete=models.PROTECT)
+    started_at = models.DateTimeField()
+    failed_attempts = models.PositiveIntegerField(default=0)
+
+
 class Mission(models.Model):
     round = models.ForeignKey(Round, on_delete=models.PROTECT)
     public_id = models.CharField(max_length=24)

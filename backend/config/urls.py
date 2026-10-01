@@ -1,10 +1,20 @@
 from django.contrib import admin
 from django.urls import path
 
+from competition import views
+
 from .views import csrf, health
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/health", health, name="health"),
     path("api/auth/csrf", csrf, name="csrf"),
+    path("api/auth/login", views.team_login),
+    path("api/auth/logout", views.team_logout),
+    path("api/me", views.me),
+    path("api/practice", views.practice),
+    path("api/practice/submit", views.submit_practice),
+    path(
+        "api/staff/teams/<int:team_id>/sessions/<int:session_id>/revoke", views.staff_revoke_session
+    ),
 ]

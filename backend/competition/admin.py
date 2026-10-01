@@ -1,3 +1,5 @@
+import uuid
+
 from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -7,6 +9,7 @@ from django.utils import timezone
 from . import models
 from .answers import answer_digest
 from .rules import approve_rules, mark_ready
+from .sessions import revoke_session
 
 
 def permitted(request, codename):
@@ -212,6 +215,27 @@ class MissionAdmin(ReadOnlyAdmin):
 class TeamSessionAdmin(ReadOnlyAdmin):
     view_permissions = ("control_round",)
     exclude = ("session_key",)
+    list_display = ("id", "team", "created_at", "last_seen_at", "expires_at", "revoked_at")
+    list_filter = ("team",)
+    actions = ("revoke_stale_sessions",)
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        if not permitted(request, "control_round"):
+            actions.pop("revoke_stale_sessions", None)
+        return actions
+
+    @admin.action(permissions=["view"], description="Revoke selected stale browser sessions")
+    def revoke_stale_sessions(self, request, queryset):
+        for record in queryset:
+            revoke_session(
+                record.team_id,
+                record.pk,
+                request.user,
+                str(uuid.uuid4()),
+                "Staff-assisted stale browser removal from Django admin.",
+            )
+        self.message_user(request, "Selected browser sessions were revoked.", messages.SUCCESS)
 
 
 for model in (
