@@ -3,7 +3,7 @@ import uuid
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 from django.db.models import F, Q
 
 
@@ -65,9 +65,11 @@ class Round(models.Model):
     rules_version = models.CharField(max_length=40, blank=True)
     rules = models.JSONField(default=dict, blank=True)
     rules_digest = models.CharField(max_length=64, blank=True, editable=False)
+    rules_snapshot = models.JSONField(default=dict, editable=False)
     owners = models.JSONField(default=dict, blank=True)
     approved_by = staff_reference(null=True, blank=True)
     approved_at = models.DateTimeField(null=True, blank=True)
+    approval_digest = models.CharField(max_length=64, blank=True, editable=False)
     advancement_count = models.PositiveIntegerField(null=True, blank=True)
     active_budget_ms = models.PositiveBigIntegerField(default=90 * 60 * 1000)
     accumulated_active_ms = models.PositiveBigIntegerField(default=0)
@@ -99,6 +101,39 @@ class Round(models.Model):
 
     def __str__(self):
         return f"Round {self.number} / attempt {self.attempt_no}: {self.title}"
+
+    def save(self, *args, **kwargs):
+        with transaction.atomic():
+            if not self._state.adding:
+                previous = Round.objects.select_for_update().get(pk=self.pk)
+                if previous.state != self.State.DRAFT:
+                    frozen_fields = (
+                        "number",
+                        "attempt_no",
+                        "attempt_id",
+                        "title",
+                        "delivery_mode",
+                        "rules_version",
+                        "rules",
+                        "rules_digest",
+                        "rules_snapshot",
+                        "owners",
+                        "approved_by_id",
+                        "approved_at",
+                        "approval_digest",
+                        "advancement_count",
+                        "is_demo",
+                    )
+                    if any(
+                        getattr(self, field) != getattr(previous, field) for field in frozen_fields
+                    ):
+                        raise ValidationError("Round configuration is frozen after READY.")
+                if (
+                    previous.play_mode == self.PlayMode.PAPER
+                    and self.play_mode != self.PlayMode.PAPER
+                ):
+                    raise ValidationError("Paper play cannot reopen online scoring.")
+            return super().save(*args, **kwargs)
 
 
 class RoundPhase(ImmutableEvidence):
@@ -175,6 +210,7 @@ class Mission(models.Model):
     answer_verifiers = models.JSONField(default=list)
     keyword = models.CharField(max_length=100)
     volunteer_owner = staff_reference(null=True, blank=True)
+    prepared_by = staff_reference(null=True, blank=True)
     available = models.BooleanField(default=True)
     is_void = models.BooleanField(default=False)
     is_practice = models.BooleanField(default=False)
@@ -189,6 +225,49 @@ class Mission(models.Model):
 
     def __str__(self):
         return f"{self.public_id} (round {self.round_id})"
+
+    def save(self, *args, **kwargs):
+        with transaction.atomic():
+            round = Round.objects.select_for_update().get(pk=self.round_id)
+            if round.state != Round.State.DRAFT:
+                raise ValidationError("Mission content is frozen after READY; use adjudication.")
+            if not self._state.adding:
+                previous = Mission.objects.get(pk=self.pk)
+                if previous.round_id != self.round_id:
+                    raise ValidationError("Move missions by creating a new draft mission instead.")
+                content_fields = (
+                    "public_id",
+                    "hint",
+                    "symbol",
+                    "qr_location",
+                    "clue_location",
+                    "difficulty",
+                    "points",
+                    "answer_verifiers",
+                    "keyword",
+                    "volunteer_owner_id",
+                    "prepared_by_id",
+                    "is_practice",
+                    "available",
+                )
+                if any(
+                    getattr(previous, field) != getattr(self, field) for field in content_fields
+                ):
+                    self.verified_by = None
+                    self.verified_at = None
+                    if kwargs.get("update_fields") is not None:
+                        kwargs["update_fields"] = set(kwargs["update_fields"]) | {
+                            "verified_by",
+                            "verified_at",
+                        }
+            return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        with transaction.atomic():
+            round = Round.objects.select_for_update().get(pk=self.round_id)
+            if round.state != Round.State.DRAFT:
+                raise ValidationError("Released missions cannot be deleted.")
+            return super().delete(*args, **kwargs)
 
 
 class Visit(models.Model):

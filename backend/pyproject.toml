@@ -6,6 +6,7 @@ testpaths = ["tests"]
 [tool.ruff]
 target-version = "py313"
 line-length = 100
+extend-exclude = ["competition/migrations"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

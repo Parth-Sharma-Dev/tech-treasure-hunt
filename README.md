@@ -4,7 +4,7 @@ Competition website for the AI Nexus Club, CSE Department, SKIT Jaipur, Tech-Pra
 
 The website is being built to support team login, QR-based missions, answer submission, Round 1 scoring, and organizer-reviewed results and qualification through five rounds.
 
-The current scaffold includes a responsive event page, a Django API, database-backed session configuration, and local PostgreSQL tooling. Team login and gameplay are not implemented yet. Production deployment is not configured.
+The current implementation includes a responsive event page, a Django API, database-backed session configuration, competition/evidence models, and draft content preparation and rule approval in Django admin. Team login and gameplay are not implemented yet. Production deployment is not configured.
 
 ## Requirements
 
@@ -38,6 +38,20 @@ npm run dev
 Open **http://127.0.0.1:5173**. Vite proxies API, admin and Django static requests to port 8000. Use this same frontend origin for browser requests so Django sessions and CSRF cookies work together. An optional staff account can be created with `.venv/Scripts/python backend/manage.py createsuperuser`; access admin through **http://127.0.0.1:5173/admin/**.
 
 The database volume persists across stops. Stop it without deleting data using `docker compose --env-file .env -f infra/compose.yaml stop`.
+
+## Demo data and content preparation
+
+With the environment configured and migrations applied:
+
+```powershell
+.venv/Scripts/python backend/manage.py seed_demo
+```
+
+This creates two fictional teams, five draft rounds, two synthetic competitive missions, an isolated practice mission, and separate content/verification staff accounts. Random credentials are saved to the ignored `.local/demo-credentials.json` file. Repeating the command preserves existing passwords and content. Demo seeding requires development mode and refuses a database containing non-demo teams or rounds.
+
+Demo rounds remain DRAFT: they do not stand in for approved competition settings or verified event content. Content staff can edit draft rounds and missions in Django admin. Answers are entered privately and stored as mission/version-bound HMACs using `ANSWER_HMAC_KEY`; editing mission content invalidates its previous verification. An authorized independent verifier can attest to checking a mission end to end.
+
+Before READY, configure the rule version, delivery method, advancement counts, active budget, staff-owner IDs, capacity and all policies. A verifier approves the current settings, then a controller marks the round READY. Missing settings, unverified missions, self-verification and an unapproved short roster block readiness. Changing signed settings requires new approval. READY freezes the rules snapshot and mission content; evidence and scoring records are read-only in admin. Later rounds currently accept only external delivery modes.
 
 ## Validation
 

@@ -16,6 +16,7 @@ def required_env(name):
 
 
 SECRET_KEY = required_env("DJANGO_SECRET_KEY")
+ANSWER_HMAC_KEY = os.environ.get("ANSWER_HMAC_KEY", "")
 DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() == "true"
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 CSRF_TRUSTED_ORIGINS = [
