@@ -6,7 +6,7 @@ test('shows the hunt, five rounds and a connected status', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Find the treasure.')
   await expect(page.getByRole('status')).toHaveText('Connected')
   await expect(page.getByRole('listitem')).toHaveCount(5)
-  await expect(page.getByText('Team access opens soon')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Team sign in →' })).toBeVisible()
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)
   expect(overflow).toBe(false)
 })

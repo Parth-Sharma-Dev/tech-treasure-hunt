@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { getJson } from './api'
+import { Login, Lobby } from './Participant'
 
 const rounds = [
   ['01', 'Treasure hunt', 'Follow the clues. Find your next move.'],
@@ -36,6 +37,7 @@ export function App() {
       </header>
 
       <main id="main">
+        {location.pathname === '/login' ? <Login /> : location.pathname === '/lobby' || location.pathname.startsWith('/missions/') ? <Lobby mission={location.pathname.startsWith('/missions/')} /> : <>
         <section className="hero" aria-labelledby="hero-heading">
           <div className="hero-copy">
             <p className="eyebrow">12–13 OCTOBER 2026 · SKIT JAIPUR</p>
@@ -43,7 +45,7 @@ export function App() {
             <p className="hero-description">A campus full of clues. A team full of ideas. Five rounds to connect the dots and see how far your curiosity takes you.</p>
             <div className="access-note">
               <span className="note-icon" aria-hidden="true">↗</span>
-              <div><strong>Team access opens soon</strong><p>Keep your team credentials ready for the hunt.</p></div>
+              <div><a href="/login"><strong>Team sign in →</strong></a><p>Have your credentials ready. Your next move starts here.</p></div>
             </div>
           </div>
           <div className="hunt-map" aria-hidden="true">
@@ -71,6 +73,7 @@ export function App() {
             ))}
           </ol>
         </section>
+        </>}
       </main>
 
       <footer><span>TECH TREASURE HUNT</span><span>AI Nexus Club · CSE Department · SKIT Jaipur</span></footer>

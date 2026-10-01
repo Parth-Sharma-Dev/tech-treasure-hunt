@@ -4,7 +4,7 @@ Competition website for the AI Nexus Club, CSE Department, SKIT Jaipur, Tech-Pra
 
 The website is being built to support team login, QR-based missions, answer submission, Round 1 scoring, and organizer-reviewed results and qualification through five rounds.
 
-The current implementation includes a responsive event page, competition/evidence models, draft content preparation and rule approval in Django admin, and API support for team login, session management and isolated practice. The participant lobby interface is being built; competitive gameplay and production deployment are not implemented yet.
+The current implementation includes a responsive event page, competition/evidence models, draft content preparation and rule approval in Django admin, team sign-in, a participant lobby, session management and isolated practice. Competitive gameplay and production deployment are not implemented yet.
 
 ## Requirements
 
@@ -52,6 +52,8 @@ With the environment configured and migrations applied:
 ```
 
 This creates two fictional teams, five draft rounds, two synthetic competitive missions, an isolated practice mission, and separate content/verification staff accounts. Random credentials are saved to the ignored `.local/demo-credentials.json` file. Repeating the command preserves existing passwords and content. Demo seeding requires development mode and refuses a database containing non-demo teams or rounds.
+
+Open `/login` and sign in with a demo team code and its generated password. The lobby shows your team's browser-session count, round preparation status and a practice clue. Practice answers preserve leading zeros and award no competition points. Signing out revokes only the current browser session. Competitive mission URLs currently show a development availability notice after sign-in.
 
 Demo rounds remain DRAFT: they do not stand in for approved competition settings or verified event content. Content staff can edit draft rounds and missions in Django admin. Answers are entered privately and stored as mission/version-bound HMACs using `ANSWER_HMAC_KEY`; editing mission content invalidates its previous verification. An authorized independent verifier can attest to checking a mission end to end.
 
