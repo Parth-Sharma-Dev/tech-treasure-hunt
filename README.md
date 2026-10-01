@@ -10,7 +10,7 @@ The current implementation includes a responsive event page, a Django API, datab
 
 - Python 3.13 (tested with 3.13.13).
 - Node.js 24 (tested with 24.15.0) and npm.
-- Docker Compose for the bundled PostgreSQL 17.11 service, or an existing PostgreSQL 17 instance.
+- PostgreSQL 18 (tested with 18.6), either installed locally or using Docker Compose.
 
 ## Local setup
 
@@ -26,6 +26,10 @@ docker compose --env-file .env -f infra/compose.yaml up -d --wait
 ```
 
 Copy the environment template only on first setup; preserve your existing `.env` on subsequent runs. The supplied credentials are for local development only. To use an existing PostgreSQL server, create the database/user named in `.env`, update its connection settings, and omit the Docker command. The database user needs permission to create a test database when running the integration suite.
+
+For a native Windows PostgreSQL installation, set `POSTGRES_HOST=127.0.0.1` and its actual port in `.env` (an installation alongside another running database may use port 5433). Use a dedicated application role/database rather than the PostgreSQL administrator account. The role needs `LOGIN` and `CREATEDB` for local pytest runs, and ownership of the application database. Add the installed `bin` directory to your terminal's PATH if you want to use `psql`, `pg_dump` or `pg_restore` directly.
+
+The Docker configuration uses a separate `postgres18_data` volume. An older PostgreSQL 17 volume is not upgraded in place: preserve it and transfer data with a logical dump/restore before switching versions. PostgreSQL 18's container mounts data at `/var/lib/postgresql`.
 
 In a second terminal:
 
