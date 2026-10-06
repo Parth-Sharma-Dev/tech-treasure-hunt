@@ -4,7 +4,10 @@ from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_GET, require_POST
 
 from .api import ApiProblem, api_errors, json_body
+from .clock import clock_payload, control_round, database_now
+from .models import Round
 from .participant import participant_rounds, practice_answer, practice_mission
+from .rules import require_staff_permission
 from .sessions import (
     MAX_TEAM_SESSIONS,
     active_sessions,
@@ -106,4 +109,32 @@ def staff_revoke_session(request, team_id, session_id):
     response = revoke_session(
         team_id, session_id, request.user, data.get("action_id"), data.get("reason")
     )
+    return JsonResponse({"request_id": request.request_id, **response})
+
+
+@require_GET
+@api_errors
+def staff_rounds(request):
+    require_staff_permission(request.user, "control_round")
+    now = database_now()
+    return JsonResponse(
+        {
+            "rounds": [
+                {
+                    "title": round.title,
+                    "number": round.number,
+                    "is_demo": round.is_demo,
+                    **clock_payload(round, now),
+                }
+                for round in Round.objects.order_by("number", "-attempt_no")
+            ],
+            "request_id": request.request_id,
+        }
+    )
+
+
+@require_POST
+@api_errors
+def staff_control_round(request, round_id):
+    response = control_round(round_id, request.user, json_body(request))
     return JsonResponse({"request_id": request.request_id, **response})

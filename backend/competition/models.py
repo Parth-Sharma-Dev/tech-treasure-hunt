@@ -74,6 +74,7 @@ class Round(models.Model):
     active_budget_ms = models.PositiveBigIntegerField(default=90 * 60 * 1000)
     accumulated_active_ms = models.PositiveBigIntegerField(default=0)
     live_started_at = models.DateTimeField(null=True, blank=True)
+    phase_started_at = models.DateTimeField(null=True, blank=True)
     deadline_at = models.DateTimeField(null=True, blank=True)
     control_version = models.PositiveIntegerField(default=0)
     is_demo = models.BooleanField(default=False)

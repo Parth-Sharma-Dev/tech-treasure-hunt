@@ -2,6 +2,7 @@ import hmac
 
 from .answers import answer_digest
 from .api import ApiProblem
+from .clock import clock_payload, database_now
 from .models import Mission, ResultSnapshot, Round, Team
 
 
@@ -44,6 +45,7 @@ def public_rules(round):
 
 
 def participant_rounds(team):
+    now = database_now()
     rounds = Round.objects.filter(is_demo=team.is_demo).order_by("number", "-attempt_no")
     latest = {}
     for round in rounds:
@@ -52,7 +54,8 @@ def participant_rounds(team):
                 "id": round.pk,
                 "number": round.number,
                 "title": round.title,
-                "state": round.state,
+                "state": clock_payload(round, now)["state"],
+                "clock": clock_payload(round, now),
                 "eligible": round_eligible(team, round),
                 "rules_version": round.rules_version if round.state != Round.State.DRAFT else None,
                 "rules": public_rules(round),

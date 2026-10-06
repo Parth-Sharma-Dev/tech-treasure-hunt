@@ -54,6 +54,7 @@ class RoundAdmin(ReadOnlyAdmin):
         "approved_at",
         "accumulated_active_ms",
         "live_started_at",
+        "phase_started_at",
         "deadline_at",
         "control_version",
     )

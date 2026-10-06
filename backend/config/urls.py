@@ -14,6 +14,8 @@ urlpatterns = [
     path("api/me", views.me),
     path("api/practice", views.practice),
     path("api/practice/submit", views.submit_practice),
+    path("api/staff/rounds", views.staff_rounds),
+    path("api/staff/rounds/<int:round_id>/control", views.staff_control_round),
     path(
         "api/staff/teams/<int:team_id>/sessions/<int:session_id>/revoke", views.staff_revoke_session
     ),
