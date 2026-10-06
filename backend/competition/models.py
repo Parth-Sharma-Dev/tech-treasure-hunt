@@ -476,6 +476,18 @@ class ScoreRevision(ImmutableEvidence):
                 raise ValidationError("A revision must supersede the same team and round.")
 
 
+class ResultProposal(ImmutableEvidence):
+    round = models.ForeignKey(Round, on_delete=models.PROTECT)
+    maker = staff_reference()
+    target_status = models.CharField(
+        max_length=12, choices=[("PROVISIONAL", "Provisional"), ("FINAL", "Final")]
+    )
+    expected_version = models.PositiveIntegerField()
+    evidence_digest = models.CharField(max_length=64)
+    payload = models.JSONField()
+    reason = models.TextField()
+
+
 class ResultSnapshot(ImmutableEvidence):
     round = models.ForeignKey(Round, on_delete=models.PROTECT)
     revision = models.PositiveIntegerField()
@@ -490,6 +502,10 @@ class ResultSnapshot(ImmutableEvidence):
     maker = staff_reference()
     approver = staff_reference()
     appeal_deadline = models.DateTimeField(null=True, blank=True)
+    metadata = models.JSONField(default=dict)
+    proposal = models.OneToOneField(
+        ResultProposal, on_delete=models.PROTECT, null=True, blank=True, related_name="publication"
+    )
     published_at = models.DateTimeField()
     supersedes = models.OneToOneField("self", on_delete=models.PROTECT, null=True, blank=True)
 

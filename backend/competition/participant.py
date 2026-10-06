@@ -11,14 +11,19 @@ def round_eligible(team, round):
         return False
     if round.number == 1:
         return True
-    snapshot = (
-        ResultSnapshot.objects.filter(
-            round__number=round.number - 1, round__is_demo=team.is_demo, status="FINAL"
-        )
-        .order_by("-round__attempt_no", "-revision")
+    previous = (
+        Round.objects.filter(number=round.number - 1, is_demo=team.is_demo)
+        .order_by("-attempt_no")
         .first()
     )
-    return snapshot is not None and team.code in snapshot.qualifier_codes
+    if previous is None or previous.state != Round.State.FINALIZED:
+        return False
+    snapshot = ResultSnapshot.objects.filter(round=previous).order_by("-revision").first()
+    return (
+        snapshot is not None
+        and snapshot.status == "FINAL"
+        and team.code in snapshot.qualifier_codes
+    )
 
 
 def public_rules(round):

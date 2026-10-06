@@ -4,7 +4,7 @@ Competition website for the AI Nexus Club, CSE Department, SKIT Jaipur, Tech-Pra
 
 The website is being built to support team login, QR-based missions, answer submission, Round 1 scoring, and organizer-reviewed results and qualification through five rounds.
 
-The current implementation includes a responsive event page, competition/evidence models, draft content preparation and rule approval in Django admin, team sign-in, a participant lobby, organizer round controls, server clocks, QR/fallback mission access, answer submissions, team progress and signed receipts. Organizer-reviewed standings and qualification remain future work; production deployment remains deferred.
+The current implementation includes a responsive event page, competition/evidence models, draft content preparation and rule approval in Django admin, team sign-in, a participant lobby, organizer round controls, server clocks, QR/fallback mission access, answer submissions, team progress and signed receipts. Reviewed Round 1 result publication and qualification APIs are available; their browser screens are being integrated. Production deployment remains deferred.
 
 Round controls support READY → LOBBY → LIVE, pause/resume, explicit extensions and ending. PostgreSQL supplies the authoritative time; frozen intervals do not consume the active budget. Staff actions require a reason, a UUID `action_id` and the latest `expected_version`. Retrying the identical action returns its original response; stale or changed actions are rejected. Controls cannot reopen ENDED rounds or paper play. Extensions are audited separately from pause duration.
 
@@ -21,6 +21,18 @@ Submit four ASCII digits to `POST /api/missions/{token}/submit` with a UUID `Ide
 `GET /api/rounds/{round}/state` returns your team's current effective score and earned keywords separately from historical decisions. `GET /api/me/receipts` returns your own signed accepted receipts. Receipts use a separate signing purpose from answer HMACs; preserve both Django and answer secrets across restarts. A void removes current credit while preserving original accepted evidence and receipts.
 
 Visit `/missions/{token}` from a QR link, then explicitly open the mission. Alternatively, enter its separate fallback code in the lobby. Submit a four-digit answer while live. The browser saves an unconfirmed attempt's UUID and original answer in session-scoped storage bound to your team and mission. After a lost response or reload, use **Check saved attempt** to fetch the durable decision before retrying the identical request. Signing out clears this pending data. Accepted receipts can be saved from the progress panel.
+
+## Reviewed Round 1 results
+
+Standings count non-voided effective completions and break score ties by the active time of the last counted completion. Zero-score teams remain tied; team-code sorting stabilizes display only. Available non-voided competitive missions determine the denominator. Withdrawn/disqualified teams retain evidence but cannot qualify.
+
+An authorized controller/adjudicator proposes a result using the current evidence digest and control version. A different staff member with both `publish_results` and `verify_evidence` approves it. Each publication creates an immutable snapshot and audit event. Provisional publications never grant qualification; revised provisional snapshots visibly supersede the previous revision and restart the full configured appeal window.
+
+Final publication requires a preceding provisional snapshot, the completed appeal window, two evidence confirmations, no open material incidents, and consistent rules/clock/completion/accepted-receipt evidence. A cutoff tie requires all tied teams in the declared supervised reserve-clue order, a reason and evidence references, reviewed with the final proposal. Qualification comes only from the latest attempt's final snapshot. Ordinary publication cannot replace finalized results.
+
+Staff endpoints: `GET /api/staff/results`, `GET /api/staff/rounds/{id}/results`, `POST /api/staff/rounds/{id}/publish` (`action: propose` or `approve`), and `POST /api/staff/rounds/{id}/incidents` (`action: open` or `close`). Writes require CSRF, an action UUID and reason. Incident closure requires a different authorized verifier and supporting evidence references; it does not adjust scores. `GET /api/rounds/{id}/results` exposes published snapshots/history to authenticated teams in the same cohort, never private previews or pending proposals.
+
+This workflow currently supports online Round 1 completion results. Later-round imported rankings, paper reconciliation, score-changing adjudication and post-final corrections remain separate development work. Automated integrity checks cannot prove that entirely missing records never existed; both reviewers must check evidence coverage and record any known gap as a material incident.
 
 An optional full browser integration test runs against Django HTTP and an isolated PostgreSQL test database. Start Vite on port 5173 and install Playwright Chromium first, then run in PowerShell:
 

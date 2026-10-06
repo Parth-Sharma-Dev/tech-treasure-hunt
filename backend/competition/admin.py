@@ -250,6 +250,7 @@ for model in (
     models.ImportBatch,
     models.ScoreRevision,
     models.ResultSnapshot,
+    models.ResultProposal,
     models.PaperWindow,
     models.AuditEvent,
 ):
