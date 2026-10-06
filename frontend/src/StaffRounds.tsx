@@ -61,7 +61,7 @@ export function StaffRounds() {
   return <section className="participant-page">
     <p className="eyebrow">ORGANIZER DESK</p><h1>Round controls</h1>
     <p className="muted">Start and pause play, extend the active budget, or close a round. Each confirmed action records your reason.</p>
-    <a href="/admin/competition/round/">Content and approval in Django admin</a>
+    <p><a href="/admin/competition/round/">Content and approval in Django admin</a> · <a href="/staff/results">Results review</a></p>
     {rounds.isPending ? <p>Loading rounds…</p> : rounds.isError ? <div className="panel"><p role="alert">{rounds.error.message}</p><a className="button" href="/admin/login/?next=/staff/rounds">Staff sign in</a><button className="secondary" onClick={() => void rounds.refetch()}>Refresh</button></div> : <div className="staff-grid">{rounds.data.rounds.map(round => <Controls key={round.round_id} round={round} receivedAt={rounds.data.receivedAt} refresh={() => void rounds.refetch()} />)}</div>}
   </section>
 }

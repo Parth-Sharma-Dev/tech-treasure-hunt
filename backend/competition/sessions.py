@@ -21,7 +21,9 @@ LOGIN_WINDOW_SECONDS = 60
 
 def safe_return_path(value):
     if isinstance(value, str) and (
-        value in ("/", "/lobby") or re.fullmatch(r"/missions/[A-Za-z0-9_-]{20,64}", value)
+        value in ("/", "/lobby")
+        or re.fullmatch(r"/missions/[A-Za-z0-9_-]{20,64}", value)
+        or re.fullmatch(r"/rounds/[1-9][0-9]{0,9}/results", value)
     ):
         return value
     return "/lobby"

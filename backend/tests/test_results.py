@@ -1,7 +1,11 @@
+import os
+import shutil
+import subprocess
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import nullcontext
 from datetime import timedelta
+from pathlib import Path
 from threading import Barrier
 from unittest.mock import patch
 
@@ -365,8 +369,19 @@ def test_new_attempt_cannot_inherit_old_final_qualifiers(ended_hunt):
     )
     next_round = Round.objects.create(number=2, title="Next", is_demo=True)
     assert round_eligible(ended_hunt[2][0], next_round)
+    client = Client()
+    assert (
+        client.post(
+            "/api/auth/login",
+            {"team_code": "TEAM-A", "password": "test-only"},
+            content_type="application/json",
+        ).status_code
+        == 200
+    )
+    assert client.get(f"/api/rounds/{ended_hunt[0].pk}/results").json()["current_attempt"]
     Round.objects.create(number=1, attempt_no=2, title="Rerun", is_demo=True)
     assert not round_eligible(ended_hunt[2][0], next_round)
+    assert not client.get(f"/api/rounds/{ended_hunt[0].pk}/results").json()["current_attempt"]
 
 
 def test_participants_see_published_snapshots_only_and_staff_writes_require_csrf(ended_hunt):
@@ -421,3 +436,53 @@ def test_concurrent_approvals_publish_one_revision(ended_hunt):
             "already_published",
         ]
     assert ResultSnapshot.objects.count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.skipif(
+    os.environ.get("TTH_BROWSER_INTEGRATION") != "1",
+    reason="Opt-in: requires Vite and Playwright Chromium.",
+)
+def test_browser_provisional_to_final_qualification(ended_hunt, live_server):
+    completion(ended_hunt)
+    round = ended_hunt[0]
+    Round.objects.create(number=2, title="Synthetic next round", is_demo=True)
+    from competition.clock import database_now
+
+    def rehearsal_clock():
+        now = database_now()
+        snapshot = ResultSnapshot.objects.filter(round=round).order_by("-revision").first()
+        if snapshot:
+            # Only this isolated test advances time; no endpoint accepts a phone clock.
+            target = (
+                snapshot.appeal_deadline
+                if snapshot.status == "PROVISIONAL"
+                else snapshot.published_at
+            )
+            return max(now, target + timedelta(seconds=1))
+        return now
+
+    node = shutil.which("node")
+    assert node is not None
+    with (
+        patch("competition.results.database_now", side_effect=rehearsal_clock),
+        patch("competition.results_views.database_now", side_effect=rehearsal_clock),
+    ):
+        result = subprocess.run(
+            [node, "frontend/scripts/live-results-smoke.mjs"],
+            cwd=Path(__file__).resolve().parents[2],
+            env={
+                **os.environ,
+                "TTH_BACKEND_URL": live_server.url.replace("localhost", "127.0.0.1"),
+                "TTH_RESULTS_ROUND": str(round.pk),
+            },
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert list(
+        ResultSnapshot.objects.filter(round=round)
+        .order_by("revision")
+        .values_list("status", flat=True)
+    ) == ["PROVISIONAL", "FINAL"]

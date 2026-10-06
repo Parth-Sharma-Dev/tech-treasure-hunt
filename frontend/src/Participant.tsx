@@ -71,6 +71,7 @@ export function Lobby() {
     {team.status !== 'ACTIVE' && <p role="alert">Your team is {team.status.toLowerCase()}. Contact an organizer for assistance.</p>}
     <div className="lobby-grid"><section className="panel"><p className="eyebrow">THE PATH AHEAD</p><h2>Your rounds</h2><ol className="lobby-rounds">{rounds.map(round => <li key={round.id}><h3>{round.number}. {round.title}</h3><p>{stateLabels[round.state] ?? round.state}</p><RoundClock clock={round.clock} receivedAt={me.data.receivedAt} /><p className="muted">{round.eligible ? 'Your team is eligible' : 'Eligibility awaits finalized results or organizer review'}</p>{round.rules && <details><summary>Approved rules</summary><dl>{Object.entries(round.rules).map(([key, value]) => <div key={key}><dt>{key.replaceAll('_', ' ')}</dt><dd>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</dd></div>)}</dl></details>}</li>)}</ol></section>{team.status === 'ACTIVE' && <Practice />}</div>
     {hunt && hunt.state !== 'DRAFT' && <TeamProgress roundId={hunt.id} />}
+    {rounds.filter(round => ['ENDED', 'PROVISIONAL', 'FINALIZED'].includes(round.state)).map(round => <p key={round.id}><a href={`/rounds/${round.id}/results`}>View published results: {round.title}</a></p>)}
     {team.status === 'ACTIVE' && <FallbackAccess />}
   </section>
 }

@@ -6,6 +6,7 @@ const round = { ...clock, title: 'Synthetic hunt', number: 1, attempt_no: 1, is_
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/health', route => route.fulfill({ json: { status: 'ok' } }))
   await page.route('**/api/auth/csrf', route => route.fulfill({ json: { csrf_token: 'test-token' } }))
+  await page.route('**/api/rounds/1/state', route => route.fulfill({ json: { ...clock, score: 0, completions: [] } }))
 })
 
 test('countdown ignores wall-clock changes and paused time stays fixed', async ({ page }) => {

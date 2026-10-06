@@ -88,6 +88,12 @@ def test_repeated_login_same_browser_does_not_allocate_extra_sessions(team):
     assert TeamSession.objects.filter(team=team).count() == 1
 
 
+def test_results_return_destination_is_local_and_retained():
+    assert safe_return_path("/rounds/12/results") == "/rounds/12/results"
+    assert safe_return_path("https://example.com/rounds/12/results") == "/lobby"
+    assert safe_return_path("/rounds/12/results?next=https://example.com") == "/lobby"
+
+
 @pytest.mark.django_db(transaction=True)
 def test_concurrent_logins_allocate_at_most_four_sessions(team):
     barrier = Barrier(6)

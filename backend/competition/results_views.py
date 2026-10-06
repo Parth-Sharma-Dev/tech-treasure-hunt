@@ -44,6 +44,11 @@ def published_results(request, round_id):
     if round is None:
         raise ApiProblem("not_found", "Round not found.", 404)
     history = list(ResultSnapshot.objects.filter(round=round).order_by("-revision"))
+    current = (
+        Round.objects.filter(number=round.number, is_demo=round.is_demo)
+        .order_by("-attempt_no")
+        .first()
+    )
     return JsonResponse(
         {
             "request_id": request.request_id,
@@ -51,6 +56,7 @@ def published_results(request, round_id):
             "title": round.title,
             "number": round.number,
             "attempt_no": round.attempt_no,
+            "current_attempt": current.pk == round.pk,
             "own_team_code": team.code,
             "server_time": database_now().isoformat(),
             "snapshot": public_snapshot(history[0]) if history else None,

@@ -3,6 +3,7 @@ import { getJson } from './api'
 import { Login, Lobby } from './Participant'
 import { StaffRounds } from './StaffRounds'
 import { Mission } from './Mission'
+import { PublishedResults, StaffResults } from './Results'
 
 const rounds = [
   ['01', 'Treasure hunt', 'Follow the clues. Find your next move.'],
@@ -39,7 +40,7 @@ export function App() {
       </header>
 
       <main id="main">
-        {location.pathname === '/staff/rounds' ? <StaffRounds /> : location.pathname === '/login' ? <Login /> : location.pathname.startsWith('/missions/') ? <Mission /> : location.pathname === '/lobby' ? <Lobby /> : <>
+        {location.pathname === '/staff/results' ? <StaffResults /> : /^\/rounds\/[1-9][0-9]*\/results$/.test(location.pathname) ? <PublishedResults /> : location.pathname === '/staff/rounds' ? <StaffRounds /> : location.pathname === '/login' ? <Login /> : location.pathname.startsWith('/missions/') ? <Mission /> : location.pathname === '/lobby' ? <Lobby /> : <>
         <section className="hero" aria-labelledby="hero-heading">
           <div className="hero-copy">
             <p className="eyebrow">12–13 OCTOBER 2026 · SKIT JAIPUR</p>

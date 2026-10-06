@@ -4,7 +4,7 @@ Competition website for the AI Nexus Club, CSE Department, SKIT Jaipur, Tech-Pra
 
 The website is being built to support team login, QR-based missions, answer submission, Round 1 scoring, and organizer-reviewed results and qualification through five rounds.
 
-The current implementation includes a responsive event page, competition/evidence models, draft content preparation and rule approval in Django admin, team sign-in, a participant lobby, organizer round controls, server clocks, QR/fallback mission access, answer submissions, team progress and signed receipts. Reviewed Round 1 result publication and qualification APIs are available; their browser screens are being integrated. Production deployment remains deferred.
+The current implementation includes a responsive event page, competition/evidence models, draft content preparation and rule approval in Django admin, team sign-in, a participant lobby, organizer round controls, server clocks, QR/fallback mission access, answer submissions, team progress and signed receipts. Organizer-reviewed Round 1 standings, provisional/final publication, incident review and final qualification are available. Production deployment remains deferred.
 
 Round controls support READY → LOBBY → LIVE, pause/resume, explicit extensions and ending. PostgreSQL supplies the authoritative time; frozen intervals do not consume the active budget. Staff actions require a reason, a UUID `action_id` and the latest `expected_version`. Retrying the identical action returns its original response; stale or changed actions are rejected. Controls cannot reopen ENDED rounds or paper play. Extensions are audited separately from pause duration.
 
@@ -24,6 +24,10 @@ Visit `/missions/{token}` from a QR link, then explicitly open the mission. Alte
 
 ## Reviewed Round 1 results
 
+Open `/staff/results` (linked from round controls). `DEMO-content` prepares proposals; `DEMO-verifier` independently approves them. Select an ended round, inspect its private standings and integrity checks, then submit a provisional proposal with a public summary. In a separate staff session, review the proposal and approve publication. After the full appeal window and resolution of material issues, prepare a final proposal, confirm evidence coverage and supply reserve-clue evidence if the cutoff is tied. The second reviewer confirms the final evidence and publishes it.
+
+Teams use the lobby's published-results link or `/rounds/{database-round-id}/results`. They see published snapshots only, their highlighted row, appeal timing, final qualification and immutable publication history. Public summaries are visible to teams; private incident and reserve-clue evidence references stay on the staff desk. Use **Retry same results action** to recover an unconfirmed staff write in the original browser session.
+
 Standings count non-voided effective completions and break score ties by the active time of the last counted completion. Zero-score teams remain tied; team-code sorting stabilizes display only. Available non-voided competitive missions determine the denominator. Withdrawn/disqualified teams retain evidence but cannot qualify.
 
 An authorized controller/adjudicator proposes a result using the current evidence digest and control version. A different staff member with both `publish_results` and `verify_evidence` approves it. Each publication creates an immutable snapshot and audit event. Provisional publications never grant qualification; revised provisional snapshots visibly supersede the previous revision and restart the full configured appeal window.
@@ -39,10 +43,11 @@ An optional full browser integration test runs against Django HTTP and an isolat
 ```powershell
 $env:TTH_BROWSER_INTEGRATION = '1'
 .venv/Scripts/python -m pytest backend/tests/test_browser_gameplay.py
+.venv/Scripts/python -m pytest backend/tests/test_results.py -k browser_provisional
 Remove-Item Env:TTH_BROWSER_INTEGRATION
 ```
 
-It covers organizer start/pause, team login, explicit QR opening, an answer with leading zeros, scoring, signed receipts and logout. The ordinary backend suite skips this browser-dependent test.
+These cover organizer start/pause, team login, explicit QR opening, an answer with leading zeros, scoring, signed receipts/logout, and a separate two-person provisional-to-final publication journey. The publication test advances only its isolated test clock after provisional publication; application requests cannot skip the actual appeal window. The ordinary backend suite skips these browser-dependent tests.
 
 ## Requirements
 

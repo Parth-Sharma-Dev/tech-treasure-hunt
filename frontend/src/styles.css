@@ -7,6 +7,18 @@
 .panel { padding: 28px; border: 1px solid #34402d; background: #182014; margin-top: 24px; overflow-wrap: anywhere; }
 .panel h2 { margin-bottom: 16px; }
 .form-stack { display: grid; gap: 20px; }
+.form-stack fieldset { display: grid; gap: 20px; min-width: 0; padding: 0; border: 0; }
+.check-row { display: flex; align-items: flex-start; gap: 10px; line-height: 1.6; }
+.check-row input { width: auto; margin-top: 4px; }
+.standings-scroll { overflow-x: auto; max-width: 100%; }
+.standings { width: 100%; border-collapse: collapse; font-size: 14px; }
+.standings caption { text-align: left; padding: 16px 0; font-weight: 600; }
+.standings th, .standings td { text-align: left; padding: 14px 12px; border-bottom: 1px solid #34402d; }
+.standings small { display: block; color: #b4bea9; margin-top: 5px; }
+.standings .own-team { background: #29371d; }
+.desk-section-title { margin-top: 32px; }
+details { margin-top: 16px; }
+summary { cursor: pointer; }
 .staff-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 24px; align-items: start; }
 .clock-time { font: 36px Consolas, monospace; color: #d9f378; }
 .round-clock { padding: 12px 0; }
