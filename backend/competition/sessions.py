@@ -98,7 +98,7 @@ def login_team(request, code, password):
     return team
 
 
-def require_team(request, *, allow_inactive=False):
+def require_team(request, *, allow_inactive=False, touch=True):
     if not request.user.is_authenticated or not request.user.is_active or request.user.is_staff:
         raise ApiProblem("authentication_required", "Sign in with your team credentials.", 401)
     record = (
@@ -106,6 +106,8 @@ def require_team(request, *, allow_inactive=False):
         .filter(
             session_key=request.session.session_key,
             team__user=request.user,
+            team__user__is_active=True,
+            team__user__is_staff=False,
             revoked_at__isnull=True,
             expires_at__gt=timezone.now(),
         )
@@ -117,9 +119,10 @@ def require_team(request, *, allow_inactive=False):
         )
     if not allow_inactive and record.team.status != Team.Status.ACTIVE:
         raise ApiProblem("team_inactive", "This team cannot submit. Contact event staff.", 403)
-    TeamSession.objects.filter(pk=record.pk, revoked_at__isnull=True).update(
-        last_seen_at=timezone.now()
-    )
+    if touch:
+        TeamSession.objects.filter(pk=record.pk, revoked_at__isnull=True).update(
+            last_seen_at=timezone.now()
+        )
     request.team_session = record
     return record.team
 

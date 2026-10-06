@@ -4,7 +4,7 @@ Competition website for the AI Nexus Club, CSE Department, SKIT Jaipur, Tech-Pra
 
 The website is being built to support team login, QR-based missions, answer submission, Round 1 scoring, and organizer-reviewed results and qualification through five rounds.
 
-The current implementation includes a responsive event page, competition/evidence models, draft content preparation and rule approval in Django admin, team sign-in, a participant lobby, session management and isolated practice. Competitive gameplay and production deployment are not implemented yet.
+The current implementation includes a responsive event page, competition/evidence models, draft content preparation and rule approval in Django admin, team sign-in, a participant lobby, organizer round controls, server clocks and mission submission/scoring APIs. The mission browser interface is being integrated; production deployment remains deferred.
 
 Round controls support READY → LOBBY → LIVE, pause/resume, explicit extensions and ending. PostgreSQL supplies the authoritative time; frozen intervals do not consume the active budget. Staff actions require a reason, a UUID `action_id` and the latest `expected_version`. Retrying the identical action returns its original response; stale or changed actions are rejected. Controls cannot reopen ENDED rounds or paper play. Extensions are audited separately from pause duration.
 
@@ -13,6 +13,12 @@ Open `/staff/rounds` for the organizer controls screen and sign in through its D
 Staff can read `GET /api/staff/rounds` and submit CSRF-protected controls to `POST /api/staff/rounds/{id}/control`, with `action` set to `open_lobby`, `start`, `freeze`, `resume`, `extend` or `end`. `extend` additionally requires a positive `extension_ms` (at most 24 hours per action). Reads report expired live rounds as ENDED immediately, without writing evidence. To persist completed intervals after a delayed job, run `.venv/Scripts/python backend/manage.py end_expired_rounds --actor <controller-username>`; intervals are capped at the original deadline.
 
 The participant lobby displays live, paused and ended round clocks. It refreshes roughly every 15 seconds with jitter, suspends polling in hidden tabs and refreshes on return. Countdown estimates use monotonic elapsed time; all eligibility and cutoff decisions remain on the server.
+
+The mission API supports QR tokens and separate random fallback codes. `GET /api/missions/{token}` records no visit and reveals no unopened clue. CSRF-protected `POST /api/missions/open` takes either `token` or `fallback_code`; new clues open only during live online play. Previously opened clues remain readable after pause/end. Competitive missions are isolated from practice and from demo/live cohorts.
+
+Submit four ASCII digits to `POST /api/missions/{token}/submit` with a UUID `Idempotency-Key` header. PostgreSQL admission time is read after shared Round and exclusive Team locks. Only newly evaluated answers consume the team-wide active-time quota; cooldowns exclude paused time. Decisions and completions commit together. Retrying the same key/payload returns the original outcome; changing the answer or mission conflicts. A lost response requires checking `GET /api/rounds/{round}/attempts/{key}` and retrying the same attempt, rather than inventing an incorrect result.
+
+`GET /api/rounds/{round}/state` returns your team's current effective score and earned keywords separately from historical decisions. `GET /api/me/receipts` returns your own signed accepted receipts. Receipts use a separate signing purpose from answer HMACs; preserve both Django and answer secrets across restarts. A void removes current credit while preserving original accepted evidence and receipts. The mission browser interface is being integrated; organizer-reviewed standings and qualification remain future work.
 
 ## Requirements
 

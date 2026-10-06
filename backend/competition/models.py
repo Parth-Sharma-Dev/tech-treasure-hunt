@@ -334,6 +334,7 @@ class SubmissionDecision(ImmutableEvidence):
         ]
         indexes = [
             models.Index(fields=["team", "round", "admitted_at"]),
+            models.Index(fields=["team", "round", "active_elapsed_ms"]),
             models.Index(fields=["round", "outcome", "admitted_at"]),
         ]
 
