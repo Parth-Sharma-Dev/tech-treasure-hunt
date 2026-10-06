@@ -44,7 +44,7 @@ test('shows session capacity errors without leaving sign in', async ({ page }) =
 })
 
 test('expired mission session retains its destination for sign in', async ({ page }) => {
-  await page.route('**/api/me', route => route.fulfill({ status: 401, json: { error: { message: 'Your session has ended.' } } }))
+  await page.route('**/api/missions/*', route => route.fulfill({ status: 401, json: { error: { message: 'Your session has ended.' } } }))
   const path = '/missions/abcdefghijklmnopqrstuv'
   await page.goto(path)
   await expect(page.getByRole('heading', { name: 'Sign in to continue' })).toBeVisible()

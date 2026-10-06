@@ -4,7 +4,7 @@ Competition website for the AI Nexus Club, CSE Department, SKIT Jaipur, Tech-Pra
 
 The website is being built to support team login, QR-based missions, answer submission, Round 1 scoring, and organizer-reviewed results and qualification through five rounds.
 
-The current implementation includes a responsive event page, competition/evidence models, draft content preparation and rule approval in Django admin, team sign-in, a participant lobby, organizer round controls, server clocks and mission submission/scoring APIs. The mission browser interface is being integrated; production deployment remains deferred.
+The current implementation includes a responsive event page, competition/evidence models, draft content preparation and rule approval in Django admin, team sign-in, a participant lobby, organizer round controls, server clocks, QR/fallback mission access, answer submissions, team progress and signed receipts. Organizer-reviewed standings and qualification remain future work; production deployment remains deferred.
 
 Round controls support READY → LOBBY → LIVE, pause/resume, explicit extensions and ending. PostgreSQL supplies the authoritative time; frozen intervals do not consume the active budget. Staff actions require a reason, a UUID `action_id` and the latest `expected_version`. Retrying the identical action returns its original response; stale or changed actions are rejected. Controls cannot reopen ENDED rounds or paper play. Extensions are audited separately from pause duration.
 
@@ -18,7 +18,19 @@ The mission API supports QR tokens and separate random fallback codes. `GET /api
 
 Submit four ASCII digits to `POST /api/missions/{token}/submit` with a UUID `Idempotency-Key` header. PostgreSQL admission time is read after shared Round and exclusive Team locks. Only newly evaluated answers consume the team-wide active-time quota; cooldowns exclude paused time. Decisions and completions commit together. Retrying the same key/payload returns the original outcome; changing the answer or mission conflicts. A lost response requires checking `GET /api/rounds/{round}/attempts/{key}` and retrying the same attempt, rather than inventing an incorrect result.
 
-`GET /api/rounds/{round}/state` returns your team's current effective score and earned keywords separately from historical decisions. `GET /api/me/receipts` returns your own signed accepted receipts. Receipts use a separate signing purpose from answer HMACs; preserve both Django and answer secrets across restarts. A void removes current credit while preserving original accepted evidence and receipts. The mission browser interface is being integrated; organizer-reviewed standings and qualification remain future work.
+`GET /api/rounds/{round}/state` returns your team's current effective score and earned keywords separately from historical decisions. `GET /api/me/receipts` returns your own signed accepted receipts. Receipts use a separate signing purpose from answer HMACs; preserve both Django and answer secrets across restarts. A void removes current credit while preserving original accepted evidence and receipts.
+
+Visit `/missions/{token}` from a QR link, then explicitly open the mission. Alternatively, enter its separate fallback code in the lobby. Submit a four-digit answer while live. The browser saves an unconfirmed attempt's UUID and original answer in session-scoped storage bound to your team and mission. After a lost response or reload, use **Check saved attempt** to fetch the durable decision before retrying the identical request. Signing out clears this pending data. Accepted receipts can be saved from the progress panel.
+
+An optional full browser integration test runs against Django HTTP and an isolated PostgreSQL test database. Start Vite on port 5173 and install Playwright Chromium first, then run in PowerShell:
+
+```powershell
+$env:TTH_BROWSER_INTEGRATION = '1'
+.venv/Scripts/python -m pytest backend/tests/test_browser_gameplay.py
+Remove-Item Env:TTH_BROWSER_INTEGRATION
+```
+
+It covers organizer start/pause, team login, explicit QR opening, an answer with leading zeros, scoring, signed receipts and logout. The ordinary backend suite skips this browser-dependent test.
 
 ## Requirements
 
@@ -67,7 +79,7 @@ With the environment configured and migrations applied:
 
 This creates two fictional teams, five draft rounds, two synthetic competitive missions, an isolated practice mission, and separate content/verification staff accounts. Random credentials are saved to the ignored `.local/demo-credentials.json` file. Repeating the command preserves existing passwords and content. Demo seeding requires development mode and refuses a database containing non-demo teams or rounds.
 
-Open `/login` and sign in with a demo team code and its generated password. The lobby shows your team's browser-session count, round preparation status and a practice clue. Practice answers preserve leading zeros and award no competition points. Signing out revokes only the current browser session. Competitive mission URLs currently show a development availability notice after sign-in.
+Open `/login` and sign in with a demo team code and its generated password. The lobby shows your team's browser-session count, round preparation status and a practice clue. Practice answers preserve leading zeros and award no competition points. Signing out revokes only the current browser session. Demo competitive missions remain locked until staff independently verify them, approve the rules, mark the round READY and start it through the controls screen.
 
 Demo rounds remain DRAFT: they do not stand in for approved competition settings or verified event content. Content staff can edit draft rounds and missions in Django admin. Answers are entered privately and stored as mission/version-bound HMACs using `ANSWER_HMAC_KEY`; editing mission content invalidates its previous verification. An authorized independent verifier can attest to checking a mission end to end.
 

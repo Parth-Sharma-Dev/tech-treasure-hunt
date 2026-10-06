@@ -54,6 +54,7 @@ def mission_payload(mission, team, round, now):
         Round.State.LOBBY,
     }
     return {
+        "team_code": team.code,
         "token": mission.token,
         "mission_id": mission.public_id,
         "round_id": round.pk,

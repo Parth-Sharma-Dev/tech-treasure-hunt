@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError, getJson, postJson } from './api'
 import { RoundClock, pollInterval, stateLabels, type Clock } from './RoundClock'
+import { FallbackAccess, TeamProgress } from './Mission'
 
 type Identity = {
   team: { code: string; name: string; member_count: number; status: string; is_demo: boolean }
@@ -49,7 +50,7 @@ function Practice() {
   </section>
 }
 
-export function Lobby({ mission = false }: { mission?: boolean }) {
+export function Lobby() {
   const client = useQueryClient()
   const me = useQuery({ queryKey: ['me'], queryFn: async ({ signal }) => {
     const identity = await getJson<Identity>('/api/me', signal)
@@ -62,12 +63,14 @@ export function Lobby({ mission = false }: { mission?: boolean }) {
   if (me.isPending) return <section className="participant-page"><h1>Opening your lobby…</h1></section>
   if (me.isError) return <section className="participant-page narrow"><h1>{me.error instanceof ApiError && me.error.status === 401 ? 'Sign in to continue' : 'Lobby unavailable'}</h1><p role="alert">{message(me.error)}</p><a className="button" href={`/login?next=${encodeURIComponent(location.pathname)}`}>Team sign in</a></section>
   const { team, session, rounds } = me.data
+  const hunt = rounds.find(round => round.number === 1)
   return <section className="participant-page">
     <div className="lobby-heading"><div><p className="eyebrow">{team.is_demo ? 'LOCAL DEMO · ' : ''}{team.code}</p><h1>{team.name}</h1></div><button className="secondary" disabled={logout.isPending} onClick={() => logout.mutate()}>Sign out</button></div>
     {logout.isError && <p role="alert" className="error">{message(logout.error)}</p>}
     <p className="muted">{team.member_count} members · {session.active_count} of {session.max_active} browser sessions active</p>
     {team.status !== 'ACTIVE' && <p role="alert">Your team is {team.status.toLowerCase()}. Contact an organizer for assistance.</p>}
-    {mission && <div className="panel"><h2>Mission access</h2><p>Competitive mission access is still being developed. Use the practice clue below while the organizers prepare the hunt.</p><a href="/lobby">Return to lobby</a></div>}
     <div className="lobby-grid"><section className="panel"><p className="eyebrow">THE PATH AHEAD</p><h2>Your rounds</h2><ol className="lobby-rounds">{rounds.map(round => <li key={round.id}><h3>{round.number}. {round.title}</h3><p>{stateLabels[round.state] ?? round.state}</p><RoundClock clock={round.clock} receivedAt={me.data.receivedAt} /><p className="muted">{round.eligible ? 'Your team is eligible' : 'Eligibility awaits finalized results or organizer review'}</p>{round.rules && <details><summary>Approved rules</summary><dl>{Object.entries(round.rules).map(([key, value]) => <div key={key}><dt>{key.replaceAll('_', ' ')}</dt><dd>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</dd></div>)}</dl></details>}</li>)}</ol></section>{team.status === 'ACTIVE' && <Practice />}</div>
+    {hunt && hunt.state !== 'DRAFT' && <TeamProgress roundId={hunt.id} />}
+    {team.status === 'ACTIVE' && <FallbackAccess />}
   </section>
 }

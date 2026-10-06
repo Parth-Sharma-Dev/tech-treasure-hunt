@@ -18,14 +18,15 @@ export async function getJson<T>(path: string, signal?: AbortSignal): Promise<T>
   return response.json() as Promise<T>
 }
 
-export async function postJson<T>(path: string, body: unknown): Promise<T> {
+export async function postJson<T>(path: string, body: unknown, headers: Record<string, string> = {}): Promise<T> {
   const csrf = await getJson<{ csrf_token: string }>('/api/auth/csrf')
   const response = await fetch(path, {
     method: 'POST', credentials: 'same-origin', cache: 'no-store',
-    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf.csrf_token, Accept: 'application/json' },
+    headers: { ...headers, 'Content-Type': 'application/json', 'X-CSRFToken': csrf.csrf_token, Accept: 'application/json' },
     body: JSON.stringify(body),
   })
-  const data = await response.json()
+  const data = await response.json().catch(() => null)
   if (!response.ok) throw new ApiError(response.status, response.headers.get('X-Request-ID'), data?.error?.message)
+  if (data === null) throw new Error('The response could not be read. Check the outcome before retrying.')
   return data as T
 }
