@@ -384,6 +384,59 @@ def test_new_attempt_cannot_inherit_old_final_qualifiers(ended_hunt):
     assert not client.get(f"/api/rounds/{ended_hunt[0].pk}/results").json()["current_attempt"]
 
 
+def test_qualified_team_cannot_use_native_scoring_in_an_external_round(ended_hunt):
+    completion(ended_hunt)
+    first = publish_provisional(ended_hunt)
+    approve(
+        ended_hunt,
+        proposal(ended_hunt, "FINAL", now=first.appeal_deadline),
+        now=first.appeal_deadline,
+    )
+    next_round = Round.objects.create(
+        number=2, title="External quiz", is_demo=True, delivery_mode="EXTERNAL"
+    )
+    mission = Mission.objects.create(
+        round=next_round,
+        public_id="EXTERNAL-M1",
+        hint="External material",
+        keyword="NONE",
+        qr_location="Fictional",
+        clue_location="Fictional",
+    )
+    now = timezone.now()
+    Round.objects.filter(pk=next_round.pk).update(
+        state="LIVE",
+        live_started_at=now,
+        phase_started_at=now,
+        deadline_at=now + timedelta(minutes=2),
+        rules_version="external-v1",
+        rules_snapshot={"rules": {"score_schema": {"score": "number"}}},
+    )
+    assert round_eligible(ended_hunt[2][0], next_round)
+    client = Client()
+    assert (
+        client.post(
+            "/api/auth/login",
+            {"team_code": "TEAM-A", "password": "test-only"},
+            content_type="application/json",
+        ).status_code
+        == 200
+    )
+    opened = client.post(
+        "/api/missions/open", {"token": mission.token}, content_type="application/json"
+    )
+    assert opened.status_code == 409 and opened.json()["error"]["code"] == "external_delivery"
+    response = client.post(
+        f"/api/missions/{mission.token}/submit",
+        {"answer": "0042"},
+        content_type="application/json",
+        HTTP_IDEMPOTENCY_KEY=str(uuid.uuid4()),
+    )
+    assert response.json()["outcome"] == "external_delivery"
+    assert response.json()["points_awarded"] == 0
+    assert Completion.objects.filter(mission=mission).count() == 0
+
+
 def test_participants_see_published_snapshots_only_and_staff_writes_require_csrf(ended_hunt):
     round, _, teams, maker, _, _ = ended_hunt
     client = Client(enforce_csrf_checks=True)

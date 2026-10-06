@@ -51,7 +51,9 @@ def game(settings):
     user = get_user_model().objects.create_user(username="team-internal", password="test-only")
     team = Team.objects.create(code="TEST-01", name="Synthetic team", user=user, member_count=3)
     start = timezone.now()
-    round = Round.objects.create(number=1, title="Synthetic hunt", active_budget_ms=120_000)
+    round = Round.objects.create(
+        number=1, title="Synthetic hunt", delivery_mode="ONLINE_HUNT", active_budget_ms=120_000
+    )
     missions = []
     for number in range(2):
         mission = Mission.objects.create(

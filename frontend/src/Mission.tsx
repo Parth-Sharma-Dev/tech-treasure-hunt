@@ -18,6 +18,7 @@ const outcomes: Record<string, string> = {
   throttled: 'Your team’s shared answer allowance is temporarily exhausted. This answer was not evaluated.',
   not_opened: 'Open this mission before answering.', ineligible: 'Your team is not eligible to submit in this round.',
   mission_unavailable: 'This mission is unavailable.', paper_mode: 'Online answers are closed for paper play.',
+  external_delivery: 'This round is externally judged. Native mission answers do not score.',
 }
 
 export function FallbackAccess() {

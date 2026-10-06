@@ -26,7 +26,12 @@ def test_full_browser_gameplay(live_server, settings):
         username="browser-team", password="synthetic-test-only"
     )
     Team.objects.create(code="BROWSER-01", name="Synthetic browser team", user=user, member_count=3)
-    round = Round.objects.create(number=1, title="Isolated browser hunt", active_budget_ms=120_000)
+    round = Round.objects.create(
+        number=1,
+        title="Isolated browser hunt",
+        delivery_mode="ONLINE_HUNT",
+        active_budget_ms=120_000,
+    )
     mission = Mission.objects.create(
         round=round,
         public_id="BROWSER-M1",

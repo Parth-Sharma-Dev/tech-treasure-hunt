@@ -97,6 +97,12 @@ def open_mission(request, data):
     team = write_team(request)
     mission.refresh_from_db()
     now = database_now()
+    if round.number != 1 or round.delivery_mode != Round.Delivery.ONLINE_HUNT:
+        raise ApiProblem(
+            "external_delivery",
+            "This round is externally judged; native mission access is unavailable.",
+            409,
+        )
     if not round_eligible(team, round):
         raise ApiProblem("ineligible", "Your team is not eligible for this round.", 403)
     if round.state != "LIVE" or round.play_mode != "ONLINE" or now > round.deadline_at:
@@ -177,7 +183,9 @@ def submit_answer(request, token, key_value, data):
     now = database_now()
     elapsed = active_elapsed(round, now)
     outcome, cooldown_remaining = None, 0
-    if not round_eligible(team, round):
+    if round.number != 1 or round.delivery_mode != Round.Delivery.ONLINE_HUNT:
+        outcome = "external_delivery"
+    elif not round_eligible(team, round):
         outcome = "ineligible"
     elif round.play_mode != "ONLINE":
         outcome = "paper_mode"

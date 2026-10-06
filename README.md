@@ -38,6 +38,8 @@ Staff endpoints: `GET /api/staff/results`, `GET /api/staff/rounds/{id}/results`,
 
 This workflow currently supports online Round 1 completion results. Later-round imported rankings, paper reconciliation, score-changing adjudication and post-final corrections remain separate development work. Automated integrity checks cannot prove that entirely missing records never existed; both reviewers must check evidence coverage and record any known gap as a material incident.
 
+Qualification does not enable native hunt scoring for externally judged rounds: their mission-open and answer APIs explicitly refuse native play. Later-round scores will use the separate reviewed import workflow.
+
 An optional full browser integration test runs against Django HTTP and an isolated PostgreSQL test database. Start Vite on port 5173 and install Playwright Chromium first, then run in PowerShell:
 
 ```powershell
