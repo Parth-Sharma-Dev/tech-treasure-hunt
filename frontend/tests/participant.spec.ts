@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-const identity = { team: { code: 'DEMO-01', name: 'Demo explorers', member_count: 4, status: 'ACTIVE', is_demo: true }, session: { active_count: 1, max_active: 4 }, rounds: [{ id: 1, number: 1, title: 'Treasure hunt', state: 'DRAFT', eligible: true, rules: null }] }
+const identity = { team: { code: 'DEMO-01', name: 'Demo explorers', member_count: 4, status: 'ACTIVE', is_demo: true }, session: { active_count: 1, max_active: 4 }, rounds: [{ id: 1, number: 1, title: 'Treasure hunt', state: 'DRAFT', eligible: true, rules: null, clock: { state: 'DRAFT' } }] }
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/health', route => route.fulfill({ json: { status: 'ok' } }))

@@ -8,7 +8,11 @@ The current implementation includes a responsive event page, competition/evidenc
 
 Round controls support READY → LOBBY → LIVE, pause/resume, explicit extensions and ending. PostgreSQL supplies the authoritative time; frozen intervals do not consume the active budget. Staff actions require a reason, a UUID `action_id` and the latest `expected_version`. Retrying the identical action returns its original response; stale or changed actions are rejected. Controls cannot reopen ENDED rounds or paper play. Extensions are audited separately from pause duration.
 
-Staff with `competition.control_round` can read `GET /api/staff/rounds` and submit CSRF-protected controls to `POST /api/staff/rounds/{id}/control`, with `action` set to `open_lobby`, `start`, `freeze`, `resume`, `extend` or `end`. `extend` additionally requires a positive `extension_ms` (at most 24 hours per action). Reads report expired live rounds as ENDED immediately, without writing evidence. To persist completed intervals after a delayed job, run `.venv/Scripts/python backend/manage.py end_expired_rounds --actor <controller-username>`; intervals are capped at the original deadline.
+Open `/staff/rounds` for the organizer controls screen and sign in through its Django admin link. Staff need `competition.control_round`; demo account `DEMO-content` has this permission. Draft rounds still require independent mission verification and rule approval in admin before they become READY. The screen preserves an unconfirmed action in browser session storage and retries the identical UUID/payload after a lost response or reload.
+
+Staff can read `GET /api/staff/rounds` and submit CSRF-protected controls to `POST /api/staff/rounds/{id}/control`, with `action` set to `open_lobby`, `start`, `freeze`, `resume`, `extend` or `end`. `extend` additionally requires a positive `extension_ms` (at most 24 hours per action). Reads report expired live rounds as ENDED immediately, without writing evidence. To persist completed intervals after a delayed job, run `.venv/Scripts/python backend/manage.py end_expired_rounds --actor <controller-username>`; intervals are capped at the original deadline.
+
+The participant lobby displays live, paused and ended round clocks. It refreshes roughly every 15 seconds with jitter, suspends polling in hidden tabs and refreshes on return. Countdown estimates use monotonic elapsed time; all eligibility and cutoff decisions remain on the server.
 
 ## Requirements
 

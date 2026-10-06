@@ -123,6 +123,7 @@ def staff_rounds(request):
                 {
                     "title": round.title,
                     "number": round.number,
+                    "attempt_no": round.attempt_no,
                     "is_demo": round.is_demo,
                     **clock_payload(round, now),
                 }

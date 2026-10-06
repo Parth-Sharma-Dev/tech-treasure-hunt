@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError, getJson, postJson } from './api'
+import { RoundClock, pollInterval, stateLabels, type Clock } from './RoundClock'
 
 type Identity = {
   team: { code: string; name: string; member_count: number; status: string; is_demo: boolean }
   session: { active_count: number; max_active: number }
-  rounds: { id: number; number: number; title: string; state: string; eligible: boolean; rules: Record<string, unknown> | null }[]
+  rounds: { id: number; number: number; title: string; state: string; eligible: boolean; rules: Record<string, unknown> | null; clock: Clock }[]
 }
 function message(error: Error | null) { return error?.message ?? 'Please try again.' }
 
@@ -50,7 +51,10 @@ function Practice() {
 
 export function Lobby({ mission = false }: { mission?: boolean }) {
   const client = useQueryClient()
-  const me = useQuery({ queryKey: ['me'], queryFn: ({ signal }) => getJson<Identity>('/api/me', signal), retry: false, refetchInterval: 15_000, refetchIntervalInBackground: false })
+  const me = useQuery({ queryKey: ['me'], queryFn: async ({ signal }) => {
+    const identity = await getJson<Identity>('/api/me', signal)
+    return { ...identity, receivedAt: performance.now() }
+  }, retry: false, refetchInterval: pollInterval, refetchIntervalInBackground: false, refetchOnWindowFocus: 'always' })
   const logout = useMutation({ mutationFn: () => postJson('/api/auth/logout', {}), onSuccess: () => {
     for (const key of Object.keys(sessionStorage)) if (key.startsWith('tth:')) sessionStorage.removeItem(key)
     client.clear(); location.assign('/')
@@ -64,6 +68,6 @@ export function Lobby({ mission = false }: { mission?: boolean }) {
     <p className="muted">{team.member_count} members · {session.active_count} of {session.max_active} browser sessions active</p>
     {team.status !== 'ACTIVE' && <p role="alert">Your team is {team.status.toLowerCase()}. Contact an organizer for assistance.</p>}
     {mission && <div className="panel"><h2>Mission access</h2><p>Competitive mission access is still being developed. Use the practice clue below while the organizers prepare the hunt.</p><a href="/lobby">Return to lobby</a></div>}
-    <div className="lobby-grid"><section className="panel"><p className="eyebrow">THE PATH AHEAD</p><h2>Your rounds</h2><ol className="lobby-rounds">{rounds.map(round => <li key={round.id}><h3>{round.number}. {round.title}</h3><p>{round.state === 'DRAFT' ? 'Awaiting organizer approval' : round.state.toLowerCase().replaceAll('_', ' ')}</p><p className="muted">{round.eligible ? 'Your team is eligible' : 'Eligibility awaits finalized results or organizer review'}</p>{round.rules && <details><summary>Approved rules</summary><dl>{Object.entries(round.rules).map(([key, value]) => <div key={key}><dt>{key.replaceAll('_', ' ')}</dt><dd>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</dd></div>)}</dl></details>}</li>)}</ol></section>{team.status === 'ACTIVE' && <Practice />}</div>
+    <div className="lobby-grid"><section className="panel"><p className="eyebrow">THE PATH AHEAD</p><h2>Your rounds</h2><ol className="lobby-rounds">{rounds.map(round => <li key={round.id}><h3>{round.number}. {round.title}</h3><p>{stateLabels[round.state] ?? round.state}</p><RoundClock clock={round.clock} receivedAt={me.data.receivedAt} /><p className="muted">{round.eligible ? 'Your team is eligible' : 'Eligibility awaits finalized results or organizer review'}</p>{round.rules && <details><summary>Approved rules</summary><dl>{Object.entries(round.rules).map(([key, value]) => <div key={key}><dt>{key.replaceAll('_', ' ')}</dt><dd>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</dd></div>)}</dl></details>}</li>)}</ol></section>{team.status === 'ACTIVE' && <Practice />}</div>
   </section>
 }
