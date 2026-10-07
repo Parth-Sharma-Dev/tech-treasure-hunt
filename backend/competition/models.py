@@ -598,6 +598,16 @@ class PaperSlip(ImmutableEvidence):
         ]
 
 
+class RecoveryProposal(ImmutableEvidence):
+    round = models.ForeignKey(Round, on_delete=models.PROTECT)
+    maker = staff_reference()
+    payload = models.JSONField(default=dict)
+    reason = models.TextField()
+    expected_version = models.PositiveIntegerField()
+    evidence_digest = models.CharField(max_length=64)
+    incident = models.ForeignKey(Incident, on_delete=models.PROTECT)
+
+
 class AuditEvent(ImmutableEvidence):
     action_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     actor = staff_reference()

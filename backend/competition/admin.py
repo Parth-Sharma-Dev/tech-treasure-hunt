@@ -255,6 +255,7 @@ for model in (
     models.PaperWindow,
     models.PaperProposal,
     models.PaperSlip,
+    models.RecoveryProposal,
     models.AuditEvent,
 ):
     admin.site.register(model, ReadOnlyAdmin)

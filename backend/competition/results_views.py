@@ -262,3 +262,77 @@ def paper_action(request, round_id):
         raise ApiProblem("invalid_request", "Choose propose, approve or end paper play.")
     result = handlers[action](round_id, request.user, data)
     return JsonResponse({"request_id": request.request_id, **result})
+
+
+@require_GET
+@api_errors
+def export_evidence(request, round_id, kind):
+    from .evidence import evidence_page, make_bundle
+
+    if kind == "bundle":
+        require_result_view(request.user)
+        with transaction.atomic():
+            round = locked_round(round_id)
+            result = make_bundle(round)
+            if (
+                len(result["signed_bundle"]) > 8_000_000
+                or len(result["manifest"]["inventory"]) > 10_000
+            ):
+                raise ApiProblem(
+                    "export_too_large", "Use bounded per-type evidence exports for this round.", 413
+                )
+    else:
+        try:
+            limit = int(request.GET.get("limit", "200"))
+        except ValueError:
+            raise ApiProblem("invalid_request", "Supply an integer export limit.") from None
+        result = evidence_page(round_id, request.user, kind, request.GET.get("cursor"), limit)
+    if request.GET.get("format") == "csv" and kind != "bundle":
+        import csv
+
+        from django.http import HttpResponse
+
+        from .evidence import spreadsheet_cell
+
+        response = HttpResponse(content_type="text/csv; charset=utf-8")
+        writer = csv.writer(response)
+        writer.writerow(["model", "id", "fields"])
+        for item in result["objects"]:
+            writer.writerow(
+                [
+                    spreadsheet_cell(item["model"]),
+                    spreadsheet_cell(item["pk"]),
+                    spreadsheet_cell(item["fields"]),
+                ]
+            )
+        response["X-Evidence-Manifest"] = result["signature"]
+        if result["next_cursor"]:
+            response["X-Next-Cursor"] = result["next_cursor"]
+    else:
+        response = JsonResponse(result)
+    response["Content-Disposition"] = f'attachment; filename="round-{round_id}-{kind}.json"'
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+@require_POST
+@api_errors
+def check_receipts(request, round_id):
+    from .evidence import verify_receipts
+
+    return JsonResponse(verify_receipts(round_id, request.user, json_body(request).get("receipts")))
+
+
+@require_POST
+@api_errors
+def recover_evidence(request, round_id):
+    from .evidence import approve_recovery, propose_recovery
+
+    data = json_body(request)
+    if data.get("action") == "propose":
+        result = propose_recovery(round_id, request.user, data)
+    elif data.get("action") == "approve":
+        result = approve_recovery(round_id, request.user, data)
+    else:
+        raise ApiProblem("invalid_request", "Choose propose or approve recovery.")
+    return JsonResponse({"request_id": request.request_id, **result})

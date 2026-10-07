@@ -9,6 +9,8 @@ from .models import Incident, Mission, ResultSnapshot, Round, Team
 def round_eligible(team, round):
     if team.status != Team.Status.ACTIVE or team.is_demo != round.is_demo:
         return False
+    if Incident.objects.filter(round=round, category="RECOVERY", closed_at__isnull=True).exists():
+        return False
     if round.number == 1:
         return True
     previous = (
