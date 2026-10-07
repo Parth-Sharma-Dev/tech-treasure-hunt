@@ -34,6 +34,23 @@ test('stale correction can be rejected but cannot be applied', async ({ page }) 
   await expect(page.getByRole('status').filter({ hasText: 'Results action confirmed' })).toBeVisible()
 })
 
+test('paper activation records desks and isolation evidence before independent approval', async ({ page }) => {
+  await page.route('**/api/staff/rounds/1/results', route => route.fulfill({ json: { ...preview, state: 'FROZEN', play_mode: 'ONLINE', paper_window: null, paper_proposals: [], paper_slips: [] } }))
+  await page.route('**/api/staff/rounds/1/paper', async route => {
+    expect(route.request().postDataJSON()).toMatchObject({ action: 'propose', kind: 'ACTIVATE', assigned_desks: { 'TEAM-A': 'North desk', 'TEAM-B': 'South desk' }, clock_evidence: ['clock-log'], writer_isolation_evidence: ['isolation-log'] })
+    await route.fulfill({ json: { paper_proposal_id: 1 } })
+  })
+  await page.goto('/staff/results')
+  await page.getByLabel('Paper desk for TEAM-A').fill('North desk')
+  await page.getByLabel('Paper desk for TEAM-B').fill('South desk')
+  await page.getByLabel('Official clock evidence').fill('clock-log')
+  await page.getByLabel('Online writer isolation evidence').fill('isolation-log')
+  await page.getByLabel('Paper activation reason').fill('Outage rehearsal')
+  await page.getByLabel('Paper activation references').fill('incident-log')
+  await page.getByRole('button', { name: 'Propose paper activation' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Results action confirmed' })).toBeVisible()
+})
+
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/health', route => route.fulfill({ json: { status: 'ok' } }))
   await page.route('**/api/auth/csrf', route => route.fulfill({ json: { csrf_token: 'test-token' } }))

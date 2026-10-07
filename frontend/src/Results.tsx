@@ -2,15 +2,16 @@ import { useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { ApiError, getJson, postJson } from './api'
 import { pollInterval } from './RoundClock'
+import { PaperDesk, type PaperData } from './PaperDesk'
 
 type Entry = { team_code: string; team_name: string; team_status: string; eligible: boolean; score: number; max_score: number; tie_time_ms: number | null; rank: number | null }
 type Snapshot = { id: number; revision: number; status: string; entries: Entry[]; qualifier_codes: string[]; cut_count: number; published_at: string; appeal_deadline: string | null; supersedes: number | null; metadata: { publication_reason: string; tie_reason: string; open_material_incidents: number } }
 type Preview = { round_id: number; title: string; number: number; attempt_no: number; state: string; control_version: number; evidence_digest: string; entries: Entry[]; cut_count: number; cutoff_tie: string[]; max_score: number; evidence_gaps: string[]; configuration_errors: string[]; finalization_blockers: string[]; appeal_deadline: string | null; actor_id: number; can_propose: boolean; can_approve: boolean; can_close_incident: boolean; proposals: Proposal[]; incidents: Incident[]; history: Snapshot[] }
 type Proposal = { id: number; status: string; maker_id: number; maker_name: string; reason: string; stale: boolean; publication_id: number | null; payload: { qualifiers: string[]; preview: { entries: Entry[]; cut_count: number }; tie_order: string[]; tie_evidence: string[]; tie_reason: string } }
 type Incident = { id: number; category: string; material: boolean; owner_id: number; affected_scope: { summary: string }; closed_at: string | null; decision: string; evidence_references: string[] }
-type Action = { endpoint: 'publish' | 'incidents' | 'resolutions'; data: Record<string, unknown> }
+type Action = { endpoint: 'publish' | 'incidents' | 'resolutions' | 'paper'; data: Record<string, unknown> }
 type Correction = { id: number; mission_id: number; correction_type: string; maker_id: number; reason: string; stale: boolean; resolution_id: number | null; payload: { public_summary: string; evidence_refs: string[] } }
-type CorrectionPreview = Preview & { can_correct?: boolean; missions?: { id: number; public_id: string; is_void: boolean }[]; corrections?: Correction[] }
+type CorrectionPreview = Preview & Partial<PaperData> & { can_correct?: boolean; missions?: { id: number; public_id: string; is_void: boolean }[]; corrections?: Correction[] }
 
 export function dateLabel(value: string | null) {
   return value ? `${new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))} IST` : 'Not set'
@@ -148,7 +149,7 @@ function CorrectionReview({ item, preview, action }: { item: Correction; preview
   </fieldset></form>
 }
 
-function ResultsDesk({ preview, refresh }: { preview: Preview; refresh: () => void }) {
+function ResultsDesk({ preview, refresh }: { preview: CorrectionPreview; refresh: () => void }) {
   const action = useResultAction(preview, refresh)
   return <><section className="panel"><h2>Private preview · {preview.title}</h2><p>Round {preview.number} · attempt {preview.attempt_no} · {preview.state.toLowerCase()}. Advancement count: {preview.cut_count ?? 'not configured'}.</p><Standings entries={preview.entries} /><h3>Finalization checks</h3>{preview.finalization_blockers.length ? <ul>{preview.finalization_blockers.map(item => <li key={item}>{item}</li>)}</ul> : <p>Checks passed. Final publication still needs two independent reviews.</p>}{preview.appeal_deadline && <p>Current appeal deadline: {dateLabel(preview.appeal_deadline)}</p>}<button className="secondary" onClick={refresh}>Refresh results review</button></section>
     {action.pending && <section className="panel"><h2>Unconfirmed results action</h2><p>Your original request is saved in this browser session. Retry it to confirm the outcome without applying it twice.</p><button disabled={action.mutation.isPending} onClick={() => action.mutation.mutate(action.pending!)}>Retry same results action</button></section>}
@@ -158,12 +159,13 @@ function ResultsDesk({ preview, refresh }: { preview: Preview; refresh: () => vo
     <section><h2 className="desk-section-title">Result proposals</h2>{preview.proposals.length ? preview.proposals.map(proposal => <Review key={proposal.id} proposal={proposal} preview={preview} action={action} />) : <p>No publication proposals yet.</p>}</section>
     <IncidentDesk preview={preview} action={action} />
     {preview.number === 1 && <CorrectionDesk preview={preview} action={action} />}
+    {preview.number === 1 && <PaperDesk preview={preview} disabled={action.disabled} send={data => action.send('paper', data)} />}
     {preview.history.length > 0 && <section className="panel"><h2>Published revisions</h2><ul>{preview.history.map(snapshot => <li key={snapshot.id}>Revision {snapshot.revision} · {snapshot.status.toLowerCase()} · {dateLabel(snapshot.published_at)}</li>)}</ul><a href={`/rounds/${preview.round_id}/results`}>Team results page (requires team sign-in)</a></section>}
   </>
 }
 
 function RoundReview({ roundId }: { roundId: number }) {
-  const preview = useQuery({ queryKey: ['result-preview', roundId], queryFn: ({ signal }) => getJson<Preview>(`/api/staff/rounds/${roundId}/results`, signal), retry: false, refetchInterval: pollInterval, refetchIntervalInBackground: false, refetchOnWindowFocus: 'always' })
+  const preview = useQuery({ queryKey: ['result-preview', roundId], queryFn: ({ signal }) => getJson<CorrectionPreview>(`/api/staff/rounds/${roundId}/results`, signal), retry: false, refetchInterval: pollInterval, refetchIntervalInBackground: false, refetchOnWindowFocus: 'always' })
   return preview.isPending ? <p>Loading review…</p> : preview.isError ? <p role="alert">{preview.error.message}</p> : <ResultsDesk key={`${roundId}:${preview.data.actor_id}`} preview={preview.data} refresh={() => void preview.refetch()} />
 }
 

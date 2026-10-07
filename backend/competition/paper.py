@@ -94,7 +94,9 @@ def propose_paper(round_id, actor, data):
         )
     elif kind == "SLIP":
         answer = data.get("answer")
-        if not isinstance(answer, str) or re.fullmatch(r"[0-9]{4}", answer) is None:
+        if data.get("blocked") is not True and (
+            not isinstance(answer, str) or re.fullmatch(r"[0-9]{4}", answer) is None
+        ):
             raise ApiProblem("invalid_format", "Supply four ASCII digits for the recorded answer.")
         mission = (
             Mission.objects.filter(
@@ -140,6 +142,7 @@ def propose_paper(round_id, actor, data):
                         "digest": answer_digest(mission.pk, item["version"], answer),
                     }
                     for item in mission.answer_verifiers
+                    if data.get("blocked") is not True
                 ],
             }
         )
@@ -333,7 +336,11 @@ def approve_paper(round_id, actor, data):
         completed = Completion.objects.filter(team=team, mission=mission).exists()
         outcome = "blocked" if payload["blocked"] or evaluated or completed else "incorrect"
         matches = [v for v in payload["verifiers"] if v in mission.answer_verifiers]
-        verifier = matches[0] if matches else payload["verifiers"][0]
+        verifier = (
+            matches[0]
+            if matches
+            else next(iter(payload["verifiers"]), {"version": "", "digest": ""})
+        )
         if outcome == "incorrect" and matches:
             outcome = "accepted"
         slip = PaperSlip.objects.create(

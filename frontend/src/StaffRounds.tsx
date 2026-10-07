@@ -38,6 +38,7 @@ function Controls({ round, receivedAt, refresh }: { round: StaffRound; receivedA
     <h2>{round.title}</h2><p role="status">{stateLabels[round.state] ?? round.state}</p>
     <RoundClock clock={round} receivedAt={receivedAt} />
     <p className="muted">Control version {round.control_version}</p>
+    {round.play_mode === 'PAPER' && <p>Paper play is active. <a href={`/staff/results?round=${round.round_id}`}>Review paper slips or end paper play</a>.</p>}
     {actions.length > 0 || pending ? <form className="form-stack" onSubmit={event => { event.preventDefault(); submit() }}>
       <label>Round action<select disabled={!!pending || mutation.isPending} value={pending?.action ?? selected} onChange={event => { setAction(event.target.value); mutation.reset() }}>
         {[...new Set([...actions, ...(pending ? [pending.action] : [])])].map(value => <option key={value} value={value}>{actionLabels[value]}</option>)}

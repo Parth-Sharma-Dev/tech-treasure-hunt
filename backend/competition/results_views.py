@@ -6,14 +6,19 @@ from .api import ApiProblem, api_errors, json_body
 from .clock import database_now
 from .corrections import evidence as correction_evidence
 from .models import (
+    AuditEvent,
     Incident,
     Mission,
     MissionResolution,
+    PaperProposal,
+    PaperSlip,
+    PaperWindow,
     ResolutionProposal,
     ResultProposal,
     ResultSnapshot,
     Round,
 )
+from .paper import paper_digest
 from .results import (
     approve_result,
     build_preview,
@@ -98,6 +103,7 @@ def staff_preview(request, round_id):
     round = locked_round(round_id)
     preview = build_preview(round, database_now())
     correction_digest = correction_evidence(round)
+    current_paper_digest = paper_digest(round)
     proposals = []
     for proposal in (
         ResultProposal.objects.filter(round=round).select_related("maker").order_by("-pk")[:30]
@@ -127,6 +133,41 @@ def staff_preview(request, round_id):
             "can_close_incident": has_role(request.user, "verify_evidence"),
             "can_correct": round.number == 1
             and has_role(request.user, "control_round", "adjudicate"),
+            "play_mode": round.play_mode,
+            "paper_window": PaperWindow.objects.filter(round=round)
+            .values("official_start", "official_end", "active_offset_ms", "assigned_desks")
+            .first(),
+            "paper_slips": list(
+                PaperSlip.objects.filter(round=round)
+                .order_by("pk")
+                .values(
+                    "slip_number",
+                    "team__code",
+                    "mission__public_id",
+                    "outcome",
+                    "evaluated_at",
+                    "active_elapsed_ms",
+                )
+            ),
+            "paper_proposals": [
+                {
+                    "id": item.pk,
+                    "kind": item.kind,
+                    "maker_id": item.maker_id,
+                    "reason": item.reason,
+                    "payload": {
+                        key: value for key, value in item.payload.items() if key != "verifiers"
+                    },
+                    "stale": item.expected_version != round.control_version
+                    or item.evidence_digest != current_paper_digest,
+                    "reviewed": AuditEvent.objects.filter(
+                        action__in=["approve_paper", "reject_paper"],
+                        after__request__proposal_id=item.pk,
+                        after__request__round_id=round.pk,
+                    ).exists(),
+                }
+                for item in PaperProposal.objects.filter(round=round).order_by("-pk")[:30]
+            ],
             "correction_version_digest": correction_digest,
             "missions": list(
                 Mission.objects.filter(round=round, is_practice=False)
