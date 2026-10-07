@@ -326,7 +326,7 @@ def approve_correction(round_id, actor, data):
             + timedelta(minutes=round.rules_snapshot["rules"]["appeal_minutes"]),
             metadata={
                 "publication_reason": proposal.payload["public_summary"],
-                "review_reason": reason,
+                "review_reason": "An independent reviewer approved the score correction.",
                 "tie_reason": "",
                 "open_material_incidents": preview["open_material_incidents"],
                 "resolution_id": resolution.pk,

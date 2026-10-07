@@ -40,6 +40,11 @@ def paper_digest(round):
         {
             "version": round.control_version,
             "mode": round.play_mode,
+            "teams": list(
+                Team.objects.filter(is_demo=round.is_demo)
+                .order_by("pk")
+                .values("id", "code", "status")
+            ),
             "missions": list(
                 Mission.objects.filter(round=round)
                 .order_by("pk")

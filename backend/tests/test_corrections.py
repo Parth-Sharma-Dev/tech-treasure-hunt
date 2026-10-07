@@ -17,6 +17,7 @@ from competition.api import ApiProblem
 from competition.corrections import approve_correction, propose_correction
 from competition.models import (
     Completion,
+    Incident,
     MissionResolution,
     ResultSnapshot,
     Round,
@@ -149,3 +150,35 @@ def test_only_latest_round1_attempt_allows_new_play(ended_hunt):
     latest = Round.objects.create(number=1, attempt_no=2, title="Next rehearsal", is_demo=True)
     assert not round_eligible(teams[0], round)
     assert round_eligible(teams[0], latest)
+
+
+def test_postfinal_progression_impact_pauses_dependent_play_and_keeps_review_private(ended_hunt):
+    completion(ended_hunt)
+    published = approve(ended_hunt, proposal(ended_hunt))
+    snapshot = ResultSnapshot.objects.get(pk=published["snapshot_id"])
+    when = snapshot.appeal_deadline + timedelta(seconds=1)
+    approve(ended_hunt, proposal(ended_hunt, "FINAL", now=when), now=when)
+    now = timezone.now()
+    next_round = Round.objects.create(
+        number=2,
+        title="Synthetic dependent play",
+        is_demo=True,
+        state="LIVE",
+        phase_started_at=now,
+        live_started_at=now,
+        deadline_at=now + timedelta(minutes=1),
+        delivery_mode="EXTERNAL",
+    )
+    proposed, _ = correction(ended_hunt, kind="VOID")
+    with pytest.raises(ApiProblem, match="dependent rounds"):
+        review(ended_hunt, proposed, supersession_confirmed=True)
+    review(ended_hunt, proposed, supersession_confirmed=True, progression_impact_confirmed=True)
+    next_round.refresh_from_db()
+    assert next_round.state == "FROZEN"
+    assert Incident.objects.filter(
+        round=next_round, category="QUALIFICATION_IMPACT", closed_at__isnull=True
+    ).exists()
+    latest = ResultSnapshot.objects.filter(round=ended_hunt[0]).latest("revision")
+    assert (
+        latest.metadata["review_reason"] == "An independent reviewer approved the score correction."
+    )

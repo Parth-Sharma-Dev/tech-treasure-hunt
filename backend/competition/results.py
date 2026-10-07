@@ -211,6 +211,15 @@ def build_preview(round, now):
                     gaps.append(
                         "A corrected completion is missing its original evaluated answer evidence."
                     )
+                elif resolution.proposal is None or not any(
+                    verifier.get("version") == original.answer_key_version
+                    and verifier.get("digest") == original.answer_hmac
+                    for original in originals
+                    for verifier in resolution.proposal.payload.get("verifiers", [])
+                ):
+                    gaps.append(
+                        "A corrected answer does not match its reviewed alternate-answer evidence."
+                    )
             if resolution and resolution.correction_type == "PAPER_ACCEPTED":
                 slip = next(
                     (
@@ -252,6 +261,32 @@ def build_preview(round, now):
             gaps.append("A paper slip has inconsistent desk, timing or review evidence.")
         if slip.outcome == "accepted" and (slip.team_id, slip.mission_id) not in projected:
             gaps.append("An accepted paper slip is missing its completion projection.")
+        if (
+            slip.outcome == "accepted"
+            and {"version": slip.answer_key_version, "digest": slip.answer_hmac}
+            not in slip.mission.answer_verifiers
+        ):
+            gaps.append("An accepted paper slip does not match a verified answer key.")
+        if round.state in ["ENDED", "PROVISIONAL", "FINALIZED"] and not any(
+            phase.phase_type == "LIVE"
+            and phase.play_mode == "PAPER"
+            and phase.started_at <= slip.evaluated_at <= phase.ended_at
+            for phase in phases
+        ):
+            gaps.append("A paper slip falls outside the completed official paper interval.")
+    if window and (
+        window.active_offset_ms
+        != sum(
+            milliseconds(phase.ended_at - phase.started_at)
+            for phase in phases
+            if phase.phase_type == "LIVE" and phase.play_mode == "ONLINE"
+        )
+        or window.official_end
+        != window.official_start + timedelta(milliseconds=window.remaining_budget_ms)
+    ):
+        gaps.append(
+            "Paper clock offset or official duration differs from the reviewed interval evidence."
+        )
     maximum = sum(mission.available and not mission.is_void for mission in missions)
     entries = []
     for team in teams:
