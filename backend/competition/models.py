@@ -363,6 +363,18 @@ class Incident(models.Model):
         ]
 
 
+class ResolutionProposal(ImmutableEvidence):
+    round = models.ForeignKey(Round, on_delete=models.PROTECT)
+    mission = models.ForeignKey(Mission, on_delete=models.PROTECT)
+    correction_type = models.CharField(max_length=32)
+    payload = models.JSONField(default=dict)
+    expected_version = models.PositiveIntegerField()
+    evidence_digest = models.CharField(max_length=64)
+    reason = models.TextField()
+    maker = staff_reference()
+    incident = models.ForeignKey(Incident, on_delete=models.PROTECT)
+
+
 class MissionResolution(ImmutableEvidence):
     mission = models.ForeignKey(Mission, on_delete=models.PROTECT)
     correction_type = models.CharField(max_length=32)
@@ -373,6 +385,9 @@ class MissionResolution(ImmutableEvidence):
     maker = staff_reference()
     approver = staff_reference()
     incident = models.ForeignKey(Incident, on_delete=models.PROTECT)
+    proposal = models.OneToOneField(
+        ResolutionProposal, on_delete=models.PROTECT, null=True, blank=True
+    )
 
     class Meta:
         constraints = [

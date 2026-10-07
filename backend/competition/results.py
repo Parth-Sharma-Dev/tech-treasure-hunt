@@ -175,6 +175,21 @@ def build_preview(round, now):
                 or resolution.maker_id == resolution.approver_id
             ):
                 gaps.append("A resolution requires matching round evidence and independent review.")
+            if resolution and resolution.correction_type == "ALTERNATE":
+                originals = [
+                    item
+                    for item in decisions
+                    if str(item.pk) in resolution.source_decisions
+                    and item.team_id == completion.team_id
+                    and item.mission_id == completion.mission_id
+                    and item.outcome == "incorrect"
+                    and item.admitted_at == completion.effective_at
+                    and item.active_elapsed_ms == completion.effective_active_ms
+                ]
+                if not originals:
+                    gaps.append(
+                        "A corrected completion is missing its original evaluated answer evidence."
+                    )
         if completion.effective_active_ms > round.accumulated_active_ms:
             gaps.append("A completion falls outside the recorded active budget.")
         if not completion.mission.is_void:
@@ -270,6 +285,7 @@ def build_preview(round, now):
                 "available": item.available,
                 "voided": item.is_void,
                 "points": item.points,
+                "answer_verifiers": item.answer_verifiers,
             }
             for item in missions
         ],

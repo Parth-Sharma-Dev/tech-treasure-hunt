@@ -158,3 +158,18 @@ def publish(request, round_id):
 def incident(request, round_id):
     result = manage_incident(round_id, request.user, json_body(request))
     return JsonResponse({"request_id": request.request_id, **result})
+
+
+@require_POST
+@api_errors
+def resolutions(request, round_id):
+    from .corrections import approve_correction, propose_correction
+
+    data = json_body(request)
+    if data.get("action") == "propose":
+        result = propose_correction(round_id, request.user, data)
+    elif data.get("action") == "approve":
+        result = approve_correction(round_id, request.user, data)
+    else:
+        raise ApiProblem("invalid_request", "Choose propose or approve correction.")
+    return JsonResponse({"request_id": request.request_id, **result})
