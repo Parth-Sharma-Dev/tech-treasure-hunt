@@ -40,7 +40,7 @@ export function App() {
       </header>
 
       <main id="main">
-        {location.pathname === '/staff/results' ? <StaffResults /> : /^\/rounds\/[1-9][0-9]*\/results$/.test(location.pathname) ? <PublishedResults /> : location.pathname === '/staff/rounds' ? <StaffRounds /> : location.pathname === '/login' ? <Login /> : location.pathname.startsWith('/missions/') ? <Mission /> : location.pathname === '/lobby' ? <Lobby /> : <>
+        {location.pathname === '/staff/results' ? <StaffResults /> : /^\/rounds\/[1-9][0-9]*\/results$/.test(location.pathname) ? <PublishedResults /> : /^\/rounds\/[1-9][0-9]*$/.test(location.pathname) ? <Lobby roundId={Number(location.pathname.split('/')[2])} /> : location.pathname === '/staff/rounds' ? <StaffRounds /> : location.pathname === '/login' ? <Login /> : location.pathname.startsWith('/missions/') ? <Mission /> : location.pathname === '/lobby' ? <Lobby /> : <>
         <section className="hero" aria-labelledby="hero-heading">
           <div className="hero-copy">
             <p className="eyebrow">12–13 OCTOBER 2026 · SKIT JAIPUR</p>

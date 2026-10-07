@@ -15,7 +15,14 @@ from test_results import (
 from competition.answers import answer_digest
 from competition.api import ApiProblem
 from competition.corrections import approve_correction, propose_correction
-from competition.models import Completion, MissionResolution, ResultSnapshot, SubmissionDecision
+from competition.models import (
+    Completion,
+    MissionResolution,
+    ResultSnapshot,
+    Round,
+    SubmissionDecision,
+)
+from competition.participant import round_eligible
 from competition.results import build_preview
 
 pytestmark = pytest.mark.django_db
@@ -134,3 +141,11 @@ def test_reject_stale_correction_closes_incident_without_changing_scores(ended_h
     assert response["rejected"] and not Completion.objects.exists()
     resolution = MissionResolution.objects.get(pk=response["resolution_id"])
     assert resolution.correction_type == "REJECTED" and resolution.incident.closed_at
+
+
+def test_only_latest_round1_attempt_allows_new_play(ended_hunt):
+    round, _, teams, _, _, _ = ended_hunt
+    assert round_eligible(teams[0], round)
+    latest = Round.objects.create(number=1, attempt_no=2, title="Next rehearsal", is_demo=True)
+    assert not round_eligible(teams[0], round)
+    assert round_eligible(teams[0], latest)

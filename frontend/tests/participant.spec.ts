@@ -26,6 +26,9 @@ test('signs in and preserves leading zeros in isolated practice', async ({ page 
   await expect(page).toHaveURL(/\/lobby$/)
   await expect(page.getByRole('heading', { name: 'Demo explorers' })).toBeVisible()
   await expect(page.getByText('Awaiting organizer approval')).toBeVisible()
+  await expect(page.getByLabel('Four-digit answer')).toHaveCount(0)
+  await page.getByRole('link', { name: 'Open Round 1' }).click()
+  await expect(page).toHaveURL(/\/rounds\/1$/)
   await page.getByLabel('Four-digit answer').fill('0427')
   await page.getByRole('button', { name: 'Check practice answer' }).click()
   await expect(page.getByText('Correct! Keyword: START. No points awarded.')).toBeVisible()
@@ -60,4 +63,18 @@ test('sign out clears only application session data', async ({ page }) => {
   await expect(page).toHaveURL(/\/$/)
   expect(await page.evaluate(() => sessionStorage.getItem('tth:pending'))).toBeNull()
   expect(await page.evaluate(() => sessionStorage.getItem('other'))).toBe('keep')
+})
+
+test('Round 1 fallback belongs to its live page and disappears during pause', async ({ page }) => {
+  let state = 'LIVE'
+  await page.route('**/api/me', route => route.fulfill({ json: { ...identity, rounds: [{ ...identity.rounds[0], state, clock: { state, play_mode: 'ONLINE', remaining_ms: 60000, server_time: new Date().toISOString(), deadline_at: null, active_elapsed_ms: 0 } }] } }))
+  await page.route('**/api/rounds/1/state', route => route.fulfill({ json: { score: 0, completions: [] } }))
+  await page.goto('/lobby')
+  await expect(page.getByLabel('Mission fallback code')).toHaveCount(0)
+  await page.getByRole('link', { name: 'Open Round 1' }).click()
+  await expect(page.getByLabel('Mission fallback code')).toBeVisible()
+  state = 'FROZEN'
+  await page.reload()
+  await expect(page.getByLabel('Mission fallback code')).toHaveCount(0)
+  await expect(page.getByText('Round paused', { exact: true })).toBeVisible()
 })

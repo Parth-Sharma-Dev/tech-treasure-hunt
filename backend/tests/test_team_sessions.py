@@ -218,6 +218,12 @@ def test_mission_return_link_survives_login(team):
     assert response.json()["return_to"] == path
 
 
+def test_round_page_return_link_survives_login(team):
+    path = "/rounds/1"
+    response = sign_in(Client(enforce_csrf_checks=True), return_to=path)
+    assert response.json()["return_to"] == path
+
+
 @override_settings(ANSWER_HMAC_KEY="test-only-answer-key")
 def test_practice_acceptance_never_writes_competitive_evidence(team):
     round = Round.objects.create(number=1, title="Test hunt")

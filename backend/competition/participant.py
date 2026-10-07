@@ -12,7 +12,10 @@ def round_eligible(team, round):
     if Incident.objects.filter(round=round, category="RECOVERY", closed_at__isnull=True).exists():
         return False
     if round.number == 1:
-        return True
+        latest = (
+            Round.objects.filter(number=1, is_demo=team.is_demo).order_by("-attempt_no").first()
+        )
+        return latest is not None and latest.pk == round.pk
     previous = (
         Round.objects.filter(number=round.number - 1, is_demo=team.is_demo)
         .order_by("-attempt_no")
