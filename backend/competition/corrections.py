@@ -15,6 +15,7 @@ from .models import (
     Incident,
     Mission,
     MissionResolution,
+    PaperSlip,
     ResolutionProposal,
     ResultSnapshot,
     Round,
@@ -238,6 +239,7 @@ def approve_correction(round_id, actor, data):
     mission = proposal.mission
     source_ids = []
     candidates = []
+    paper_candidates = []
     if proposal.correction_type == "ALTERNATE":
         candidates = [
             item
@@ -251,6 +253,16 @@ def approve_correction(round_id, actor, data):
             )
         ]
         source_ids = [str(item.pk) for item in candidates]
+        paper_candidates = [
+            item
+            for item in PaperSlip.objects.filter(mission=mission, outcome="incorrect")
+            if any(
+                v["version"] == item.answer_key_version
+                and hmac.compare_digest(v["digest"], item.answer_hmac)
+                for v in proposal.payload["verifiers"]
+            )
+        ]
+        source_ids += [f"paper:{item.pk}" for item in paper_candidates]
     resolution = MissionResolution.objects.create(
         mission=mission,
         correction_type=proposal.correction_type,
@@ -271,13 +283,15 @@ def approve_correction(round_id, actor, data):
             if key not in keys:
                 keys.append(key)
         Mission.objects.filter(pk=mission.pk).update(answer_verifiers=keys)
-        for decision in candidates:
+        for decision in candidates + paper_candidates:
             current = Completion.objects.filter(team=decision.team, mission=mission).first()
             if current is None or decision.active_elapsed_ms < current.effective_active_ms:
                 values = {
                     "source_decision": None,
                     "source_resolution": resolution,
-                    "effective_at": decision.admitted_at,
+                    "effective_at": decision.admitted_at
+                    if isinstance(decision, SubmissionDecision)
+                    else decision.evaluated_at,
                     "effective_active_ms": decision.active_elapsed_ms,
                     "revision": current.revision + 1 if current else 1,
                 }

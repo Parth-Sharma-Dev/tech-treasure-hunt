@@ -26,6 +26,7 @@ urlpatterns = [
     path("api/staff/rounds/<int:round_id>/publish", results_views.publish),
     path("api/staff/rounds/<int:round_id>/incidents", results_views.incident),
     path("api/staff/rounds/<int:round_id>/resolutions", results_views.resolutions),
+    path("api/staff/rounds/<int:round_id>/paper", results_views.paper_action),
     path("api/staff/rounds", views.staff_rounds),
     path("api/staff/rounds/<int:round_id>/control", views.staff_control_round),
     path(

@@ -207,3 +207,17 @@ def resolutions(request, round_id):
     else:
         raise ApiProblem("invalid_request", "Choose propose or approve correction.")
     return JsonResponse({"request_id": request.request_id, **result})
+
+
+@require_POST
+@api_errors
+def paper_action(request, round_id):
+    from .paper import approve_paper, end_paper, propose_paper
+
+    data = json_body(request)
+    handlers = {"propose": propose_paper, "approve": approve_paper, "end": end_paper}
+    action = data.get("action")
+    if not isinstance(action, str) or action not in handlers:
+        raise ApiProblem("invalid_request", "Choose propose, approve or end paper play.")
+    result = handlers[action](round_id, request.user, data)
+    return JsonResponse({"request_id": request.request_id, **result})

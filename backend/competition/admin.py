@@ -253,6 +253,8 @@ for model in (
     models.ResultSnapshot,
     models.ResultProposal,
     models.PaperWindow,
+    models.PaperProposal,
+    models.PaperSlip,
     models.AuditEvent,
 ):
     admin.site.register(model, ReadOnlyAdmin)

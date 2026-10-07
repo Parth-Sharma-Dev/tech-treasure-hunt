@@ -561,6 +561,43 @@ class PaperWindow(ImmutableEvidence):
         ]
 
 
+class PaperProposal(ImmutableEvidence):
+    round = models.ForeignKey(Round, on_delete=models.PROTECT)
+    kind = models.CharField(max_length=16)
+    payload = models.JSONField(default=dict)
+    expected_version = models.PositiveIntegerField()
+    evidence_digest = models.CharField(max_length=64)
+    maker = staff_reference()
+    reason = models.TextField()
+
+
+class PaperSlip(ImmutableEvidence):
+    round = models.ForeignKey(Round, on_delete=models.PROTECT)
+    proposal = models.OneToOneField(PaperProposal, on_delete=models.PROTECT)
+    team = models.ForeignKey(Team, on_delete=models.PROTECT)
+    mission = models.ForeignKey(Mission, on_delete=models.PROTECT)
+    slip_number = models.CharField(max_length=64)
+    desk = models.CharField(max_length=100)
+    evaluated_at = models.DateTimeField()
+    active_elapsed_ms = models.PositiveBigIntegerField()
+    outcome = models.CharField(max_length=32)
+    answer_hmac = models.CharField(max_length=64, blank=True)
+    answer_key_version = models.CharField(max_length=40, blank=True)
+    maker = staff_reference()
+    verifier = staff_reference()
+    evidence_references = models.JSONField(default=list)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["round", "slip_number"], name="paper_slip_number_unique"
+            ),
+            models.CheckConstraint(
+                condition=~Q(maker=F("verifier")), name="paper_slip_two_reviewers"
+            ),
+        ]
+
+
 class AuditEvent(ImmutableEvidence):
     action_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     actor = staff_reference()

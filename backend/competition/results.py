@@ -17,6 +17,9 @@ from .models import (
     Incident,
     Mission,
     MissionResolution,
+    PaperProposal,
+    PaperSlip,
+    PaperWindow,
     ResultProposal,
     ResultSnapshot,
     Round,
@@ -80,8 +83,15 @@ def build_preview(round, now):
     gaps = []
     if round.number != 1 or round.delivery_mode != Round.Delivery.ONLINE_HUNT:
         gaps.append("Only online Round 1 completion rankings are supported in this workflow.")
-    if round.play_mode != Round.PlayMode.ONLINE:
-        gaps.append("Paper evidence requires the separate reconciliation workflow.")
+    window = PaperWindow.objects.filter(round=round).first()
+    slips = list(PaperSlip.objects.filter(round=round).order_by("pk"))
+    if round.play_mode == Round.PlayMode.PAPER and (
+        window is None
+        or window.recorder_id == window.verifier_id
+        or not window.clock_evidence
+        or not window.writer_isolation_evidence
+    ):
+        gaps.append("Paper play needs independently verified clock and writer-isolation evidence.")
     if ScoreRevision.objects.filter(round=round).exists():
         gaps.append("Penalty or external-score evidence needs its separate adjudication workflow.")
     if round.state not in {"ENDED", "PROVISIONAL", "FINALIZED"}:
@@ -187,9 +197,38 @@ def build_preview(round, now):
                     and item.active_elapsed_ms == completion.effective_active_ms
                 ]
                 if not originals:
+                    originals = [
+                        item
+                        for item in slips
+                        if f"paper:{item.pk}" in resolution.source_decisions
+                        and item.team_id == completion.team_id
+                        and item.mission_id == completion.mission_id
+                        and item.outcome == "incorrect"
+                        and item.evaluated_at == completion.effective_at
+                        and item.active_elapsed_ms == completion.effective_active_ms
+                    ]
+                if not originals:
                     gaps.append(
                         "A corrected completion is missing its original evaluated answer evidence."
                     )
+            if resolution and resolution.correction_type == "PAPER_ACCEPTED":
+                slip = next(
+                    (
+                        item
+                        for item in slips
+                        if item.pk == resolution.affected_scope.get("paper_slip_id")
+                    ),
+                    None,
+                )
+                if (
+                    slip is None
+                    or slip.outcome != "accepted"
+                    or slip.team_id != completion.team_id
+                    or slip.mission_id != completion.mission_id
+                    or slip.evaluated_at != completion.effective_at
+                    or slip.active_elapsed_ms != completion.effective_active_ms
+                ):
+                    gaps.append("A paper completion does not match its accepted numbered slip.")
         if completion.effective_active_ms > round.accumulated_active_ms:
             gaps.append("A completion falls outside the recorded active budget.")
         if not completion.mission.is_void:
@@ -200,6 +239,19 @@ def build_preview(round, now):
         for item in decisions
     ):
         gaps.append("An accepted decision is missing its effective completion projection.")
+    for slip in slips:
+        if (
+            window is None
+            or slip.maker_id == slip.verifier_id
+            or window.assigned_desks.get(slip.team.code) != slip.desk
+            or slip.active_elapsed_ms
+            != window.active_offset_ms + milliseconds(slip.evaluated_at - window.official_start)
+            or not window.official_start <= slip.evaluated_at <= window.official_end
+            or slip.active_elapsed_ms > round.accumulated_active_ms
+        ):
+            gaps.append("A paper slip has inconsistent desk, timing or review evidence.")
+        if slip.outcome == "accepted" and (slip.team_id, slip.mission_id) not in projected:
+            gaps.append("An accepted paper slip is missing its completion projection.")
     maximum = sum(mission.available and not mission.is_void for mission in missions)
     entries = []
     for team in teams:
@@ -269,6 +321,11 @@ def build_preview(round, now):
         blockers.append(f"{open_incidents} material incident(s) remain open.")
     if pending_corrections:
         blockers.append("Review or reject pending score corrections before finalization.")
+    reviewed_paper = AuditEvent.objects.filter(
+        action__in=["approve_paper", "reject_paper"], after__request__round_id=round.pk
+    ).values_list("after__request__proposal_id", flat=True)
+    if PaperProposal.objects.filter(round=round).exclude(pk__in=list(reviewed_paper)).exists():
+        blockers.append("Review or reject pending paper evidence before finalization.")
     if cutoff_tie:
         blockers.append("A qualification cutoff tie requires reviewed reserve-clue evidence.")
     if latest is None or latest.status != "PROVISIONAL":
@@ -309,6 +366,8 @@ def build_preview(round, now):
         "resolutions": list(
             MissionResolution.objects.filter(mission__round=round).order_by("pk").values()
         ),
+        "paper_slips": list(PaperSlip.objects.filter(round=round).order_by("pk").values()),
+        "paper_window": list(PaperWindow.objects.filter(round=round).values()),
     }
     return {
         "round_id": round.pk,

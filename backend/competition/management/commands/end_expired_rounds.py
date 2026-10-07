@@ -6,11 +6,12 @@ from django.core.management.base import BaseCommand, CommandError
 from competition.api import ApiProblem
 from competition.clock import control_round, database_now
 from competition.models import Round
+from competition.paper import end_paper
 from competition.rules import require_staff_permission
 
 
 class Command(BaseCommand):
-    help = "Persist expired online rounds using an authorized staff actor; safe to repeat."
+    help = "Persist expired online/paper rounds using an authorized controller; safe to repeat."
 
     def add_arguments(self, parser):
         parser.add_argument("--actor", required=True, help="Authorized controller username")
@@ -21,14 +22,14 @@ class Command(BaseCommand):
             raise CommandError("Controller not found.")
         require_staff_permission(actor, "control_round")
         expired = list(
-            Round.objects.filter(
-                state="LIVE", play_mode="ONLINE", deadline_at__lt=database_now()
-            ).values_list("pk", "control_version")
+            Round.objects.filter(state="LIVE", deadline_at__lt=database_now()).values_list(
+                "pk", "control_version", "play_mode"
+            )
         )
         ended = 0
-        for round_id, version in expired:
+        for round_id, version, mode in expired:
             try:
-                control_round(
+                (end_paper if mode == "PAPER" else control_round)(
                     round_id,
                     actor,
                     {
@@ -39,7 +40,7 @@ class Command(BaseCommand):
                     },
                 )
             except ApiProblem as error:
-                if error.code != "stale_control":
+                if error.code not in ["stale_control", "stale_evidence"]:
                     raise CommandError(str(error)) from error
             else:
                 ended += 1
