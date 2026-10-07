@@ -188,6 +188,25 @@ def approve_correction(round_id, actor, data):
         )
     if MissionResolution.objects.filter(proposal=proposal).exists():
         raise ApiProblem("already_applied", "This correction has already been applied.", 409)
+    if data.get("reject") is True:
+        resolution = MissionResolution.objects.create(
+            mission=proposal.mission,
+            proposal=proposal,
+            correction_type="REJECTED",
+            reason=reason,
+            maker=proposal.maker,
+            approver=actor,
+            incident=proposal.incident,
+            evidence_references=proposal.payload["evidence_refs"],
+        )
+        proposal.incident.closed_at = database_now()
+        proposal.incident.decision = reason
+        proposal.incident.save(update_fields=["closed_at", "decision"])
+        round.control_version += 1
+        round.save(update_fields=["control_version"])
+        response = {"resolution_id": resolution.pk, "rejected": True, "state": round.state}
+        record_action(action_id, actor, "reject_correction", reason, fingerprint, response)
+        return response
     if proposal.expected_version != round.control_version or proposal.evidence_digest != evidence(
         round
     ):

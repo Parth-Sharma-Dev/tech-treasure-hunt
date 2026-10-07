@@ -15,7 +15,7 @@ from test_results import (
 from competition.answers import answer_digest
 from competition.api import ApiProblem
 from competition.corrections import approve_correction, propose_correction
-from competition.models import MissionResolution, ResultSnapshot, SubmissionDecision
+from competition.models import Completion, MissionResolution, ResultSnapshot, SubmissionDecision
 from competition.results import build_preview
 
 pytestmark = pytest.mark.django_db
@@ -125,3 +125,12 @@ def test_postfinal_requires_explicit_supersession_and_restarts_appeal(ended_hunt
     latest = ResultSnapshot.objects.latest("revision")
     assert latest.status == "PROVISIONAL" and latest.qualifier_codes == []
     assert latest.supersedes.status == "FINAL" and latest.appeal_deadline > timezone.now()
+
+
+def test_reject_stale_correction_closes_incident_without_changing_scores(ended_hunt):
+    proposed, _ = correction(ended_hunt)
+    wrong(ended_hunt)
+    response, _ = review(ended_hunt, proposed, reject=True)
+    assert response["rejected"] and not Completion.objects.exists()
+    resolution = MissionResolution.objects.get(pk=response["resolution_id"])
+    assert resolution.correction_type == "REJECTED" and resolution.incident.closed_at

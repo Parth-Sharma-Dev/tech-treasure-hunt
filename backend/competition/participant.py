@@ -3,7 +3,7 @@ import hmac
 from .answers import answer_digest
 from .api import ApiProblem
 from .clock import clock_payload, database_now
-from .models import Mission, ResultSnapshot, Round, Team
+from .models import Incident, Mission, ResultSnapshot, Round, Team
 
 
 def round_eligible(team, round):
@@ -17,6 +17,14 @@ def round_eligible(team, round):
         .first()
     )
     if previous is None or previous.state != Round.State.FINALIZED:
+        return False
+    if Incident.objects.filter(
+        round=previous, category="QUALIFICATION_IMPACT", closed_at__isnull=True
+    ).exists():
+        return False
+    if Incident.objects.filter(
+        round=round, category="QUALIFICATION_IMPACT", closed_at__isnull=True
+    ).exists():
         return False
     snapshot = ResultSnapshot.objects.filter(round=previous).order_by("-revision").first()
     return (

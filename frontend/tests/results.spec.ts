@@ -4,6 +4,36 @@ const entries = [{ team_code: 'TEAM-A', team_name: 'Alpha', team_status: 'ACTIVE
 const preview = { round_id: 1, number: 1, attempt_no: 1, title: 'Synthetic hunt', state: 'ENDED', control_version: 4, evidence_digest: 'test-digest', entries, cut_count: 1, cutoff_tie: [], max_score: 2, evidence_gaps: [], configuration_errors: [], finalization_blockers: ['Publish provisional results before finalization.'], appeal_deadline: null, actor_id: 1, can_propose: true, can_approve: false, can_close_incident: false, proposals: [], incidents: [], history: [] }
 const snapshot = { id: 1, revision: 1, status: 'PROVISIONAL', entries, qualifier_codes: [] as string[], cut_count: 1, published_at: '2026-10-06T12:00:00Z', appeal_deadline: '2026-10-06T12:10:00Z', supersedes: null as number | null, metadata: { publication_reason: 'Round reviewed', tie_reason: '', open_material_incidents: 0 } }
 
+test('correction proposal submits the mission and private evidence for independent review', async ({ page }) => {
+  await page.route('**/api/staff/rounds/1/results', route => route.fulfill({ json: { ...preview, can_correct: true, missions: [{ id: 3, public_id: 'CLUE-3', is_void: false }], corrections: [] } }))
+  await page.route('**/api/staff/rounds/1/resolutions', async route => {
+    expect(route.request().postDataJSON()).toMatchObject({ action: 'propose', correction_type: 'ALTERNATE', mission_id: 3, answer: '0042', expected_version: 4, evidence_refs: ['clue-sheet-3'] })
+    await route.fulfill({ json: { correction_proposal_id: 1 } })
+  })
+  await page.goto('/staff/results')
+  await page.getByLabel('Alternate four-digit answer').fill('0042')
+  await page.getByLabel('Private correction reason').fill('Reviewed alternate interpretation')
+  await page.getByLabel('Public correction summary').fill('Clue three accepts an alternate answer')
+  await page.getByLabel('Private correction evidence (one reference per line)').fill('clue-sheet-3')
+  await page.getByRole('button', { name: 'Propose score correction' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Results action confirmed' })).toBeVisible()
+})
+
+test('stale correction can be rejected but cannot be applied', async ({ page }) => {
+  await page.route('**/api/staff/rounds/1/results', route => route.fulfill({ json: { ...preview, actor_id: 2, can_close_incident: true, corrections: [{ id: 7, mission_id: 3, correction_type: 'VOID', maker_id: 1, reason: 'Synthetic void', stale: true, resolution_id: null, payload: { public_summary: 'Clue withdrawn', evidence_refs: ['sheet-3'] } }] } }))
+  await page.route('**/api/staff/rounds/1/resolutions', async route => {
+    expect(route.request().postDataJSON()).toMatchObject({ action: 'approve', proposal_id: 7, reject: true, evidence_confirmed: true })
+    await route.fulfill({ json: { resolution_id: 1, rejected: true } })
+  })
+  await page.goto('/staff/results')
+  await page.getByText('Correction 7 · void · stale').click()
+  await page.getByLabel('Correction review reason').fill('Evidence has changed; remake proposal')
+  await page.getByRole('checkbox', { name: 'I independently reviewed the correction and supporting evidence.' }).check()
+  await expect(page.getByRole('button', { name: 'Approve correction 7' })).toBeDisabled()
+  await page.getByRole('button', { name: 'Reject correction 7' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Results action confirmed' })).toBeVisible()
+})
+
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/health', route => route.fulfill({ json: { status: 'ok' } }))
   await page.route('**/api/auth/csrf', route => route.fulfill({ json: { csrf_token: 'test-token' } }))

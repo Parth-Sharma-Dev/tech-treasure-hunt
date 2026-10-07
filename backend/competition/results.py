@@ -258,10 +258,17 @@ def build_preview(round, now):
                 == (boundary["score"], boundary["tie_time_ms"])
             ]
     open_incidents = sum(incident.material and incident.closed_at is None for incident in incidents)
+    from .models import ResolutionProposal
+
+    pending_corrections = ResolutionProposal.objects.filter(
+        round=round, missionresolution__isnull=True
+    ).exists()
     latest = latest_snapshot(round)
     blockers = list(dict.fromkeys(gaps + config_errors))
     if open_incidents:
         blockers.append(f"{open_incidents} material incident(s) remain open.")
+    if pending_corrections:
+        blockers.append("Review or reject pending score corrections before finalization.")
     if cutoff_tie:
         blockers.append("A qualification cutoff tie requires reviewed reserve-clue evidence.")
     if latest is None or latest.status != "PROVISIONAL":
@@ -569,9 +576,9 @@ def manage_incident(round_id, actor, data):
     fingerprint = {**data, "kind": "result_incident", "round_id": round_id, "actor_id": actor.pk}
     if original := audit_replay(action_id, fingerprint):
         return original
-    if round.state == "FINALIZED":
+    if round.state == "FINALIZED" and action == "open" and data.get("category") != "SCORING":
         raise ApiProblem(
-            "finalized", "Final results require a separate adjudication workflow.", 409
+            "finalized", "Use a reviewed scoring correction for finalized results.", 409
         )
     refs = data.get("evidence_refs", [])
     if not isinstance(refs, list) or any(

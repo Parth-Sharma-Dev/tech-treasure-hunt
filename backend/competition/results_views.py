@@ -4,7 +4,16 @@ from django.views.decorators.http import require_GET, require_POST
 
 from .api import ApiProblem, api_errors, json_body
 from .clock import database_now
-from .models import Incident, ResultProposal, ResultSnapshot, Round
+from .corrections import evidence as correction_evidence
+from .models import (
+    Incident,
+    Mission,
+    MissionResolution,
+    ResolutionProposal,
+    ResultProposal,
+    ResultSnapshot,
+    Round,
+)
 from .results import (
     approve_result,
     build_preview,
@@ -88,6 +97,7 @@ def staff_preview(request, round_id):
     require_result_view(request.user)
     round = locked_round(round_id)
     preview = build_preview(round, database_now())
+    correction_digest = correction_evidence(round)
     proposals = []
     for proposal in (
         ResultProposal.objects.filter(round=round).select_related("maker").order_by("-pk")[:30]
@@ -115,6 +125,30 @@ def staff_preview(request, round_id):
             "can_approve": has_role(request.user, "publish_results")
             and has_role(request.user, "verify_evidence"),
             "can_close_incident": has_role(request.user, "verify_evidence"),
+            "can_correct": round.number == 1
+            and has_role(request.user, "control_round", "adjudicate"),
+            "correction_version_digest": correction_digest,
+            "missions": list(
+                Mission.objects.filter(round=round, is_practice=False)
+                .order_by("pk")
+                .values("id", "public_id", "is_void")
+            ),
+            "corrections": [
+                {
+                    "id": item.pk,
+                    "mission_id": item.mission_id,
+                    "correction_type": item.correction_type,
+                    "maker_id": item.maker_id,
+                    "reason": item.reason,
+                    "payload": item.payload,
+                    "resolution_id": MissionResolution.objects.filter(proposal=item)
+                    .values_list("pk", flat=True)
+                    .first(),
+                    "stale": item.expected_version != round.control_version
+                    or item.evidence_digest != correction_digest,
+                }
+                for item in ResolutionProposal.objects.filter(round=round).order_by("-pk")[:30]
+            ],
             "proposals": proposals,
             "incidents": list(
                 Incident.objects.filter(round=round)

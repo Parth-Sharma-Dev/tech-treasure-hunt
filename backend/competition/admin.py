@@ -247,6 +247,7 @@ for model in (
     models.Completion,
     models.Incident,
     models.MissionResolution,
+    models.ResolutionProposal,
     models.ImportBatch,
     models.ScoreRevision,
     models.ResultSnapshot,

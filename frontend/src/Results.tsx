@@ -8,7 +8,9 @@ type Snapshot = { id: number; revision: number; status: string; entries: Entry[]
 type Preview = { round_id: number; title: string; number: number; attempt_no: number; state: string; control_version: number; evidence_digest: string; entries: Entry[]; cut_count: number; cutoff_tie: string[]; max_score: number; evidence_gaps: string[]; configuration_errors: string[]; finalization_blockers: string[]; appeal_deadline: string | null; actor_id: number; can_propose: boolean; can_approve: boolean; can_close_incident: boolean; proposals: Proposal[]; incidents: Incident[]; history: Snapshot[] }
 type Proposal = { id: number; status: string; maker_id: number; maker_name: string; reason: string; stale: boolean; publication_id: number | null; payload: { qualifiers: string[]; preview: { entries: Entry[]; cut_count: number }; tie_order: string[]; tie_evidence: string[]; tie_reason: string } }
 type Incident = { id: number; category: string; material: boolean; owner_id: number; affected_scope: { summary: string }; closed_at: string | null; decision: string; evidence_references: string[] }
-type Action = { endpoint: 'publish' | 'incidents'; data: Record<string, unknown> }
+type Action = { endpoint: 'publish' | 'incidents' | 'resolutions'; data: Record<string, unknown> }
+type Correction = { id: number; mission_id: number; correction_type: string; maker_id: number; reason: string; stale: boolean; resolution_id: number | null; payload: { public_summary: string; evidence_refs: string[] } }
+type CorrectionPreview = Preview & { can_correct?: boolean; missions?: { id: number; public_id: string; is_void: boolean }[]; corrections?: Correction[] }
 
 export function dateLabel(value: string | null) {
   return value ? `${new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))} IST` : 'Not set'
@@ -105,6 +107,47 @@ function CloseIncident({ incident, action }: { incident: Incident; action: Actio
   return <form className="form-stack" onSubmit={event => { event.preventDefault(); action.send('incidents', { action: 'close', incident_id: incident.id, reason, evidence_refs: refs.split('\n').map(value => value.trim()).filter(Boolean) }) }}><fieldset disabled={action.disabled}><label>Private closure decision<textarea required maxLength={2000} value={reason} onChange={event => setReason(event.target.value)} /></label><label>Closure evidence references (one per line)<textarea required value={refs} onChange={event => setRefs(event.target.value)} /></label><button>Verify and close incident {incident.id}</button></fieldset></form>
 }
 
+function CorrectionDesk({ preview, action }: { preview: CorrectionPreview; action: ActionController }) {
+  const [mission, setMission] = useState('')
+  const [kind, setKind] = useState('ALTERNATE')
+  const [answer, setAnswer] = useState('')
+  const [reason, setReason] = useState('')
+  const [summary, setSummary] = useState('')
+  const [refs, setRefs] = useState('')
+  const missions = (preview.missions ?? []).filter(item => !item.is_void)
+  const selected = Number(mission || missions[0]?.id || 0)
+  return <section className="panel"><h2>Reviewed score corrections</h2>
+    <p>Alternate answers credit only answers that were originally evaluated. Voids remove current credit while preserving submissions and receipts.</p>
+    {preview.can_correct && !['DRAFT', 'READY', 'LOBBY'].includes(preview.state) && missions.length > 0 && <form className="form-stack" onSubmit={event => { event.preventDefault(); action.send('resolutions', { action: 'propose', correction_type: kind, mission_id: selected, expected_version: preview.control_version, reason, public_summary: summary, evidence_refs: refs.split('\n').map(value => value.trim()).filter(Boolean), ...(kind === 'ALTERNATE' ? { answer } : {}) }); setAnswer('') }}>
+      <fieldset disabled={action.disabled}><label>Mission to correct<select value={selected} onChange={event => setMission(event.target.value)}>{missions.map(item => <option key={item.id} value={item.id}>{item.public_id}</option>)}</select></label>
+      <label>Correction type<select value={kind} onChange={event => setKind(event.target.value)}><option value="ALTERNATE">Accept an alternate answer</option><option value="VOID">Void this mission</option></select></label>
+      {kind === 'ALTERNATE' && <label>Alternate four-digit answer<input type="password" inputMode="numeric" pattern="[0-9]{4}" required value={answer} onChange={event => setAnswer(event.target.value)} /></label>}
+      <label>Private correction reason<textarea required maxLength={2000} value={reason} onChange={event => setReason(event.target.value)} /></label>
+      <label>Public correction summary<textarea required maxLength={2000} value={summary} onChange={event => setSummary(event.target.value)} /></label>
+      <label>Private correction evidence (one reference per line)<textarea required value={refs} onChange={event => setRefs(event.target.value)} /></label>
+      <button>Propose score correction</button></fieldset>
+    </form>}
+    {(preview.corrections ?? []).map(item => <details key={item.id}><summary>Correction {item.id} · {item.correction_type.toLowerCase()} · {item.resolution_id ? 'reviewed' : item.stale ? 'stale' : 'awaiting review'}</summary><p>{item.reason}</p><p>{item.payload.public_summary}</p><ul>{item.payload.evidence_refs.map((ref, index) => <li key={index}>{ref}</li>)}</ul>
+      {!item.resolution_id && item.maker_id === preview.actor_id && <p>A different verifier must review this correction.</p>}
+      {!item.resolution_id && item.maker_id !== preview.actor_id && preview.can_close_incident && <CorrectionReview item={item} preview={preview} action={action} />}
+    </details>)}
+  </section>
+}
+
+function CorrectionReview({ item, preview, action }: { item: Correction; preview: Preview; action: ActionController }) {
+  const [reason, setReason] = useState('')
+  const [confirmed, setConfirmed] = useState(false)
+  const [supersession, setSupersession] = useState(false)
+  const [impact, setImpact] = useState(false)
+  return <form className="form-stack" onSubmit={event => { event.preventDefault(); action.send('resolutions', { action: 'approve', proposal_id: item.id, reason, evidence_confirmed: confirmed, supersession_confirmed: supersession, progression_impact_confirmed: impact }) }}><fieldset disabled={action.disabled}>
+    <label>Correction review reason<textarea required maxLength={2000} value={reason} onChange={event => setReason(event.target.value)} /></label>
+    <label className="check-row"><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} />I independently reviewed the correction and supporting evidence.</label>
+    {preview.state === 'FINALIZED' && <><label className="check-row"><input type="checkbox" checked={supersession} onChange={event => setSupersession(event.target.checked)} />Supersede final results with provisional results and restart appeals.</label><label className="check-row"><input type="checkbox" checked={impact} onChange={event => setImpact(event.target.checked)} />Suspend dependent play and require review of any later-round qualification impact.</label></>}
+    <button disabled={!confirmed || item.stale || (preview.state === 'FINALIZED' && (!supersession || !preview.can_approve))}>Approve correction {item.id}</button>
+    <button type="button" className="secondary" disabled={!confirmed || !reason.trim()} onClick={() => action.send('resolutions', { action: 'approve', proposal_id: item.id, reason, evidence_confirmed: confirmed, reject: true })}>Reject correction {item.id}</button>
+  </fieldset></form>
+}
+
 function ResultsDesk({ preview, refresh }: { preview: Preview; refresh: () => void }) {
   const action = useResultAction(preview, refresh)
   return <><section className="panel"><h2>Private preview · {preview.title}</h2><p>Round {preview.number} · attempt {preview.attempt_no} · {preview.state.toLowerCase()}. Advancement count: {preview.cut_count ?? 'not configured'}.</p><Standings entries={preview.entries} /><h3>Finalization checks</h3>{preview.finalization_blockers.length ? <ul>{preview.finalization_blockers.map(item => <li key={item}>{item}</li>)}</ul> : <p>Checks passed. Final publication still needs two independent reviews.</p>}{preview.appeal_deadline && <p>Current appeal deadline: {dateLabel(preview.appeal_deadline)}</p>}<button className="secondary" onClick={refresh}>Refresh results review</button></section>
@@ -114,6 +157,7 @@ function ResultsDesk({ preview, refresh }: { preview: Preview; refresh: () => vo
     {preview.can_propose && ['ENDED', 'PROVISIONAL'].includes(preview.state) && <Propose preview={preview} action={action} />}
     <section><h2 className="desk-section-title">Result proposals</h2>{preview.proposals.length ? preview.proposals.map(proposal => <Review key={proposal.id} proposal={proposal} preview={preview} action={action} />) : <p>No publication proposals yet.</p>}</section>
     <IncidentDesk preview={preview} action={action} />
+    {preview.number === 1 && <CorrectionDesk preview={preview} action={action} />}
     {preview.history.length > 0 && <section className="panel"><h2>Published revisions</h2><ul>{preview.history.map(snapshot => <li key={snapshot.id}>Revision {snapshot.revision} · {snapshot.status.toLowerCase()} · {dateLabel(snapshot.published_at)}</li>)}</ul><a href={`/rounds/${preview.round_id}/results`}>Team results page (requires team sign-in)</a></section>}
   </>
 }
