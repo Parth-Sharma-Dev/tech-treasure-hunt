@@ -3,15 +3,16 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { ApiError, getJson, postJson } from './api'
 import { pollInterval } from './RoundClock'
 import { PaperDesk, type PaperData } from './PaperDesk'
+import { RecoveryDesk, type RecoveryData } from './RecoveryDesk'
 
 type Entry = { team_code: string; team_name: string; team_status: string; eligible: boolean; score: number; max_score: number; tie_time_ms: number | null; rank: number | null }
 type Snapshot = { id: number; revision: number; status: string; entries: Entry[]; qualifier_codes: string[]; cut_count: number; published_at: string; appeal_deadline: string | null; supersedes: number | null; metadata: { publication_reason: string; tie_reason: string; open_material_incidents: number } }
 type Preview = { round_id: number; title: string; number: number; attempt_no: number; state: string; control_version: number; evidence_digest: string; entries: Entry[]; cut_count: number; cutoff_tie: string[]; max_score: number; evidence_gaps: string[]; configuration_errors: string[]; finalization_blockers: string[]; appeal_deadline: string | null; actor_id: number; can_propose: boolean; can_approve: boolean; can_close_incident: boolean; proposals: Proposal[]; incidents: Incident[]; history: Snapshot[] }
 type Proposal = { id: number; status: string; maker_id: number; maker_name: string; reason: string; stale: boolean; publication_id: number | null; payload: { qualifiers: string[]; preview: { entries: Entry[]; cut_count: number }; tie_order: string[]; tie_evidence: string[]; tie_reason: string } }
 type Incident = { id: number; category: string; material: boolean; owner_id: number; affected_scope: { summary: string }; closed_at: string | null; decision: string; evidence_references: string[] }
-type Action = { endpoint: 'publish' | 'incidents' | 'resolutions' | 'paper'; data: Record<string, unknown> }
+type Action = { endpoint: 'publish' | 'incidents' | 'resolutions' | 'paper' | 'recovery'; data: Record<string, unknown> }
 type Correction = { id: number; mission_id: number; correction_type: string; maker_id: number; reason: string; stale: boolean; resolution_id: number | null; payload: { public_summary: string; evidence_refs: string[] } }
-type CorrectionPreview = Preview & Partial<PaperData> & { can_correct?: boolean; missions?: { id: number; public_id: string; is_void: boolean }[]; corrections?: Correction[] }
+type CorrectionPreview = Preview & Partial<PaperData> & Partial<RecoveryData> & { can_correct?: boolean; missions?: { id: number; public_id: string; is_void: boolean }[]; corrections?: Correction[] }
 
 export function dateLabel(value: string | null) {
   return value ? `${new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))} IST` : 'Not set'
@@ -160,6 +161,7 @@ function ResultsDesk({ preview, refresh }: { preview: CorrectionPreview; refresh
     <IncidentDesk preview={preview} action={action} />
     {preview.number === 1 && <CorrectionDesk preview={preview} action={action} />}
     {preview.number === 1 && <PaperDesk preview={preview} disabled={action.disabled} send={data => action.send('paper', data)} />}
+    {preview.number === 1 && <RecoveryDesk preview={preview} disabled={action.disabled} send={data => action.send('recovery', data)} />}
     {preview.history.length > 0 && <section className="panel"><h2>Published revisions</h2><ul>{preview.history.map(snapshot => <li key={snapshot.id}>Revision {snapshot.revision} · {snapshot.status.toLowerCase()} · {dateLabel(snapshot.published_at)}</li>)}</ul><a href={`/rounds/${preview.round_id}/results`}>Team results page (requires team sign-in)</a></section>}
   </>
 }

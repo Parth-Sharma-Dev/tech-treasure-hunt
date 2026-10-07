@@ -13,6 +13,7 @@ from .models import (
     PaperProposal,
     PaperSlip,
     PaperWindow,
+    RecoveryProposal,
     ResolutionProposal,
     ResultProposal,
     ResultSnapshot,
@@ -134,6 +135,19 @@ def staff_preview(request, round_id):
             "can_correct": round.number == 1
             and has_role(request.user, "control_round", "adjudicate"),
             "play_mode": round.play_mode,
+            "recovery_proposals": [
+                {
+                    "id": item.pk,
+                    "maker_id": item.maker_id,
+                    "reason": item.reason,
+                    "comparison": item.payload["comparison"],
+                    "evidence_refs": item.payload["evidence_refs"],
+                    "reviewed": item.incident.closed_at is not None,
+                }
+                for item in RecoveryProposal.objects.filter(round=round)
+                .select_related("incident")
+                .order_by("-pk")[:30]
+            ],
             "paper_window": PaperWindow.objects.filter(round=round)
             .values("official_start", "official_end", "active_offset_ms", "assigned_desks")
             .first(),

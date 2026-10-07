@@ -51,6 +51,19 @@ test('paper activation records desks and isolation evidence before independent a
   await expect(page.getByRole('status').filter({ hasText: 'Results action confirmed' })).toBeVisible()
 })
 
+test('recovery submits a signed checkpoint and shows independent review requirements', async ({ page }) => {
+  await page.route('**/api/staff/rounds/1/recovery', async route => {
+    expect(route.request().postDataJSON()).toMatchObject({ action: 'propose', signed_bundle: 'synthetic-signed-checkpoint', expected_version: 4, evidence_refs: ['backup-log'] })
+    await route.fulfill({ json: { recovery_proposal_id: 1 } })
+  })
+  await page.goto('/staff/results')
+  await page.getByLabel('Signed checkpoint file').setInputFiles({ name: 'checkpoint.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ signed_bundle: 'synthetic-signed-checkpoint' })) })
+  await page.getByLabel('Recovery reason', { exact: true }).fill('Recover an older backup')
+  await page.getByLabel('Recovery evidence references').fill('backup-log')
+  await page.getByRole('button', { name: 'Propose checkpoint reconciliation' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Results action confirmed' })).toBeVisible()
+})
+
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/health', route => route.fulfill({ json: { status: 'ok' } }))
   await page.route('**/api/auth/csrf', route => route.fulfill({ json: { csrf_token: 'test-token' } }))
