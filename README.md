@@ -2,7 +2,7 @@
 
 Competition website for the AI Nexus Club, CSE Department, SKIT Jaipur, Tech-Pravah 26.
 
-The website is being built to support team login, QR-based missions, answer submission, Round 1 scoring, and organizer-reviewed results and qualification through five rounds.
+The website supports team login, Round 1 QR missions, answer submission, scoring and reviewed results. The revised plan adds native Round 3 submissions and external Round 2/4 results; Round 5 is deferred.
 
 The current implementation includes a responsive event page, competition/evidence models, draft content preparation and rule approval in Django admin, team sign-in, a participant lobby, organizer round controls, server clocks, QR/fallback mission access, answer submissions, team progress and signed receipts. Organizer-reviewed Round 1 standings, provisional/final publication, incident review and final qualification are available. Production deployment remains deferred.
 
@@ -12,7 +12,7 @@ Open `/staff/rounds` for the organizer controls screen and sign in through its D
 
 Staff can read `GET /api/staff/rounds` and submit CSRF-protected controls to `POST /api/staff/rounds/{id}/control`, with `action` set to `open_lobby`, `start`, `freeze`, `resume`, `extend` or `end`. `extend` additionally requires a positive `extension_ms` (at most 24 hours per action). Reads report expired live rounds as ENDED immediately, without writing evidence. To persist completed intervals after a delayed job, run `.venv/Scripts/python backend/manage.py end_expired_rounds --actor <controller-username>`; intervals are capped at the original deadline.
 
-The participant lobby displays live, paused and ended round clocks. It refreshes roughly every 15 seconds with jitter, suspends polling in hidden tabs and refreshes on return. Countdown estimates use monotonic elapsed time; all eligibility and cutoff decisions remain on the server.
+After login, `/lobby` shows round status. **Open Round 1** enters `/rounds/{database-round-id}`, containing practice, progress, receipts, live fallback entry and results. Fallback entry is available only during eligible live online play. The screens refresh roughly every 15 seconds with jitter, suspend polling in hidden tabs and refresh on return. Countdown estimates use monotonic elapsed time; all eligibility and cutoff decisions remain on the server.
 
 The mission API supports QR tokens and separate random fallback codes. `GET /api/missions/{token}` records no visit and reveals no unopened clue. CSRF-protected `POST /api/missions/open` takes either `token` or `fallback_code`; new clues open only during live online play. Previously opened clues remain readable after pause/end. Competitive missions are isolated from practice and from demo/live cohorts.
 
@@ -36,7 +36,7 @@ Final publication requires a preceding provisional snapshot, the completed appea
 
 Staff endpoints: `GET /api/staff/results`, `GET /api/staff/rounds/{id}/results`, `POST /api/staff/rounds/{id}/publish` (`action: propose` or `approve`), and `POST /api/staff/rounds/{id}/incidents` (`action: open` or `close`). Writes require CSRF, an action UUID and reason. Incident closure requires a different authorized verifier and supporting evidence references; it does not adjust scores. `GET /api/rounds/{id}/results` exposes published snapshots/history to authenticated teams in the same cohort, never private previews or pending proposals.
 
-This workflow currently supports online Round 1 completion results. Later-round imported rankings, paper reconciliation, score-changing adjudication and post-final corrections remain separate development work. Automated integrity checks cannot prove that entirely missing records never existed; both reviewers must check evidence coverage and record any known gap as a material incident.
+Round 1 also supports reviewed alternate answers and mission voids, explicit post-final supersession, irreversible paper activation and numbered-slip reconciliation. Signed evidence exports, receipt verification and reviewed recovery are available on the results desk. See [Round 1 operations](docs/ROUND1_OPERATIONS.md) and [local test evidence](docs/TEST_EVIDENCE.md). Later-round scoring remains development work. Automated integrity checks cannot prove that entirely missing records never existed; reviewers must check retained evidence and record known coverage gaps.
 
 Qualification does not enable native hunt scoring for externally judged rounds: their mission-open and answer APIs explicitly refuse native play. Later-round scores will use the separate reviewed import workflow.
 

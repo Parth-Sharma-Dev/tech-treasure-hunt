@@ -1,0 +1,95 @@
+# Round 1 local acceptance evidence
+
+Recorded 7 October 2026. Scope: implemented Round 1 behavior using synthetic fixtures. Later-round competition, production hosting, real mission routes, actual rosters and physical device/paper drills are not certified here.
+
+## Environment
+
+| Component | Tested version |
+|---|---|
+| OS | Windows; PowerShell |
+| Python | 3.13.13 |
+| Django | 6.0.8 |
+| PostgreSQL server / pg_dump | 18.6 |
+| Node | 24.15.0 |
+| pytest | 9.1.1 |
+| Ruff | 0.16.9 |
+| Playwright | 1.63.0, Chromium desktop and emulated Pixel 7 |
+
+## Final validation
+
+| Check | Outcome |
+|---|---|
+| Django system checks | Passed, no issues |
+| Migration drift check | Passed, no changes detected |
+| Ruff backend checks | Passed |
+| Frontend TypeScript and Vite production build | Passed |
+| Full backend suite with real-browser integrations enabled | **125 passed, 1 skipped**; skipped local load test was run separately |
+| Full frontend Playwright suite | **58 passed** |
+| Separate local HTTP contention test | **1 passed**, isolated PostgreSQL test database |
+| pg_dump/restore rehearsal | Passed into a new recovery database; source preserved, all restored team sessions revoked |
+| Running application health | Backend port 8000 and Vite proxy port 5173 both returned healthy |
+
+Commands, from the repository root unless stated otherwise:
+
+```powershell
+.venv/Scripts/python backend/manage.py check
+.venv/Scripts/python backend/manage.py makemigrations --check --dry-run
+.venv/Scripts/python -m ruff check backend
+npm.cmd --prefix frontend run build
+
+$env:TTH_BROWSER_INTEGRATION = '1'
+.venv/Scripts/python -m pytest backend -q -p no:cacheprovider
+
+# In frontend:
+npm.cmd run test:e2e -- --workers=2
+```
+
+The Windows sandbox denied access to pytest's existing temporary fixture directory during the initial full run. The final backend run used approved access and completed successfully. Ordinary tests use an isolated PostgreSQL database; browser integrations route requests to the isolated Django live server, not the application's database.
+
+## Covered behaviors
+
+- Approved draft rules, independently verified missions and READY freeze; repeatable unsigned demo seeding.
+- CSRF-protected team login/logout, four-session contention, revoked-session/version checks and validated return links.
+- Dashboard → Round 1 page; live-only fallback entry; paused/ended status; desktop/mobile layout checks.
+- Explicit mission open, QR/fallback identity, four-digit answers with leading zeros, immutable decisions and signed receipts.
+- Duplicate/cross-session answers, shared quotas/cooldowns, lock waits spanning deadlines, stale controls and lost-response recovery.
+- Provisional/final publication, full appeal windows, cutoff ties, private/public evidence boundaries and two-person review.
+- Alternate answers preserving original wrong/accepted decisions; effective timing rebuild; voided score/denominator; stale/rejected proposals.
+- Explicit final supersession and renewed appeals; acknowledged downstream qualification impact and suspended dependent play.
+- One-way paper activation, clock offsets, assigned desks, chronological slips, per-minute paper limits, duplicate rejection and preserved online evidence.
+- Signed export inventories, bounded pagination, stale cursors, formula-safe cells, invalid/missing receipts and reviewed restoration of exact missing decisions/completions.
+- New staff endpoints reject participants and require CSRF; recovery invalidates sessions and blocks unresolved qualification.
+
+Two full browser integrations use actual Django HTTP/PostgreSQL: organizer start → team login → QR open → solve → pause → receipts/logout, and independent provisional → final publication/qualification.
+
+## Local contention measurement
+
+```powershell
+$env:TTH_LOCAL_LOAD_TEST = '1'
+$env:TTH_LOAD_TEAMS = '8'
+$env:TTH_LOAD_SESSIONS = '4'
+.venv/Scripts/python -m pytest backend/tests/test_round1_load.py -q -s -p no:cacheprovider
+```
+
+| Measurement | Result |
+|---|---:|
+| Synthetic teams | 8 |
+| Browser sessions per team | 4 |
+| Simultaneous submit requests | 32 |
+| Subsequent authenticated state reads | 96 |
+| Submit HTTP p95 | 2345.449 ms |
+| State HTTP p95 | 2203.543 ms |
+| Server ingress → database admission p95 | 291.341 ms |
+| Effective completions | 8, exactly one per team |
+
+The report is retained privately in `.local/round1-load-evidence.json`. This run measures local Django's test HTTP server under a synchronized burst. Admission latency includes application/lock time; it is not a separate SQL-lock-only measurement. It does not establish Render/free-tier capacity, production cold-start behavior or a real event cap. Production-scale k6/load testing remains a release gate once the target environment and team cap are supplied.
+
+## Recovery rehearsal and retained artifacts
+
+A custom PostgreSQL archive and signed checksum were captured before applying migrations 0007–0009. The archive was restored to `tth_recovery_round1_20261007`; both source/restored databases contained five rounds and the restored copy had zero active team sessions. A recovery incident was recorded. The separate copy and private archive remain available in `.local`; the working source Round 1 attempt remains READY.
+
+The old checkpoint predates the new migrations. Migrate the separate copy before using the new review screens. Keep baseline recovery incidents material until retained evidence and any missing intervals are independently reviewed. Do not redirect participants to the recovery copy merely because the archive restored successfully.
+
+## Remaining release checks
+
+Supply and independently verify actual content, roster, capacity, route, owner and appeal policies. Validate real Android/iPhone QR handoff, campus/lab connectivity, physical slip/clock/writer-isolation procedures and deployed recovery/capacity. Real-roster administration, printable QR cards and later-round functionality remain separate planned work. Entirely missing records beyond the latest signed checkpoint require retained receipts/exports and human coverage review; synthetic tests cannot prove their absence.
