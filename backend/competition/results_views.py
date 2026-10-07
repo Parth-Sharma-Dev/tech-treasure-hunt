@@ -72,6 +72,11 @@ def published_results(request, round_id):
             "number": round.number,
             "attempt_no": round.attempt_no,
             "current_attempt": current.pk == round.pk,
+            "qualification_active": current.pk == round.pk
+            and round.state == "FINALIZED"
+            and not Incident.objects.filter(
+                round=round, material=True, closed_at__isnull=True
+            ).exists(),
             "own_team_code": team.code,
             "server_time": database_now().isoformat(),
             "snapshot": public_snapshot(history[0]) if history else None,
@@ -319,12 +324,24 @@ def export_evidence(request, round_id, kind):
                     spreadsheet_cell(item["fields"]),
                 ]
             )
-        response["X-Evidence-Manifest"] = result["signature"]
+        from django.core.signing import Signer
+
+        from .results import digest
+
+        response["X-Evidence-Manifest"] = Signer(salt="competition.evidence-export.v1").sign_object(
+            {
+                "round_id": round_id,
+                "kind": kind,
+                "inventory_digest": digest(result["manifest"]["inventory"]),
+                "stamp": result["manifest"]["stamp"],
+            }
+        )
         if result["next_cursor"]:
             response["X-Next-Cursor"] = result["next_cursor"]
     else:
         response = JsonResponse(result)
-    response["Content-Disposition"] = f'attachment; filename="round-{round_id}-{kind}.json"'
+    extension = "csv" if request.GET.get("format") == "csv" and kind != "bundle" else "json"
+    response["Content-Disposition"] = f'attachment; filename="round-{round_id}-{kind}.{extension}"'
     response["Cache-Control"] = "no-store"
     return response
 

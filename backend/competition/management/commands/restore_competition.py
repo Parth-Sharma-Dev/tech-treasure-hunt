@@ -114,7 +114,7 @@ class Command(BaseCommand):
                         opened_at=now,
                         material=True,
                         affected_scope={
-                        "summary": "Restored checkpoint: reconcile retained evidence before use."
+                            "summary": "Restored checkpoint: reconcile evidence before use."
                         },
                         evidence_references=[str(path), actual],
                     )

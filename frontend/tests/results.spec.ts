@@ -64,6 +64,14 @@ test('recovery submits a signed checkpoint and shows independent review requirem
   await expect(page.getByRole('status').filter({ hasText: 'Results action confirmed' })).toBeVisible()
 })
 
+test('a retained final publication shows qualification under review during recovery', async ({ page }) => {
+  const finalized = { ...snapshot, status: 'FINAL', qualifier_codes: ['TEAM-A'] }
+  await page.route('**/api/rounds/1/results', route => route.fulfill({ json: { title: 'Synthetic hunt', attempt_no: 1, own_team_code: 'TEAM-A', current_attempt: true, qualification_active: false, snapshot: finalized, history: [finalized] } }))
+  await page.goto('/rounds/1/results')
+  await expect(page.getByRole('status').filter({ hasText: 'Qualification is under organizer review' })).toBeVisible()
+  await expect(page.getByText('Your team qualified for the next round.', { exact: true })).toHaveCount(0)
+})
+
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/health', route => route.fulfill({ json: { status: 'ok' } }))
   await page.route('**/api/auth/csrf', route => route.fulfill({ json: { csrf_token: 'test-token' } }))

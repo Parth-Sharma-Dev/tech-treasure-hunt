@@ -3,6 +3,7 @@ from datetime import timedelta
 
 import pytest
 from django.core.signing import Signer
+from django.test import Client
 from django.utils import timezone
 from test_results import completion
 from test_results import ended_hunt as _ended_hunt
@@ -150,3 +151,26 @@ def test_receipt_verification_distinguishes_invalid_from_missing_evidence(ended_
 @pytest.mark.parametrize("value", ["=cmd()", "  +formula", "-formula", "@formula", "\tformula"])
 def test_spreadsheet_exports_neutralize_formula_cells(value):
     assert spreadsheet_cell(value).startswith("'")
+
+
+def test_new_staff_endpoints_deny_participants_and_require_csrf(ended_hunt):
+    round, _, teams, _, reviewer, _ = ended_hunt
+    client = Client()
+    client.force_login(teams[0].user)
+    base = f"/api/staff/rounds/{round.pk}"
+    assert client.get(base + "/exports/bundle").status_code == 403
+    for endpoint in ["resolutions", "paper", "recovery", "receipts/verify"]:
+        assert (
+            client.post(
+                base + "/" + endpoint, data={"action": "approve"}, content_type="application/json"
+            ).status_code
+            == 403
+        )
+    staff = Client(enforce_csrf_checks=True)
+    staff.force_login(reviewer)
+    assert (
+        staff.post(
+            base + "/paper", data={"action": "approve"}, content_type="application/json"
+        ).status_code
+        == 403
+    )

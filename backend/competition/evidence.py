@@ -5,9 +5,10 @@ from datetime import datetime
 from uuid import UUID
 
 from django.core import serializers
+from django.core.management.color import no_style
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.signing import BadSignature, Signer
-from django.db import transaction
+from django.db import connection, transaction
 from django.db.models import F
 
 from . import models as m
@@ -288,6 +289,9 @@ def restore_missing(round, payload):
     # Dependencies may refer forward within the signed bundle; PostgreSQL checks at commit.
     for obj in serializers.deserialize("json", json.dumps(pending), ignorenonexistent=False):
         obj.save()
+    with connection.cursor() as cursor:
+        for statement in connection.ops.sequence_reset_sql(no_style(), list(allowed.values())):
+            cursor.execute(statement)
     round.refresh_from_db()
     if round.state in ["LIVE", "FROZEN"]:
         raise ApiProblem(

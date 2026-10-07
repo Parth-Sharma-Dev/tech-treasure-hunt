@@ -23,6 +23,8 @@ def round_eligible(team, round):
     )
     if previous is None or previous.state != Round.State.FINALIZED:
         return False
+    if Incident.objects.filter(round=previous, material=True, closed_at__isnull=True).exists():
+        return False
     if Incident.objects.filter(
         round=previous, category="QUALIFICATION_IMPACT", closed_at__isnull=True
     ).exists():

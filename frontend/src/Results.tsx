@@ -26,7 +26,7 @@ function Standings({ entries, ownCode, qualifiers }: { entries: Entry[]; ownCode
 
 export function PublishedResults() {
   const roundId = Number(location.pathname.split('/')[2])
-  const results = useQuery({ queryKey: ['published-results', roundId], queryFn: ({ signal }) => getJson<{ title: string; attempt_no: number; current_attempt: boolean; own_team_code: string; snapshot: Snapshot | null; history: Snapshot[] }>(`/api/rounds/${roundId}/results`, signal), retry: false, refetchInterval: pollInterval, refetchIntervalInBackground: false, refetchOnWindowFocus: 'always' })
+  const results = useQuery({ queryKey: ['published-results', roundId], queryFn: ({ signal }) => getJson<{ title: string; attempt_no: number; current_attempt: boolean; qualification_active?: boolean; own_team_code: string; snapshot: Snapshot | null; history: Snapshot[] }>(`/api/rounds/${roundId}/results`, signal), retry: false, refetchInterval: pollInterval, refetchIntervalInBackground: false, refetchOnWindowFocus: 'always' })
   if (results.isPending) return <section className="participant-page"><h1>Loading results…</h1></section>
   if (!results.data || (results.error instanceof ApiError && results.error.status === 401)) return <section className="participant-page narrow"><h1>Results unavailable</h1><p role="alert">{results.error?.message}</p><a className="button" href={`/login?next=${encodeURIComponent(location.pathname)}`}>Team sign in</a></section>
   const { snapshot, history, own_team_code: ownCode } = results.data
@@ -36,7 +36,7 @@ export function PublishedResults() {
       <h2>{snapshot.status === 'FINAL' ? 'Final results' : 'Provisional results'} · revision {snapshot.revision}</h2>
       <p>Published {dateLabel(snapshot.published_at)}</p>
       {results.data.current_attempt === false && <p>Historical results from an earlier attempt. Current progression follows the latest attempt’s final publication.</p>}
-      {snapshot.status === 'PROVISIONAL' ? <><p>Qualification remains pending until final review.</p><p>Appeal deadline: <strong>{dateLabel(snapshot.appeal_deadline)}</strong>. Contact an organizer to register an appeal.</p></> : results.data.current_attempt === false ? <p>This publication records historical qualification; check the latest attempt for current access.</p> : <p role="status">{snapshot.qualifier_codes.includes(ownCode) ? 'Your team qualified for the next round.' : 'Your team did not qualify for the next round.'}</p>}
+      {snapshot.status === 'PROVISIONAL' ? <><p>Qualification remains pending until final review.</p><p>Appeal deadline: <strong>{dateLabel(snapshot.appeal_deadline)}</strong>. Contact an organizer to register an appeal.</p></> : results.data.current_attempt === false ? <p>This publication records historical qualification; check the latest attempt for current access.</p> : results.data.qualification_active === false ? <p role="status">Qualification is under organizer review. These published results remain available as evidence.</p> : <p role="status">{snapshot.qualifier_codes.includes(ownCode) ? 'Your team qualified for the next round.' : 'Your team did not qualify for the next round.'}</p>}
       {snapshot.metadata.publication_reason && <p>{snapshot.metadata.publication_reason}</p>}
       {!!snapshot.metadata.open_material_incidents && <p>At publication, {snapshot.metadata.open_material_incidents} material issue(s) were pending review.</p>}
       {snapshot.metadata.tie_reason && <p>Reserve-clue decision: {snapshot.metadata.tie_reason}</p>}
