@@ -126,6 +126,9 @@ def control_round(round_id, actor, data):
     if round.play_mode != Round.PlayMode.ONLINE:
         raise ApiProblem("paper_mode", "Online controls cannot reopen paper play.", 409)
     if expired:
+        from .coding import finalize_at_end
+
+        finalize_at_end(round, round.deadline_at, actor)
         close_phase(round, now, actor, "Active deadline reached: " + reason)
         round.state = Round.State.ENDED
     else:
@@ -148,6 +151,12 @@ def control_round(round_id, actor, data):
             if round.state == Round.State.LIVE:
                 round.deadline_at += timedelta(milliseconds=extension)
         else:
+            if action == "end":
+                from .coding import finalize_at_end
+
+                finalize_at_end(
+                    round, min(now, round.deadline_at) if round.state == "LIVE" else now, actor
+                )
             close_phase(round, now, actor, reason)
             round.state = Round.State.FROZEN if action == "freeze" else Round.State.ENDED
             if round.state == Round.State.FROZEN:
