@@ -710,6 +710,29 @@ class ImportBatch(models.Model):
     verifier = staff_reference(null=True, blank=True)
     committed_at = models.DateTimeField(null=True, blank=True)
 
+    def save(self, *args, **kwargs):
+        if self.pk:
+            previous = type(self).objects.get(pk=self.pk)
+            protected = [
+                "round_id",
+                "file_digest",
+                "schema_version",
+                "source_rows",
+                "preview",
+                "dry_run_errors",
+                "maker_id",
+                "reason",
+                "evidence_digest",
+            ]
+            if any(getattr(self, field) != getattr(previous, field) for field in protected):
+                raise ValidationError("Original score batch evidence cannot be rewritten.")
+            if previous.committed_at and (
+                self.verifier_id != previous.verifier_id
+                or self.committed_at != previous.committed_at
+            ):
+                raise ValidationError("Committed source batch verification cannot be replaced.")
+        return super().save(*args, **kwargs)
+
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=["round", "file_digest"], name="import_file_unique"),

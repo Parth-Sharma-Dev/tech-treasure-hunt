@@ -5,6 +5,7 @@ from decimal import Decimal
 from .clock import milliseconds
 from .external_scores import (
     current_scores,
+    decimal_value,
     effective_question_score,
     schema_errors,
     validate_rows,
@@ -111,13 +112,29 @@ def build_preview(round, now):
                 gaps.append("A reviewed score uses the wrong approved maximum.")
             if round.number == 2:
                 if not errors:
-                    score, _ = effective_question_score(round, revision.tie_metrics)
+                    try:
+                        score, _ = effective_question_score(round, revision.tie_metrics)
+                    except ValueError:
+                        gaps.append("Round 2 question credit evidence is malformed.")
                 finish = revision.tie_metrics.get("official_finish_active_ms")
                 if type(finish) is not int or not 0 <= finish <= round.active_budget_ms:
                     gaps.append("Round 2 official finish evidence is missing or invalid.")
                     finish = None
             else:
                 averages = revision.tie_metrics.get("averages", {})
+                try:
+                    if not isinstance(averages, dict) or set(averages) != {
+                        "technical",
+                        "problem_solving",
+                        "communication",
+                        "coordination",
+                    }:
+                        raise ValueError()
+                    for value in averages.values():
+                        decimal_value(value, Decimal(10))
+                except ValueError:
+                    gaps.append("Faculty criterion averages are missing or malformed.")
+                    averages = {}
         metric = (
             (-score, finish if finish is not None else 10**15)
             if round.number == 2
@@ -137,6 +154,7 @@ def build_preview(round, now):
                 "score": float(score),
                 "max_score": float(maximum),
                 "tie_time_ms": finish,
+                **({"official_finish_active_ms": finish} if round.number == 2 else {}),
                 "criterion_averages": averages if round.number == 4 else None,
                 "rank": None,
             }

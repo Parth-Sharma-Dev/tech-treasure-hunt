@@ -90,7 +90,8 @@ def schema_errors(round, rules=None):
             errors.append("Round 2 needs unique question IDs and maximum equal to their count.")
         if not round.is_demo and (
             round.advancement_count != 15
-            or len(ids or []) != 30
+            or not isinstance(ids, list)
+            or len(ids) != 30
             or round.active_budget_ms != 2_700_000
         ):
             errors.append("Real Round 2 requires 30 questions, 45 minutes and 15 qualifiers.")
@@ -134,9 +135,15 @@ def voided_questions(round):
 def effective_question_score(round, metrics):
     question_ids = set(round.rules_snapshot["rules"]["score_schema"]["question_ids"])
     voids = voided_questions(round)
-    return Decimal(len(set(metrics["correct_question_ids"]) - voids)), Decimal(
-        len(question_ids - voids)
-    )
+    correct = metrics.get("correct_question_ids")
+    if (
+        not isinstance(correct, list)
+        or any(not isinstance(value, str) for value in correct)
+        or len(set(correct)) != len(correct)
+        or not set(correct) <= question_ids
+    ):
+        raise ValueError("Question credit evidence is malformed.")
+    return Decimal(len(set(correct) - voids)), Decimal(len(question_ids - voids))
 
 
 def intake_digest(round):
@@ -189,6 +196,10 @@ def parse_rows(round, data):
         rows = data.get("rows")
     if not isinstance(rows, list) or not 1 <= len(rows) <= 2000:
         raise ApiProblem("invalid_input", "Supply 1–2000 source rows.")
+    if any(
+        not isinstance(row, dict) or any(not isinstance(key, str) for key in row) for row in rows
+    ):
+        raise ApiProblem("invalid_input", "Source rows must be objects; check for extra CSV cells.")
     return rows
 
 

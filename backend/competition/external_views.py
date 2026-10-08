@@ -4,7 +4,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from .api import api_errors, json_body
 from .external_scores import HEADERS, commit_import, validate_import
-from .models import ExternalVoidProposal, ImportBatch
+from .models import AuditEvent, ExternalVoidProposal, ImportBatch
 from .results import has_role, locked_round, require_result_view
 
 
@@ -32,6 +32,15 @@ def desk(request, round_id):
 
     for batch in batches:
         batch["rejected"] = AuditEventRejected(ImportBatch(pk=batch["id"]))
+    proposals = list(
+        ExternalVoidProposal.objects.filter(round=round)
+        .order_by("-pk")
+        .values("id", "maker_id", "question_id", "source_reference", "reason")
+    )
+    for proposal in proposals:
+        proposal["reviewed"] = AuditEvent.objects.filter(
+            action="external_question_void", after__response__reviewed_proposal_id=proposal["id"]
+        ).exists()
     return JsonResponse(
         {
             "actor_id": request.user.pk,
@@ -46,11 +55,7 @@ def desk(request, round_id):
                 "headers": HEADERS.get(round.number, []),
             },
             "batches": batches,
-            "void_proposals": list(
-                ExternalVoidProposal.objects.filter(round=round)
-                .order_by("-pk")
-                .values("id", "maker_id", "question_id", "source_reference", "reason")
-            ),
+            "void_proposals": proposals,
         }
     )
 

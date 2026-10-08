@@ -417,3 +417,76 @@ def test_real_round2_requires_manual_contract(external):
     round = external[0]
     round.is_demo = False
     assert any("30 questions" in error for error in readiness_errors(round))
+
+
+def test_original_source_batch_is_immutable_and_extra_csv_cells_are_rejected(external):
+    from competition.models import ImportBatch
+
+    end(external)
+    round, _, maker, _ = external
+    intake(external)
+    batch = ImportBatch.objects.get()
+    batch.source_rows = []
+    with pytest.raises(ValidationError, match="cannot be rewritten"):
+        batch.save()
+    with pytest.raises(ApiProblem, match="extra CSV cells"):
+        validate_import(
+            round.pk,
+            maker,
+            action(
+                schema_version="round2-v1",
+                csv="team_code,correct_question_ids,official_finish_active_ms,source_reference\nEXT-0,Q01,1,Ref,Extra",
+            ),
+        )
+
+
+def test_external_cutoff_tie_needs_common_reserve_evidence(external):
+    from unittest.mock import patch
+
+    end(external)
+    round, teams, maker, verifier = external
+    source = rows(teams)
+    for item in source:
+        item["correct_question_ids"] = ["Q01"]
+        item["official_finish_active_ms"] = 1000
+    intake(external, source)
+    publish(round, maker, verifier)
+    provisional = ResultSnapshot.objects.get(round=round)
+    future = provisional.appeal_deadline + timedelta(seconds=1)
+    with patch("competition.results.database_now", return_value=future):
+        round.refresh_from_db()
+        preview = build_preview(round, future)
+        data = action(
+            status="FINAL",
+            expected_version=round.control_version,
+            evidence_digest=preview["evidence_digest"],
+            evidence_confirmed=True,
+        )
+        with pytest.raises(ApiProblem, match="tied teams"):
+            propose_result(round.pk, maker, data)
+        proposal = propose_result(
+            round.pk,
+            maker,
+            {
+                **data,
+                "tie_order": [team.code for team in reversed(teams)],
+                "tie_evidence": ["Private common reserve report"],
+                "tie_reason": "Common sealed reserve question reviewed",
+            },
+        )
+        approve_result(
+            round.pk, verifier, action(proposal_id=proposal["proposal_id"], evidence_confirmed=True)
+        )
+    assert ResultSnapshot.objects.filter(round=round).latest("revision").qualifier_codes == [
+        teams[2].code
+    ]
+
+
+@pytest.mark.parametrize("value", ["NaN", "Infinity", "-0.01", "10.001", "1.0001", True, {}, None])
+def test_faculty_marks_require_finite_in_range_precision(value):
+    from decimal import Decimal
+
+    from competition.external_scores import decimal_value
+
+    with pytest.raises(ValueError):
+        decimal_value(value, Decimal(10))
