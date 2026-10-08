@@ -1,6 +1,6 @@
 # M7 participant portal
 
-Implemented 8 October 2026. M7 provides the participant information portal and round-specific navigation. Native Round 3 submissions and later-round score entry/publication remain M8/M9 work.
+Implemented 8 October 2026. M7 provides the participant information portal and round-specific navigation. M8's native Round 3 workspace and lab judging are now implemented; see [Round 3 operations](ROUND3_OPERATIONS.md). External Round 2/4 score entry/publication remains M9.
 
 ## Participant experience
 
@@ -12,7 +12,7 @@ Each round page shows global and round-specific organizer announcements, reviewe
 
 - Round 1 retains practice, progress, receipts and live online fallback access. Existing QR/login return links still work.
 - Round 2 shows event guidance, retained non-voided keywords from the latest Round 1 attempt, and published results when available. Keywords do not add points.
-- Round 3 provides the approved supervised Python/C competition information. Coding submission controls are deferred to M8.
+- Round 3 provides approved supervised Python/C information and links to its native coding workspace when the attempt is released and the team is eligible. Only the supervisor-assigned session can save code.
 - Round 4 provides interview guidance and approved contact names/roles/locations/channels. Faculty photos, panel/team assignments and criterion scoring are M9 work.
 
 Published results remain readable in the same cohort after a round closes, including by teams that did not qualify. Round information pages use the current attempt; prior publications remain accessible at their historical results URLs.
@@ -63,7 +63,7 @@ Draft announcements and unreviewed edits are hidden. Published notices remain vi
 
 Both new endpoints require a valid team session. Cross-cohort/unknown/Round 5 overview IDs return 404; an older attempt returns 409 with guidance to the dashboard. Withdrawn/disqualified and unqualified teams can read approved public information but cannot enter activity. A reviewed release is bound to its cohort; changing a draft round's cohort requires information to be reviewed again.
 
-Capabilities distinguish reading information/results from participating. `open_mission` additionally requires Round 1 ONLINE play; `submit_code` remains false until M8 supplies the native submission workflow. Backend mission/scoring endpoints continue to enforce their own permissions, state and eligibility regardless of hidden frontend buttons.
+Capabilities distinguish reading information/results from participating. `open_mission` requires Round 1 ONLINE play; `submit_code` requires native Round 3 LIVE play, eligibility and the current assigned browser session. Backend activity endpoints enforce their own permissions, state and eligibility regardless of hidden frontend buttons.
 
 ## Validation and setup
 

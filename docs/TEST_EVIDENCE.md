@@ -105,3 +105,16 @@ Supply and independently verify actual content, roster, capacity, route, owner a
 - Migration 0010 applied after a signed local database backup. Existing Round 1 remains READY and other rounds remain DRAFT.
 
 See [portal operations](PARTICIPANT_PORTAL.md). New portal endpoints were functionally validated; the earlier load measurement covers Round 1 state/submission traffic, not the new dashboard's deployed capacity. Actual information and later-round coding/scoring remain separately supplied/implemented.
+
+## M8 coding regression — 8 October 2026
+
+- Full backend suite with all real-browser integrations enabled: **148 passed, 1 skipped** (the opt-in local load test).
+- Full desktop/mobile Chromium suite: **80 passed**.
+- Frontend TypeScript/build, Ruff, Django system checks and migration drift checks passed.
+- Native release tests enforce five category totals, verification, task freeze and no moving released content.
+- Save/final tests cover expected revisions, UUID replay, assignment isolation, source confidentiality, permanent final locking, cutoff/no-submission outcomes and concurrent same-revision tabs (one acknowledgment, one conflict).
+- Lab judging tests cover partial marks, invalid case IDs/source hashes, independent review, correct-task precedence, exact ties, final qualification and revised provisional appeals after changed marks.
+- A third actual Django HTTP/PostgreSQL browser journey covers coding assignment, saved response, final lock, lab judgment, independent score review and provisional publication. The Round 1 integrations also passed; teardown now waits for in-flight routed requests to finish.
+- Migrations 0011–0012 and unsigned demo preparation were applied after a signed private backup. Source Round 1 remains READY; Round 3 remains DRAFT with five unverified tasks and no fabricated qualification.
+
+These tests use synthetic qualifying/grade evidence in isolated databases. Actual Round 2 import/publication remains M9; actual code evaluation happens in the lab, not the website. Native coding reconciliation manifests, deployed capacity and physical/network/toolchain checks remain later validation work. See [Round 3 operations](ROUND3_OPERATIONS.md).
