@@ -211,7 +211,7 @@ class TeamAdmin(ReadOnlyAdmin):
 
 @admin.register(models.FacultyProfile)
 class FacultyProfileAdmin(InformationAdmin):
-    list_display = ("display_name", "role", "is_demo", "visible", "published_at")
+    list_display = ("id", "display_name", "role", "is_demo", "visible", "published_at")
     list_filter = ("is_demo",)
 
     @admin.action(

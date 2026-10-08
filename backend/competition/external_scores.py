@@ -52,6 +52,11 @@ def decimal_value(value, maximum):
 
 def schema_errors(round, rules=None):
     frozen = rules is not None
+    budget = (
+        round.rules_snapshot.get("active_budget_ms", round.active_budget_ms)
+        if frozen
+        else round.active_budget_ms
+    )
     rules = rules if rules is not None else round.rules
     schema = rules.get("score_schema", {})
     expected = f"round{round.number}-v1"
@@ -92,7 +97,7 @@ def schema_errors(round, rules=None):
             round.advancement_count != 15
             or not isinstance(ids, list)
             or len(ids) != 30
-            or round.active_budget_ms != 2_700_000
+            or budget != 2_700_000
         ):
             errors.append("Real Round 2 requires 30 questions, 45 minutes and 15 qualifiers.")
     if round.number == 4:
@@ -107,6 +112,8 @@ def schema_errors(round, rules=None):
             errors += panel_errors(round, panels, frozen=frozen)
         if not round.is_demo and round.advancement_count != 5:
             errors.append("Round 4 awards five Green Cards.")
+        if not round.is_demo and budget != 3_600_000:
+            errors.append("Real Round 4 requires the one-hour interview budget.")
     return errors
 
 
@@ -288,15 +295,16 @@ def validate_rows(round, rows, enforce_eligibility=True):
                     }
                 )
                 continue
+            sums = {
+                field: sum(Decimal(item["marks"][field]) for item in marks) for field in CRITERIA
+            }
             averages = {
-                field: (sum(Decimal(item["marks"][field]) for item in marks) / Decimal(3)).quantize(
-                    Decimal("0.001"), rounding=ROUND_HALF_UP
-                )
+                field: (sums[field] / Decimal(3)).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
                 for field in CRITERIA
             }
-            total = sum(averages[field] * weight for field, weight in CRITERIA.items()).quantize(
-                Decimal("0.001"), rounding=ROUND_HALF_UP
-            )
+            total = (
+                sum(sums[field] * weight for field, weight in CRITERIA.items()) / Decimal(3)
+            ).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
             preview.append(
                 {
                     "team_code": code,
@@ -304,6 +312,7 @@ def validate_rows(round, rows, enforce_eligibility=True):
                     "max_score": "100",
                     "tie_metrics": {
                         "averages": {key: str(value) for key, value in averages.items()},
+                        "criterion_sums": {key: str(value) for key, value in sums.items()},
                         "faculty_marks": sorted(marks, key=lambda item: item["faculty_id"]),
                     },
                     "source_reference": f"Panel {assignments[code]['label']}: faculty source rows"[

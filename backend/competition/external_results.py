@@ -78,6 +78,7 @@ def build_preview(round, now):
                 f"{team.code} needs reviewed score evidence, including explicit zero marks."
             )
         averages = {}
+        criterion_sums = {}
         finish = None
         score = revision.score if revision else Decimal(0)
         if revision:
@@ -122,6 +123,7 @@ def build_preview(round, now):
                     finish = None
             else:
                 averages = revision.tie_metrics.get("averages", {})
+                criterion_sums = revision.tie_metrics.get("criterion_sums", {})
                 try:
                     if not isinstance(averages, dict) or set(averages) != {
                         "technical",
@@ -132,16 +134,21 @@ def build_preview(round, now):
                         raise ValueError()
                     for value in averages.values():
                         decimal_value(value, Decimal(10))
+                    if not isinstance(criterion_sums, dict) or set(criterion_sums) != set(averages):
+                        raise ValueError()
+                    for value in criterion_sums.values():
+                        decimal_value(value, Decimal(30))
                 except ValueError:
                     gaps.append("Faculty criterion averages are missing or malformed.")
                     averages = {}
+                    criterion_sums = {}
         metric = (
             (-score, finish if finish is not None else 10**15)
             if round.number == 2
             else (
                 -score,
-                -Decimal(averages.get("technical", "0")),
-                -Decimal(averages.get("problem_solving", "0")),
+                -Decimal(criterion_sums.get("technical", "0")),
+                -Decimal(criterion_sums.get("problem_solving", "0")),
             )
         )
         metrics[team.code] = metric

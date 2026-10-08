@@ -387,10 +387,12 @@ def test_round4_panel_averages_and_source_marks(external):
     )
     assert invalid["errors"]
     commit_import(interview.pk, verifier, action(batch_id=invalid["batch_id"], reject=True))
+    source[0]["technical"] = "9"
     intake(fixture, source)
     preview = build_preview(Round.objects.get(pk=interview.pk), database_now())
     assert not preview["evidence_gaps"]
-    assert preview["entries"][0]["score"] == 69
+    assert preview["entries"][0]["score"] == 70.333
+    assert preview["entries"][0]["criterion_averages"]["technical"] == "8.333"
     revision = ScoreRevision.objects.get(team=teams[0])
     assert len(revision.tie_metrics["faculty_marks"]) == 3
     assert "faculty_marks" not in str(preview["entries"])
@@ -490,3 +492,80 @@ def test_faculty_marks_require_finite_in_range_precision(value):
 
     with pytest.raises(ValueError):
         decimal_value(value, Decimal(10))
+
+
+@pytest.mark.django_db(transaction=True)
+def test_full_browser_external_scores(external, live_server, settings):
+    import os
+    import shutil
+    import subprocess
+    from pathlib import Path
+
+    if os.environ.get("TTH_BROWSER_INTEGRATION") != "1":
+        pytest.skip("Opt-in: Vite and Playwright Chromium required.")
+    settings.PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+    end(external)
+    for user in [external[2], external[3], *(team.user for team in external[1])]:
+        user.set_password("test-only")
+        user.save(update_fields=["password"])
+    node = shutil.which("node")
+    assert node
+    result = subprocess.run(
+        [node, "frontend/scripts/live-external-smoke.mjs"],
+        cwd=Path(__file__).resolve().parents[2],
+        env={
+            **os.environ,
+            "TTH_BACKEND_URL": live_server.url.replace("localhost", "127.0.0.1"),
+            "TTH_EXTERNAL_ROUND": str(external[0].pk),
+        },
+        capture_output=True,
+        text=True,
+        timeout=90,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert ScoreRevision.objects.count() == 3
+    assert ResultSnapshot.objects.filter(round=external[0], status="PROVISIONAL").count() == 1
+    assert Team.objects.filter(is_demo=False, code="REAL-BROWSER").get().user.has_usable_password()
+
+
+def test_external_demo_preparation_preserves_evidence_and_needs_review(external, settings):
+    from django.core.management import call_command
+
+    from competition.models import FacultyProfile
+
+    settings.DEBUG = True
+    round, _, maker, _ = external
+    round.rules = {**round.rules, "score_schema": {"old": True}}
+    round.save()
+    interview = Round.objects.create(
+        number=4,
+        title="Draft interview",
+        is_demo=True,
+        delivery_mode="EXTERNAL",
+        rules=demo_rules(4),
+    )
+    before = ResultSnapshot.objects.count()
+    call_command("seed_external_demo", actor=maker.username)
+    round.refresh_from_db()
+    interview.refresh_from_db()
+    assert round.rules["score_schema"]["version"] == "round2-v1"
+    assert interview.rules["faculty_panels"] == []
+    assert round.state == "DRAFT" and not round.approved_by_id
+    assert ResultSnapshot.objects.count() == before
+    assert not FacultyProfile.objects.exists()
+    first = round.rules
+    call_command("seed_external_demo", actor=maker.username)
+    round.refresh_from_db()
+    assert round.rules == first
+
+
+def test_approved_external_budget_survives_a_reviewed_operational_extension(external):
+    from competition.external_scores import schema_errors
+
+    round = external[0]
+    round.is_demo = False
+    round.advancement_count = 15
+    round.active_budget_ms = 2_700_000
+    round.rules_snapshot = {"rules": round.rules, "active_budget_ms": round.active_budget_ms}
+    round.active_budget_ms += 60_000
+    assert not schema_errors(round, round.rules_snapshot["rules"])

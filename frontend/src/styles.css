@@ -104,4 +104,4 @@ footer { display: flex; justify-content: space-between; gap: 20px; border-top: 1
 .staff-navigation { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; margin-bottom: 1.5rem; }
 .source-preview { overflow: auto; max-height: 28rem; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .875rem; }
 .faculty-card img, .faculty-placeholder { width: 7rem; height: 7rem; border-radius: 50%; object-fit: cover; }
-.faculty-placeholder { display: inline-flex; align-items: center; justify-content: center; background: var(--surface, #f4f1ea); font-size: 2rem; }
+.faculty-placeholder { display: inline-flex; align-items: center; justify-content: center; background: #f4f1ea; color: #253620; font-size: 2rem; }
