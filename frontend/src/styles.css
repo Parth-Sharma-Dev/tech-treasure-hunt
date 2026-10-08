@@ -100,3 +100,8 @@ footer { display: flex; justify-content: space-between; gap: 20px; border-top: 1
 .portal-schedule dt { color: #abb69e; }
 .portal-schedule dd { margin: 4px 0 14px; }
 .portal-notice + .portal-notice { border-top: 1px solid #34402d; margin-top: 18px; padding-top: 12px; }
+/* Staff evidence and approved interview faculty */
+.staff-navigation { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; margin-bottom: 1.5rem; }
+.source-preview { overflow: auto; max-height: 28rem; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .875rem; }
+.faculty-card img, .faculty-placeholder { width: 7rem; height: 7rem; border-radius: 50%; object-fit: cover; }
+.faculty-placeholder { display: inline-flex; align-items: center; justify-content: center; background: var(--surface, #f4f1ea); font-size: 2rem; }

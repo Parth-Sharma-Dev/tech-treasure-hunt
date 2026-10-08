@@ -6,6 +6,8 @@ import { Mission } from './Mission'
 import { PublishedResults, StaffResults } from './Results'
 import { CodingWorkspace } from './CodingWorkspace'
 import { StaffCoding } from './StaffCoding'
+import { StaffScores } from './StaffScores'
+import { StaffRoster } from './StaffRoster'
 
 const rounds = [
   ['01', 'Treasure hunt', 'Follow the clues. Find your next move.'],
@@ -42,7 +44,7 @@ export function App() {
       </header>
 
       <main id="main">
-        {location.pathname === '/staff/coding' ? <StaffCoding /> : /^\/rounds\/[1-9][0-9]*\/coding$/.test(location.pathname) ? <CodingWorkspace /> : location.pathname === '/staff/results' ? <StaffResults /> : /^\/rounds\/[1-9][0-9]*\/results$/.test(location.pathname) ? <PublishedResults /> : /^\/rounds\/[1-9][0-9]*$/.test(location.pathname) ? <Lobby roundId={Number(location.pathname.split('/')[2])} /> : location.pathname === '/staff/rounds' ? <StaffRounds /> : location.pathname === '/login' ? <Login /> : location.pathname.startsWith('/missions/') ? <Mission /> : location.pathname === '/lobby' ? <Lobby /> : <>
+        {location.pathname === '/staff/scores' ? <StaffScores /> : location.pathname === '/staff/roster' ? <StaffRoster /> : location.pathname === '/staff/coding' ? <StaffCoding /> : /^\/rounds\/[1-9][0-9]*\/coding$/.test(location.pathname) ? <CodingWorkspace /> : location.pathname === '/staff/results' ? <StaffResults /> : /^\/rounds\/[1-9][0-9]*\/results$/.test(location.pathname) ? <PublishedResults /> : /^\/rounds\/[1-9][0-9]*$/.test(location.pathname) ? <Lobby roundId={Number(location.pathname.split('/')[2])} /> : location.pathname === '/staff/rounds' ? <StaffRounds /> : location.pathname === '/login' ? <Login /> : location.pathname.startsWith('/missions/') ? <Mission /> : location.pathname === '/lobby' ? <Lobby /> : <>
         <section className="hero" aria-labelledby="hero-heading">
           <div className="hero-copy">
             <p className="eyebrow">12–13 OCTOBER 2026 · SKIT JAIPUR</p>

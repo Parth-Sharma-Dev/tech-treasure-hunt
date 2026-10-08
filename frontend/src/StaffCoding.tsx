@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { ApiError, getJson, postJson } from './api'
 import { dateLabel } from './Results'
+import { StaffNavigation } from './StaffAction'
 
 type Task = { id:number; public_id:string; category:string; version:string; points:string; prompt:string; private_rubric:{ test_cases?:{ id:string; input:unknown; expected:unknown }[]; [key:string]:unknown } }
 type Submission = { id:number; team_code:string; kind:string; submitted_at:string; supervisor_id:number | null; score:string | null }
@@ -15,7 +16,7 @@ export function StaffCoding() {
   const rounds = useQuery({ queryKey:['staff-coding-rounds'],queryFn:({ signal })=>getJson<{ rounds:{ id:number; title:string; attempt_no:number; state:string }[] }>('/api/staff/coding/rounds',signal),retry:false })
   const requested = Number(selected)
   const id = rounds.data?.rounds.some(round=>round.id===requested) ? requested : rounds.data?.rounds[0]?.id ?? 0
-  return <section className="participant-page"><p className="eyebrow">SUPERVISED LAB</p><h1>Coding review desk</h1><p><a href="/staff/rounds">Round controls</a> · <a href="/staff/results">Results publication</a> · <a href="/admin/competition/codingtask/">Task preparation</a></p>{rounds.isPending ? <p>Loading coding rounds…</p> : rounds.isError ? <><p role="alert">{rounds.error.message}</p><a href="/admin/login/?next=/staff/coding">Staff sign in</a></> : !id ? <p>Prepare a native Round 3 coding attempt and its verified task set in Django admin.</p> : <><label>Coding attempt<select value={id} onChange={event=>setSelected(event.target.value)}>{rounds.data.rounds.map(round=><option value={round.id} key={round.id}>{round.title} · attempt {round.attempt_no} · {round.state}</option>)}</select></label><DeskView key={id} roundId={id} /></>}</section>
+  return <section className="participant-page"><p className="eyebrow">SUPERVISED LAB</p><h1>Coding review desk</h1><StaffNavigation /><p><a href="/admin/competition/codingtask/">Task preparation</a></p>{rounds.isPending ? <p>Loading coding rounds…</p> : rounds.isError ? <><p role="alert">{rounds.error.message}</p><a href="/admin/login/?next=/staff/coding">Staff sign in</a></> : !id ? <p>Prepare a native Round 3 coding attempt and its verified task set in Django admin.</p> : <><label>Coding attempt<select value={id} onChange={event=>setSelected(event.target.value)}>{rounds.data.rounds.map(round=><option value={round.id} key={round.id}>{round.title} · attempt {round.attempt_no} · {round.state}</option>)}</select></label><DeskView key={id} roundId={id} /></>}</section>
 }
 
 function DeskView({ roundId }: { roundId:number }) {
