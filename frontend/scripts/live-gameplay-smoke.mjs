@@ -6,9 +6,11 @@ const token = process.env.TTH_MISSION_TOKEN;
 if (!backend || !token) throw new Error('Run through the isolated pytest browser integration test.');
 const origin = 'http://127.0.0.1:5173';
 const browser = await chromium.launch();
+const contexts = [];
 try {
   async function context() {
     const result = await browser.newContext();
+    contexts.push(result);
     await result.route(`${origin}/api/**`, async route => {
       const url = new URL(route.request().url());
       const response = await route.fetch({ url: `${backend}${url.pathname}${url.search}`, maxRedirects: 0 });
@@ -61,4 +63,7 @@ try {
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await expect(page).toHaveURL(`${origin}/`);
   console.log('Live organizer start, team login, QR open, solve, score, pause, receipt and logout passed.');
-} finally { await browser.close(); }
+} finally {
+  for (const context of contexts) await context.unrouteAll({ behavior: 'wait' });
+  await browser.close();
+}

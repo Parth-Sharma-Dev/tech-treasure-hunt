@@ -5,9 +5,11 @@ const roundId = process.env.TTH_RESULTS_ROUND;
 if (!backend || !roundId) throw new Error('Run through the isolated pytest results integration test.');
 const origin = 'http://127.0.0.1:5173';
 const browser = await chromium.launch();
+const contexts = [];
 try {
   async function page() {
     const context = await browser.newContext();
+    contexts.push(context);
     for (const prefix of ['api', 'admin']) await context.route(`${origin}/${prefix}/**`, async route => {
       const url = new URL(route.request().url());
       const response = await route.fetch({ url: `${backend}${url.pathname}${url.search}`, maxRedirects: 0 });
@@ -69,4 +71,7 @@ try {
   identity = await team.request.get(`${backend}/api/me`);
   expect((await identity.json()).rounds.find(round => round.number === 2).eligible).toBe(true);
   console.log('Live two-person provisional/final publication, history and qualification passed.');
-} finally { await browser.close(); }
+} finally {
+  for (const context of contexts) await context.unrouteAll({ behavior: 'wait' });
+  await browser.close();
+}
