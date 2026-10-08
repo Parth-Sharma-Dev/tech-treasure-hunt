@@ -154,3 +154,28 @@ def test_portal_endpoints_require_team_session_and_redact_draft_instructions(por
     )
     assert client.get(f"/api/rounds/{rounds[4].pk}/overview").status_code == 404
     assert len(client.get("/api/rounds").json()["rounds"]) == 5
+
+
+def test_expired_round_does_not_offer_new_activity(portal):
+    team, rounds, _, _ = portal
+    round = rounds[0]
+    round.state = "LIVE"
+    round.live_started_at = timezone.now() - timedelta(minutes=2)
+    round.deadline_at = timezone.now() - timedelta(seconds=1)
+    round.save()
+    result = participant_overview(team, round.pk)
+    assert result["state"] == "ENDED"
+    assert (
+        not result["capabilities"]["open_mission"] and not result["capabilities"]["enter_activity"]
+    )
+
+
+def test_published_information_is_bound_to_its_reviewed_cohort(portal):
+    team, rounds, maker, reviewer = portal
+    info = RoundInformation.objects.create(
+        round=rounds[0], prepared_by=maker, summary="Demo-only overview"
+    )
+    publish_information(RoundInformation, info.pk, reviewer)
+    Round.objects.filter(pk=rounds[0].pk).update(is_demo=False)
+    team.is_demo = False
+    assert participant_overview(team, rounds[0].pk)["information"].get("summary") is None

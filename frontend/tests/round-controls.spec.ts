@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { portalRound } from './portal-fixtures'
 
 const clock = { round_id: 1, state: 'LIVE', play_mode: 'ONLINE', control_version: 2, server_time: '2026-10-06T12:00:00Z', remaining_ms: 120_000, active_budget_ms: 120_000, active_elapsed_ms: 0, deadline_at: '2026-10-06T12:02:00Z' }
 const round = { ...clock, title: 'Synthetic hunt', number: 1, attempt_no: 1, is_demo: true }
@@ -10,6 +11,7 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('countdown ignores wall-clock changes and paused time stays fixed', async ({ page }) => {
+  await page.route('**/api/rounds', route => route.fulfill({ json: { rounds: [portalRound({ id: 1, number: 1, title: 'Synthetic hunt', eligible: false, state: 'LIVE', clock })], announcements: [] } }))
   await page.clock.install({ time: new Date('2026-10-06T12:00:00Z') })
   await page.route('**/api/me', route => route.fulfill({ json: {
     team: { code: 'DEMO-01', name: 'Clock team', member_count: 3, status: 'DISQUALIFIED', is_demo: true },

@@ -48,6 +48,7 @@ def publish_information(model, pk, actor):
     if isinstance(item, RoundInformation):
         snapshot = {
             "round_id": item.round_id,
+            "is_demo": item.round.is_demo,
             "summary": item.summary,
             "instructions": item.instructions,
             "venue": item.venue,
@@ -130,6 +131,8 @@ def overview(team, round, now=None):
     eligible = round_eligible(team, round) and round.number != 5
     info = RoundInformation.objects.filter(round=round).first()
     published = info.published_snapshot if info and info.published_snapshot.get("visible") else {}
+    if published.get("is_demo") != team.is_demo:
+        published = {}
     if round.number == 5:
         published = {}
     state = clock["state"]

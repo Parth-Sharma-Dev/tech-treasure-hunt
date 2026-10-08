@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { portalRound } from './portal-fixtures'
 
 const identity = { team: { code: 'DEMO-01', name: 'Demo explorers', member_count: 4, status: 'ACTIVE', is_demo: true }, session: { active_count: 1, max_active: 4 }, rounds: [{ id: 1, number: 1, title: 'Treasure hunt', state: 'DRAFT', eligible: true, rules: null, clock: { state: 'DRAFT' } }] }
 
@@ -6,6 +7,8 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/health', route => route.fulfill({ json: { status: 'ok' } }))
   await page.route('**/api/auth/csrf', route => route.fulfill({ json: { csrf_token: 'test-token' } }))
   await page.route('**/api/me', route => route.fulfill({ json: identity }))
+  await page.route('**/api/rounds', route => route.fulfill({ json: { rounds: identity.rounds.map(portalRound), announcements: [] } }))
+  await page.route('**/api/rounds/1/overview', route => route.fulfill({ json: portalRound(identity.rounds[0]) }))
   await page.route('**/api/practice', route => route.fulfill({ json: { hint: 'Enter 0427.', symbol: '✦' } }))
 })
 
@@ -67,6 +70,7 @@ test('sign out clears only application session data', async ({ page }) => {
 
 test('Round 1 fallback belongs to its live page and disappears during pause', async ({ page }) => {
   let state = 'LIVE'
+  await page.route('**/api/rounds/1/overview', route => route.fulfill({ json: portalRound({ ...identity.rounds[0], state, clock: { state, play_mode: 'ONLINE', remaining_ms: 60000, server_time: new Date().toISOString(), deadline_at: null, active_elapsed_ms: 0 } }) }))
   await page.route('**/api/me', route => route.fulfill({ json: { ...identity, rounds: [{ ...identity.rounds[0], state, clock: { state, play_mode: 'ONLINE', remaining_ms: 60000, server_time: new Date().toISOString(), deadline_at: null, active_elapsed_ms: 0 } }] } }))
   await page.route('**/api/rounds/1/state', route => route.fulfill({ json: { score: 0, completions: [] } }))
   await page.goto('/lobby')
