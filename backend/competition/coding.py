@@ -224,6 +224,18 @@ def freeze_submission(round, team, when, kind):
         }
         for item in sorted(revisions.values(), key=lambda item: item.task_id)
     ]
+    station = CodingWorkstation.objects.filter(round=round, team=team).first()
+    station_evidence = (
+        {
+            "id": station.pk,
+            "version": station.version,
+            "label": station.label,
+            "session_id": station.session_id,
+            "supervisor_id": station.supervisor_id,
+        }
+        if station
+        else {}
+    )
     return CodingSubmission.objects.create(
         round=round,
         team=team,
@@ -232,6 +244,7 @@ def freeze_submission(round, team, when, kind):
         active_elapsed_ms=active_elapsed(round, when),
         manifest=manifest,
         manifest_digest=digest(manifest),
+        workstation_evidence=station_evidence,
     )
 
 

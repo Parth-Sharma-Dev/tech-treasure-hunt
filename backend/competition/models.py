@@ -274,6 +274,7 @@ class CodingSubmission(ImmutableEvidence):
     active_elapsed_ms = models.PositiveBigIntegerField()
     manifest = models.JSONField(default=list)
     manifest_digest = models.CharField(max_length=64)
+    workstation_evidence = models.JSONField(default=dict)
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["round", "team"], name="coding_final_once")]
@@ -294,6 +295,14 @@ class CodingJudgment(ImmutableEvidence):
     score = models.DecimalField(max_digits=7, decimal_places=3)
     fully_correct_tasks = models.PositiveSmallIntegerField()
     task_marks = models.JSONField(default=list)
+    rejected = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(score__gte=0, score__lte=100), name="coding_score_bounds"
+            )
+        ]
 
 
 class PublishedInformation(models.Model):

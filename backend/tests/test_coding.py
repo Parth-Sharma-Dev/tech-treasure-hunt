@@ -286,3 +286,241 @@ def test_a_second_browser_cannot_read_or_save_assigned_work(coding):
     view = second.get(f"/api/rounds/{round.pk}/coding/submission").json()
     assert view["tasks"] == [] and not view["assigned"]
     assert save(coding, second)[0].status_code == 403
+
+
+def ended_bundle(fixture):
+    round, tasks, teams, maker, _ = fixture
+    start(fixture)
+    client = assigned_client(fixture)
+    for index in range(len(tasks)):
+        assert save(fixture, client, task=index)[0].status_code == 200
+    assert (
+        post(
+            client,
+            f"/api/rounds/{round.pk}/coding/finalize",
+            {
+                "action_id": str(uuid.uuid4()),
+                "expected_revisions": {str(task.pk): 1 for task in tasks},
+            },
+        ).status_code
+        == 200
+    )
+    round.refresh_from_db()
+    control_round(
+        round.pk,
+        maker,
+        {
+            "action": "end",
+            "action_id": str(uuid.uuid4()),
+            "reason": "Review coding results",
+            "expected_version": round.control_version,
+        },
+    )
+    round.refresh_from_db()
+    return CodingSubmission.objects.get(team=teams[0])
+
+
+def grade_data(fixture, submission, passed=None):
+    hashes = {item["task_id"]: item["source_hash"] for item in submission.manifest}
+    return {
+        "action_id": str(uuid.uuid4()),
+        "submission_id": submission.pk,
+        "reason": "Lab evidence checked",
+        "evidence_refs": ["lab-output-sheet"],
+        "time_evidence": ["supervisor-clock-sheet"],
+        "supervisor_time": submission.submitted_at.isoformat(),
+        "supervisor_id": fixture[3].pk,
+        "grades": [
+            {
+                "task_id": task.pk,
+                "task_version": task.version,
+                "source_hash": hashes.get(task.pk, ""),
+                **(
+                    {"passed_tests": passed if passed is not None else ["a"]}
+                    if task.category == "SHORT"
+                    else {"correct": True}
+                ),
+            }
+            for task in fixture[1]
+        ],
+    }
+
+
+def test_reviewed_lab_partial_marks_ranking_and_final_qualification(coding):
+    from competition.api import ApiProblem
+    from competition.coding_results import approve_judgment, propose_judgment
+    from competition.results import approve_result, build_preview, propose_result
+
+    round, _, teams, maker, reviewer = coding
+    submission = ended_bundle(coding)
+    proposed = propose_judgment(round.pk, maker, grade_data(coding, submission))
+    assert proposed["score"] == "85.000" and proposed["fully_correct_tasks"] == 4
+    with pytest.raises(ApiProblem, match="different verifier"):
+        approve_judgment(
+            round.pk,
+            maker,
+            {
+                "action_id": str(uuid.uuid4()),
+                "proposal_id": proposed["judgment_proposal_id"],
+                "reason": "Attempt self-review",
+                "evidence_confirmed": True,
+            },
+        )
+    review = {
+        "action_id": str(uuid.uuid4()),
+        "proposal_id": proposed["judgment_proposal_id"],
+        "reason": "Independent lab review",
+        "evidence_confirmed": True,
+    }
+    accepted = approve_judgment(round.pk, reviewer, review)
+    assert approve_judgment(round.pk, reviewer, review) == accepted
+    round.refresh_from_db()
+    preview = build_preview(round, timezone.now())
+    assert preview["evidence_gaps"] == [] and preview["entries"][0]["score"] == 85
+    assert preview["entries"][0]["fully_correct_tasks"] == 4
+    provisional = propose_result(
+        round.pk,
+        maker,
+        {
+            "action_id": str(uuid.uuid4()),
+            "reason": "Provisional coding results",
+            "status": "PROVISIONAL",
+            "expected_version": round.control_version,
+            "evidence_digest": preview["evidence_digest"],
+        },
+    )
+    published = approve_result(
+        round.pk,
+        reviewer,
+        {
+            "action_id": str(uuid.uuid4()),
+            "reason": "Verified provisional coding",
+            "proposal_id": provisional["proposal_id"],
+        },
+    )
+    snapshot = ResultSnapshot.objects.get(pk=published["snapshot_id"])
+    when = snapshot.appeal_deadline + timedelta(seconds=1)
+    round.refresh_from_db()
+    preview = build_preview(round, when)
+    with patch("competition.results.database_now", return_value=when):
+        final = propose_result(
+            round.pk,
+            maker,
+            {
+                "action_id": str(uuid.uuid4()),
+                "reason": "Final coding results",
+                "status": "FINAL",
+                "expected_version": round.control_version,
+                "evidence_digest": preview["evidence_digest"],
+                "evidence_confirmed": True,
+            },
+        )
+        outcome = approve_result(
+            round.pk,
+            reviewer,
+            {
+                "action_id": str(uuid.uuid4()),
+                "reason": "Verified final coding",
+                "proposal_id": final["proposal_id"],
+                "evidence_confirmed": True,
+            },
+        )
+    assert outcome["qualifier_codes"] == [teams[0].code]
+
+
+def test_judging_cannot_use_unknown_tests_or_changed_source(coding):
+    from competition.api import ApiProblem
+    from competition.coding_results import propose_judgment
+
+    submission = ended_bundle(coding)
+    with pytest.raises(ApiProblem, match="fixed hidden tests"):
+        propose_judgment(
+            coding[0].pk, coding[3], grade_data(coding, submission, passed=["unknown"])
+        )
+    data = grade_data(coding, submission)
+    data["grades"][0]["source_hash"] = "wrong-source"
+    with pytest.raises(ApiProblem, match="frozen task version"):
+        propose_judgment(coding[0].pk, coding[3], data)
+
+
+def test_correct_task_count_precedes_final_time_in_coding_ranking(coding):
+    from competition.coding_results import approve_judgment, propose_judgment
+    from competition.results import build_preview
+
+    round, tasks, teams, maker, reviewer = coding
+    start(coding)
+    for index in range(2):
+        client = assigned_client(coding, index)
+        for task_index in range(len(tasks)):
+            assert save(coding, client, task=task_index)[0].status_code == 200
+        assert (
+            post(
+                client,
+                f"/api/rounds/{round.pk}/coding/finalize",
+                {
+                    "action_id": str(uuid.uuid4()),
+                    "expected_revisions": {str(task.pk): 1 for task in tasks},
+                },
+            ).status_code
+            == 200
+        )
+    round.refresh_from_db()
+    control_round(
+        round.pk,
+        maker,
+        {
+            "action": "end",
+            "action_id": str(uuid.uuid4()),
+            "reason": "Rank coding test",
+            "expected_version": round.control_version,
+        },
+    )
+    for index in range(2):
+        submission = CodingSubmission.objects.get(team=teams[index])
+        data = grade_data(coding, submission, passed=["a"] if index == 0 else [])
+        for task, grade in zip(tasks, data["grades"], strict=True):
+            if task.category == "OUTPUT":
+                grade["correct"] = index == 1
+            if task.category == "LOGIC":
+                grade["correct"] = False
+        proposed = propose_judgment(round.pk, maker, data)
+        approve_judgment(
+            round.pk,
+            reviewer,
+            {
+                "action_id": str(uuid.uuid4()),
+                "proposal_id": proposed["judgment_proposal_id"],
+                "reason": "Reviewed ranking evidence",
+                "evidence_confirmed": True,
+            },
+        )
+    round.refresh_from_db()
+    preview = build_preview(round, timezone.now())
+    assert preview["entries"][0]["team_code"] == teams[1].code
+    assert [entry["score"] for entry in preview["entries"]] == [60, 60]
+    assert [entry["fully_correct_tasks"] for entry in preview["entries"]] == [3, 2]
+
+
+def test_exact_final_metric_ties_stay_blocked_without_an_approved_reserve_policy(coding):
+    from competition.results import build_preview
+
+    round, _, _, maker, _ = coding
+    round.rules["qualification_tie_policy"] = "block_exact_ties"
+    round.save()
+    start(coding)
+    control_round(
+        round.pk,
+        maker,
+        {
+            "action": "end",
+            "action_id": str(uuid.uuid4()),
+            "reason": "No work tie test",
+            "expected_version": round.control_version,
+        },
+    )
+    round.refresh_from_db()
+    preview = build_preview(round, timezone.now())
+    assert len(preview["cutoff_tie"]) == 2
+    assert any(
+        "exact score/task/time tie" in blocker for blocker in preview["finalization_blockers"]
+    )

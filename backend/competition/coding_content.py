@@ -100,13 +100,17 @@ def readiness_errors(round):
     expected = {
         "submission_policy": "locked_final_with_cutoff_autofinalize",
         "ranking_policy": "score_correct_tasks_final_time",
-        "qualification_tie_policy": "supervised_reserve_task",
         "one_workstation_per_team": True,
         "score_precision": 3,
     }
     for key, value in expected.items():
         if type(round.rules.get(key)) is not type(value) or round.rules.get(key) != value:
             errors.append(f"Configure the supported Round 3 policy for {key}.")
+    if round.rules.get("qualification_tie_policy") not in [
+        "block_exact_ties",
+        "supervised_reserve_task",
+    ]:
+        errors.append("Declare an exact-tie block or an approved supervised reserve-task policy.")
     versions = round.rules.get("language_versions")
     if (
         not isinstance(versions, dict)

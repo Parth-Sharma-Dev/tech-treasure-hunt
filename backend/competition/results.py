@@ -70,6 +70,10 @@ def locked_round(round_id):
 
 
 def build_preview(round, now):
+    if round.number == 3 and round.delivery_mode == "CODING":
+        from .coding_results import build_preview as coding_preview
+
+        return coding_preview(round, now)
     teams = list(Team.objects.filter(is_demo=round.is_demo).order_by("code"))
     missions = list(Mission.objects.filter(round=round, is_practice=False).order_by("pk"))
     completions = list(
@@ -478,7 +482,7 @@ def final_qualifiers(round, preview, data):
     if tied:
         if (
             round.rules_snapshot["rules"].get("qualification_tie_policy")
-            != "supervised_reserve_clue"
+            not in ["supervised_reserve_clue", "supervised_reserve_task"]
             or not isinstance(order, list)
             or any(not isinstance(code, str) for code in order)
             or len(order) != len(tied)
@@ -634,6 +638,7 @@ def approve_result(round_id, actor, data):
         if proposal.target_status == "PROVISIONAL"
         else previous.appeal_deadline,
         metadata={
+            "ranking_kind": preview.get("ranking_kind", "TREASURE_HUNT"),
             "max_score": preview["max_score"],
             "cutoff_tie": preview["cutoff_tie"],
             "open_material_incidents": preview["open_material_incidents"],

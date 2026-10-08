@@ -9,13 +9,17 @@ from .models import Incident, Mission, ResultSnapshot, Round, Team
 def round_eligible(team, round):
     if team.status != Team.Status.ACTIVE or team.is_demo != round.is_demo:
         return False
+    current = (
+        Round.objects.filter(number=round.number, is_demo=team.is_demo)
+        .order_by("-attempt_no")
+        .first()
+    )
+    if current is None or current.pk != round.pk:
+        return False
     if Incident.objects.filter(round=round, category="RECOVERY", closed_at__isnull=True).exists():
         return False
     if round.number == 1:
-        latest = (
-            Round.objects.filter(number=1, is_demo=team.is_demo).order_by("-attempt_no").first()
-        )
-        return latest is not None and latest.pk == round.pk
+        return True
     previous = (
         Round.objects.filter(number=round.number - 1, is_demo=team.is_demo)
         .order_by("-attempt_no")

@@ -18,6 +18,13 @@ urlpatterns = [
     path("api/rounds/<int:round_id>/coding/tasks/<int:task_id>/response", coding_views.response),
     path("api/rounds/<int:round_id>/coding/finalize", coding_views.final),
     path("api/staff/rounds/<int:round_id>/coding/workstation", coding_views.station),
+    path("api/staff/coding/rounds", coding_views.staff_rounds),
+    path("api/staff/rounds/<int:round_id>/coding", coding_views.staff_desk),
+    path(
+        "api/staff/rounds/<int:round_id>/coding/submissions/<int:submission_id>",
+        coding_views.bundle,
+    ),
+    path("api/staff/rounds/<int:round_id>/coding/judgment", coding_views.judgment),
     path("api/practice", views.practice),
     path("api/practice/submit", views.submit_practice),
     path("api/missions/open", gameplay_views.open),
