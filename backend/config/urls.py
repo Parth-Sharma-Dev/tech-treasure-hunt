@@ -1,7 +1,14 @@
 from django.contrib import admin
 from django.urls import path
 
-from competition import coding_views, external_views, gameplay_views, results_views, views
+from competition import (
+    coding_views,
+    external_views,
+    gameplay_views,
+    results_views,
+    roster_views,
+    views,
+)
 
 from .views import csrf, health
 
@@ -35,6 +42,9 @@ urlpatterns = [
     path("api/me/receipts", gameplay_views.receipts),
     path("api/rounds/<int:round_id>/results", results_views.published_results),
     path("api/staff/results", results_views.staff_result_rounds),
+    path("api/staff/roster", roster_views.desk),
+    path("api/staff/roster/change", roster_views.change),
+    path("api/staff/teams/<int:team_id>/credentials", roster_views.issue_credentials),
     path("api/staff/rounds/<int:round_id>/imports", external_views.desk),
     path("api/staff/rounds/<int:round_id>/imports/validate", external_views.validate),
     path("api/staff/rounds/<int:round_id>/questions/void", external_views.void),
