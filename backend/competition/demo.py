@@ -39,4 +39,12 @@ def demo_rules(number):
             "max_score": "positive_number",
             "official_finish_active_ms": "nonnegative_integer",
         }
+    if number == 2:
+        rules["ranking_policy"] = "score_then_finish_time"
+        rules["qualification_tie_policy"] = "supervised_reserve_question"
+        rules["score_schema"] = {
+            "version": "round2-v1",
+            "max_score": "30",
+            "question_ids": [f"Q{i:02}" for i in range(1, 31)],
+        }
     return rules

@@ -319,6 +319,16 @@ class PublishedInformation(models.Model):
     class Meta:
         abstract = True
 
+    def save(self, *args, **kwargs):
+        publication_fields = ["published_by_id", "published_at", "published_snapshot"]
+        with transaction.atomic():
+            if self.pk and kwargs.get("update_fields") is None:
+                previous = type(self).objects.select_for_update().filter(pk=self.pk).first()
+                if previous:
+                    for field in publication_fields:
+                        setattr(self, field, getattr(previous, field))
+            return super().save(*args, **kwargs)
+
 
 class RoundInformation(PublishedInformation):
     round = models.OneToOneField(Round, on_delete=models.PROTECT)
@@ -380,6 +390,29 @@ class EventAnnouncement(PublishedInformation):
 
     def __str__(self):
         return self.title
+
+
+class FacultyProfile(PublishedInformation):
+    display_name = models.CharField(max_length=100)
+    role = models.CharField(max_length=100)
+    location = models.CharField(max_length=200, blank=True)
+    contact_channel = models.CharField(max_length=200, blank=True)
+    photo_url = models.URLField(
+        max_length=500,
+        blank=True,
+        help_text="Approved HTTPS portrait URL; leave blank for an initials placeholder.",
+    )
+    consent_reference = models.CharField(max_length=200)
+    is_demo = models.BooleanField(default=False)
+
+    def clean(self):
+        if self.photo_url and not self.photo_url.startswith("https://"):
+            raise ValidationError("Use an approved HTTPS portrait URL.")
+        if self.published_snapshot and self.published_snapshot.get("is_demo") != self.is_demo:
+            raise ValidationError("Published faculty cannot move between cohorts.")
+
+    def __str__(self):
+        return self.display_name
 
 
 class Team(models.Model):
@@ -670,6 +703,9 @@ class ImportBatch(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
     dry_run_errors = models.JSONField(default=list)
     preview = models.JSONField(default=list)
+    source_rows = models.JSONField(default=list)
+    evidence_digest = models.CharField(max_length=64, blank=True)
+    reason = models.TextField(blank=True)
     maker = staff_reference()
     verifier = staff_reference(null=True, blank=True)
     committed_at = models.DateTimeField(null=True, blank=True)
@@ -686,6 +722,27 @@ class ImportBatch(models.Model):
                 name="import_commit_verified",
             ),
         ]
+
+
+class ExternalVoidProposal(ImmutableEvidence):
+    round = models.ForeignKey(Round, on_delete=models.PROTECT)
+    maker = staff_reference()
+    question_id = models.CharField(max_length=40)
+    source_reference = models.CharField(max_length=200)
+    reason = models.TextField()
+    evidence_digest = models.CharField(max_length=64)
+
+
+class ExternalQuestionVoid(ImmutableEvidence):
+    proposal = models.OneToOneField(ExternalVoidProposal, on_delete=models.PROTECT)
+    verifier = staff_reference()
+
+
+class RosterProposal(ImmutableEvidence):
+    maker = staff_reference()
+    payload = models.JSONField()
+    evidence_digest = models.CharField(max_length=64)
+    reason = models.TextField()
 
 
 class ScoreRevision(ImmutableEvidence):

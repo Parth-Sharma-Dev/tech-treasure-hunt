@@ -125,19 +125,31 @@ def control_round(round_id, actor, data):
     }
     if round.play_mode != Round.PlayMode.ONLINE:
         raise ApiProblem("paper_mode", "Online controls cannot reopen paper play.", 409)
-    if round.number == 3 and round.delivery_mode == "CODING" and action in ["open_lobby", "start"]:
+    if round.number in [2, 3, 4] and action in ["open_lobby", "start"]:
         from .models import Team
         from .participant import round_eligible
 
-        if not any(
-            round_eligible(team, round)
+        eligible_teams = [
+            team
             for team in Team.objects.filter(is_demo=round.is_demo, status="ACTIVE")
-        ):
+            if round_eligible(team, round)
+        ]
+        if not eligible_teams:
             raise ApiProblem(
                 "qualification_pending",
-                "Publish final Round 2 qualifiers before opening coding play.",
+                f"Publish final Round {round.number - 1} qualifiers before opening play.",
                 409,
             )
+        if round.number == 4:
+            assigned = {
+                slot["team_code"]
+                for panel in round.rules_snapshot.get("rules", {}).get("faculty_panels", [])
+                for slot in panel["slots"]
+            }
+            if not {team.code for team in eligible_teams} <= assigned:
+                raise ApiProblem(
+                    "assignment_pending", "Every eligible team needs a frozen interview slot.", 409
+                )
     if expired:
         from .coding import finalize_at_end
 

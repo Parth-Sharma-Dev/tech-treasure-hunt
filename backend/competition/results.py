@@ -70,6 +70,10 @@ def locked_round(round_id):
 
 
 def build_preview(round, now):
+    if round.number in [2, 4] and round.delivery_mode == Round.Delivery.EXTERNAL:
+        from .external_results import build_preview as external_preview
+
+        return external_preview(round, now)
     if round.number == 3 and round.delivery_mode == "CODING":
         from .coding_results import build_preview as coding_preview
 
@@ -482,7 +486,11 @@ def final_qualifiers(round, preview, data):
     if tied:
         if (
             round.rules_snapshot["rules"].get("qualification_tie_policy")
-            not in ["supervised_reserve_clue", "supervised_reserve_task"]
+            not in [
+                "supervised_reserve_clue",
+                "supervised_reserve_task",
+                "supervised_reserve_question",
+            ]
             or not isinstance(order, list)
             or any(not isinstance(code, str) for code in order)
             or len(order) != len(tied)

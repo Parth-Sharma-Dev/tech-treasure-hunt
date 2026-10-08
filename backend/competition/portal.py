@@ -127,6 +127,8 @@ def eligibility_reason(team, round, eligible):
 
 
 def overview(team, round, now=None, session=None):
+    from .faculty import participant_faculty
+
     now = now or database_now()
     clock = clock_payload(round, now)
     eligible = round_eligible(team, round) and round.number != 5
@@ -152,6 +154,7 @@ def overview(team, round, now=None, session=None):
         "eligibility_reason": eligibility_reason(team, round, eligible),
         "rules": public_rules(round) if released and eligible else None,
         "information": information,
+        **participant_faculty(team, round, eligible, state),
         "announcements": announcements(team, round.pk) if round.number != 5 else [],
         "capabilities": {
             "view_information": round.number != 5,
@@ -185,7 +188,7 @@ def overview(team, round, now=None, session=None):
                 mission__is_void=False,
             ).values_list("mission__keyword", flat=True)
         )
-        if round.number == 2 and instructions_visible
+        if round.number == 2 and instructions_visible and state in ["READY", "LOBBY"]
         else [],
     }
 

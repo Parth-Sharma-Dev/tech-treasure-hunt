@@ -43,6 +43,17 @@ def round_snapshot(round):
         from .coding_content import tasks_snapshot
 
         snapshot["coding_tasks"] = tasks_snapshot(round)
+    if round.number == 4 and isinstance(round.rules.get("faculty_panels"), list):
+        from .models import FacultyProfile
+
+        snapshot["faculty_profiles"] = [
+            {
+                "id": item.pk,
+                "publication": item.published_snapshot,
+                "published_at": item.published_at.isoformat() if item.published_at else None,
+            }
+            for item in FacultyProfile.objects.filter(is_demo=round.is_demo).order_by("pk")
+        ]
     return snapshot
 
 
@@ -169,6 +180,10 @@ def readiness_errors(round):
 
         errors += coding_errors(round)
     else:
+        if round.number in [2, 4]:
+            from .external_scores import schema_errors
+
+            errors += schema_errors(round)
         if not isinstance(round.rules.get("score_schema"), dict) or not round.rules["score_schema"]:
             errors.append("Set the round-specific score schema and tie metrics.")
     return errors

@@ -209,6 +209,27 @@ class TeamAdmin(ReadOnlyAdmin):
     search_fields = ("code", "name")
 
 
+@admin.register(models.FacultyProfile)
+class FacultyProfileAdmin(InformationAdmin):
+    list_display = ("display_name", "role", "is_demo", "visible", "published_at")
+    list_filter = ("is_demo",)
+
+    @admin.action(
+        permissions=["view"],
+        description="Independently approve faculty consent and publish profile",
+    )
+    def publish_selected(self, request, queryset):
+        from .faculty import publish_faculty
+
+        for item in queryset:
+            try:
+                publish_faculty(item.pk, request.user)
+            except (ValidationError, PermissionDenied) as error:
+                self.message_user(request, str(error), messages.ERROR)
+            else:
+                self.message_user(request, f"{item}: faculty profile published.", messages.SUCCESS)
+
+
 class MissionForm(forms.ModelForm):
     answer = forms.RegexField(
         regex=r"\A[0-9]{4}\Z",
@@ -355,6 +376,9 @@ for model in (
     models.ResolutionProposal,
     models.ImportBatch,
     models.ScoreRevision,
+    models.ExternalVoidProposal,
+    models.ExternalQuestionVoid,
+    models.RosterProposal,
     models.ResultSnapshot,
     models.ResultProposal,
     models.PaperWindow,
