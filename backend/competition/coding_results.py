@@ -446,6 +446,23 @@ def build_preview(round, now):
             else "A qualification cutoff tie requires reviewed reserve-task evidence."
         )
     latest = latest_snapshot(round)
+    if latest and latest.status == "PROVISIONAL":
+        fields = [
+            "team_code",
+            "team_status",
+            "eligible",
+            "score",
+            "max_score",
+            "fully_correct_tasks",
+            "final_submission_at",
+            "rank",
+        ]
+        old_metrics = [{key: item.get(key) for key in fields} for item in latest.ranked_entries]
+        new_metrics = [{key: item.get(key) for key in fields} for item in entries]
+        if old_metrics != new_metrics:
+            blockers.append(
+                'Publish revised provisional coding results after scoring changes; restart appeals.'
+            )
     if latest is None or latest.status != "PROVISIONAL":
         blockers.append("Publish provisional results before finalization.")
     elif latest.appeal_deadline is None or now < latest.appeal_deadline:

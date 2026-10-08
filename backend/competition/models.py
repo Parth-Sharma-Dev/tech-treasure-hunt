@@ -201,6 +201,10 @@ class CodingTask(models.Model):
                 raise ValidationError("Coding tasks are frozen after READY.")
             if self.pk:
                 old = CodingTask.objects.get(pk=self.pk)
+                if old.round_id != self.round_id:
+                    raise ValidationError(
+                        "Create a new draft coding task instead of moving existing content."
+                    )
                 fields = [
                     "round_id",
                     "public_id",

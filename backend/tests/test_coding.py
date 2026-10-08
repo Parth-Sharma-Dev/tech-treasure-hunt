@@ -1,5 +1,9 @@
+import os
+import shutil
+import subprocess
 import uuid
 from datetime import timedelta
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -524,3 +528,134 @@ def test_exact_final_metric_ties_stay_blocked_without_an_approved_reserve_policy
     assert any(
         "exact score/task/time tie" in blocker for blocker in preview["finalization_blockers"]
     )
+
+
+def test_rejudging_changed_marks_requires_a_revised_provisional_appeal_window(coding):
+    from competition.coding_results import approve_judgment, propose_judgment
+    from competition.results import approve_result, build_preview, propose_result
+
+    round, _, _, maker, reviewer = coding
+    submission = ended_bundle(coding)
+    for index, passed in enumerate([["a"], ["a", "b"]]):
+        proposal = propose_judgment(round.pk, maker, grade_data(coding, submission, passed=passed))
+        approve_judgment(
+            round.pk,
+            reviewer,
+            {
+                "action_id": str(uuid.uuid4()),
+                "proposal_id": proposal["judgment_proposal_id"],
+                "reason": "Independent rerun review",
+                "evidence_confirmed": True,
+            },
+        )
+        round.refresh_from_db()
+        if index == 0:
+            preview = build_preview(round, timezone.now())
+            pending = propose_result(
+                round.pk,
+                maker,
+                {
+                    "action_id": str(uuid.uuid4()),
+                    "reason": "Initial coding publication",
+                    "status": "PROVISIONAL",
+                    "expected_version": round.control_version,
+                    "evidence_digest": preview["evidence_digest"],
+                },
+            )
+            approve_result(
+                round.pk,
+                reviewer,
+                {
+                    "action_id": str(uuid.uuid4()),
+                    "reason": "Initial independent publication",
+                    "proposal_id": pending["proposal_id"],
+                },
+            )
+    preview = build_preview(round, timezone.now() + timedelta(hours=1))
+    assert any("revised provisional coding" in item for item in preview["finalization_blockers"])
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_coding_tabs_cannot_overwrite_the_same_response_revision(coding):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    from django.db import connections
+
+    start(coding)
+    original = assigned_client(coding)
+    barrier = Barrier(2)
+
+    def worker(number):
+        try:
+            client = Client(enforce_csrf_checks=True)
+            client.cookies = original.cookies.copy()
+            barrier.wait(timeout=10)
+            return save(coding, client, body=f"Concurrent source {number}")[0].status_code
+        finally:
+            connections.close_all()
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        assert sorted(pool.map(worker, [1, 2])) == [200, 409]
+    assert CodingRevision.objects.count() == 1
+
+
+def test_released_coding_tasks_cannot_move_into_a_new_draft_attempt(coding):
+    ready(coding)
+    task = coding[1][0]
+    task.round = Round.objects.create(
+        number=3, attempt_no=2, title="New draft", delivery_mode="CODING", is_demo=True
+    )
+    with pytest.raises(ValidationError, match="instead of moving"):
+        task.save()
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.skipif(
+    os.environ.get("TTH_BROWSER_INTEGRATION") != "1",
+    reason="Opt-in: Vite and Playwright Chromium required.",
+)
+def test_full_browser_coding_and_lab_review(coding, live_server):
+    ready(coding)
+    node = shutil.which("node")
+    assert node is not None
+    result = subprocess.run(
+        [node, "frontend/scripts/live-coding-smoke.mjs"],
+        cwd=Path(__file__).resolve().parents[2],
+        env={
+            **os.environ,
+            "TTH_BACKEND_URL": live_server.url.replace("localhost", "127.0.0.1"),
+            "TTH_CODING_ROUND": str(coding[0].pk),
+        },
+        capture_output=True,
+        text=True,
+        timeout=90,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    from competition.models import CodingJudgment
+
+    assert CodingJudgment.objects.get().score == 15
+    assert ResultSnapshot.objects.filter(round=coding[0], status="PROVISIONAL").count() == 1
+
+
+def test_coding_seed_prepares_unverified_content_without_fabricating_qualification(
+    coding, settings
+):
+    from io import StringIO
+
+    from django.core.management import call_command
+
+    settings.DEBUG = True
+    round = coding[0]
+    CodingTask.objects.filter(round=round).delete()
+    previous_count = ResultSnapshot.objects.count()
+    call_command("seed_coding_demo", actor=coding[3].username, stdout=StringIO())
+    tasks = list(CodingTask.objects.filter(round=round))
+    assert len(tasks) == 5 and all(task.verified_by_id is None for task in tasks)
+    assert sum(task.points for task in tasks) == 100
+    assert ResultSnapshot.objects.count() == previous_count
+    round.refresh_from_db()
+    before = round.rules
+    call_command("seed_coding_demo", actor=coding[3].username, stdout=StringIO())
+    round.refresh_from_db()
+    assert round.rules == before and CodingTask.objects.filter(round=round).count() == 5
