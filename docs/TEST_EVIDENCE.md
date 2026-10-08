@@ -1,6 +1,8 @@
-# Round 1 local acceptance evidence
+# Local acceptance evidence
 
 Recorded 7 October 2026. Scope: implemented Round 1 behavior using synthetic fixtures. Later-round competition, production hosting, real mission routes, actual rosters and physical device/paper drills are not certified here.
+
+M7 participant portal validation was added on 8 October; the original Round 1 evidence below is retained as a dated record.
 
 ## Environment
 
@@ -93,3 +95,13 @@ The old checkpoint predates the new migrations. Migrate the separate copy before
 ## Remaining release checks
 
 Supply and independently verify actual content, roster, capacity, route, owner and appeal policies. Validate real Android/iPhone QR handoff, campus/lab connectivity, physical slip/clock/writer-isolation procedures and deployed recovery/capacity. Real-roster administration, printable QR cards and later-round functionality remain separate planned work. Entirely missing records beyond the latest signed checkpoint require retained receipts/exports and human coverage review; synthetic tests cannot prove their absence.
+
+## M7 portal regression — 8 October 2026
+
+- Full backend suite with `TTH_BROWSER_INTEGRATION=1`: **133 passed, 1 skipped** (opt-in local load test).
+- Full frontend desktop/mobile Chromium suite: **66 passed**.
+- Django system/migration checks, Ruff and frontend TypeScript/Vite build: passed.
+- New coverage: independent information publication; draft revisions preserving the last release; notice withdrawal; malformed contacts/schedules; reviewed-cohort binding; latest-attempt/foreign-cohort/Round 5 guards; expired activity; portal schedule/announcements/contacts; ineligible instruction redaction; retained result links.
+- Migration 0010 applied after a signed local database backup. Existing Round 1 remains READY and other rounds remain DRAFT.
+
+See [portal operations](PARTICIPANT_PORTAL.md). New portal endpoints were functionally validated; the earlier load measurement covers Round 1 state/submission traffic, not the new dashboard's deployed capacity. Actual information and later-round coding/scoring remain separately supplied/implemented.
