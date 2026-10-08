@@ -89,6 +89,8 @@ footer { display: flex; justify-content: space-between; gap: 20px; border-top: 1
 @media (max-width: 850px) { .site-shell { padding: 0 24px; } .hero { grid-template-columns: 1fr; padding-top: 48px; } .hunt-map { height: 340px; max-width: 520px; width: 100%; } .round-list { grid-template-columns: repeat(2, 1fr); gap: 28px 0; } .round-list li:nth-child(odd) { border-left: 0; padding-left: 0; } h1 { font-size: 54px; } }
 @media (max-width: 480px) { .site-header { align-items: flex-start; flex-direction: column; justify-content: center; gap: 12px; padding: 18px 0; } .brand-secondary { font-size: 10px; } h1 { font-size: 43px; letter-spacing: -1.8px; } .hero { gap: 32px; padding-bottom: 42px; } .hero-description { font-size: 14px; } .hunt-map { height: 300px; } .round-list li { padding-right: 12px; } footer { flex-direction: column; gap: 10px; } }
 .paper-evidence { white-space: pre-wrap; overflow-wrap: anywhere; max-width: 100%; }
+.coding-source { white-space: pre-wrap; overflow-wrap: anywhere; padding: 16px; background: #10180d; }
+.coding-editor { width: 100%; font-family: Consolas, monospace; white-space: pre; tab-size: 4; min-height: 220px; }
 .portal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 20px; }
 .portal-card { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
 .portal-card .button { margin-top: auto; }

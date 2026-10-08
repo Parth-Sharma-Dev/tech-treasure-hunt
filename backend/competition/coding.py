@@ -17,8 +17,15 @@ from .rules import require_staff_permission
 from .sessions import require_team
 
 
+def source_bytes(body):
+    try:
+        return body.encode("utf-8")
+    except UnicodeEncodeError:
+        raise ApiProblem("invalid_request", "Use valid UTF-8 text for coding responses.") from None
+
+
 def source_hash(body):
-    return hashlib.sha256(body.encode("utf-8")).hexdigest()
+    return hashlib.sha256(source_bytes(body)).hexdigest()
 
 
 def native_round(round, team=None):
@@ -142,7 +149,7 @@ def save_response(request, round_id, task_id, data):
     body, language, version = data.get("body"), data.get("language"), data.get("expected_revision")
     if (
         not isinstance(body, str)
-        or len(body.encode("utf-8")) > 65536
+        or len(source_bytes(body)) > 65536
         or not isinstance(language, str)
         or type(version) is not int
         or version < 0

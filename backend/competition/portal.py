@@ -7,6 +7,7 @@ from .api import ApiProblem
 from .clock import clock_payload, database_now
 from .models import (
     AuditEvent,
+    CodingWorkstation,
     Completion,
     EventAnnouncement,
     Incident,
@@ -125,7 +126,7 @@ def eligibility_reason(team, round, eligible):
     return "Qualification is under organizer review."
 
 
-def overview(team, round, now=None):
+def overview(team, round, now=None, session=None):
     now = now or database_now()
     clock = clock_payload(round, now)
     eligible = round_eligible(team, round) and round.number != 5
@@ -159,7 +160,17 @@ def overview(team, round, now=None):
             and state == "LIVE"
             and round.number == 1
             and round.play_mode == "ONLINE",
-            "submit_code": False,
+            "coding_supported": round.number == 3 and round.delivery_mode == "CODING",
+            "submit_code": bool(
+                eligible
+                and state == "LIVE"
+                and round.number == 3
+                and round.delivery_mode == "CODING"
+                and session
+                and CodingWorkstation.objects.filter(
+                    round=round, team=team, session=session
+                ).exists()
+            ),
             "instructions_visible": instructions_visible,
             "view_results": round.number != 5
             and ResultSnapshot.objects.filter(round=round).exists(),
@@ -179,16 +190,16 @@ def overview(team, round, now=None):
     }
 
 
-def dashboard(team):
+def dashboard(team, session=None):
     now = database_now()
     latest = {}
     for round in Round.objects.filter(is_demo=team.is_demo).order_by("number", "-attempt_no"):
         if round.number not in latest:
-            latest[round.number] = overview(team, round, now)
+            latest[round.number] = overview(team, round, now, session)
     return {"rounds": list(latest.values()), "announcements": announcements(team)}
 
 
-def participant_overview(team, round_id):
+def participant_overview(team, round_id, session=None):
     round = Round.objects.filter(pk=round_id, is_demo=team.is_demo).first()
     if round is None or round.number == 5:
         raise ApiProblem("not_found", "Round information is not available.", 404)
@@ -199,4 +210,4 @@ def participant_overview(team, round_id):
     )
     if latest.pk != round.pk:
         raise ApiProblem("superseded_attempt", "Open the latest attempt from your dashboard.", 409)
-    return overview(team, round)
+    return overview(team, round, session=session)

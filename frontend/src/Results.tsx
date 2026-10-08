@@ -5,7 +5,7 @@ import { pollInterval } from './RoundClock'
 import { PaperDesk, type PaperData } from './PaperDesk'
 import { RecoveryDesk, type RecoveryData } from './RecoveryDesk'
 
-type Entry = { team_code: string; team_name: string; team_status: string; eligible: boolean; score: number; max_score: number; tie_time_ms: number | null; rank: number | null }
+type Entry = { team_code: string; team_name: string; team_status: string; eligible: boolean; score: number; max_score: number; tie_time_ms: number | null; rank: number | null; fully_correct_tasks?: number; final_submission_at?: string | null }
 type Snapshot = { id: number; revision: number; status: string; entries: Entry[]; qualifier_codes: string[]; cut_count: number; published_at: string; appeal_deadline: string | null; supersedes: number | null; metadata: { publication_reason: string; tie_reason: string; open_material_incidents: number } }
 type Preview = { round_id: number; title: string; number: number; attempt_no: number; state: string; control_version: number; evidence_digest: string; entries: Entry[]; cut_count: number; cutoff_tie: string[]; max_score: number; evidence_gaps: string[]; configuration_errors: string[]; finalization_blockers: string[]; appeal_deadline: string | null; actor_id: number; can_propose: boolean; can_approve: boolean; can_close_incident: boolean; proposals: Proposal[]; incidents: Incident[]; history: Snapshot[] }
 type Proposal = { id: number; status: string; maker_id: number; maker_name: string; reason: string; stale: boolean; publication_id: number | null; payload: { qualifiers: string[]; preview: { entries: Entry[]; cut_count: number }; tie_order: string[]; tie_evidence: string[]; tie_reason: string } }
@@ -19,8 +19,9 @@ export function dateLabel(value: string | null) {
 }
 
 function Standings({ entries, ownCode, qualifiers }: { entries: Entry[]; ownCode?: string; qualifiers?: string[] }) {
-  return <div className="standings-scroll"><table className="standings"><caption>Round standings</caption><thead><tr><th scope="col">Rank</th><th scope="col">Team</th><th scope="col">Score</th><th scope="col">Last counted solve</th>{qualifiers && <th scope="col">Qualification</th>}</tr></thead><tbody>{entries.map(entry => <tr key={entry.team_code} className={entry.team_code === ownCode ? 'own-team' : ''}>
-    <td>{entry.rank ?? '—'}</td><th scope="row">{entry.team_name}<small>{entry.team_code}{entry.team_code === ownCode ? ' · your team' : ''}{!entry.eligible ? ` · ${entry.team_status.toLowerCase()}` : ''}</small></th><td>{entry.score} / {entry.max_score}</td><td>{entry.tie_time_ms === null ? '—' : `${(entry.tie_time_ms / 1000).toFixed(3)} active seconds`}</td>{qualifiers && <td>{qualifiers.includes(entry.team_code) ? 'Qualified' : entry.eligible ? 'Not qualified' : 'Ineligible'}</td>}
+  const coding = entries.some(entry => entry.fully_correct_tasks !== undefined)
+  return <div className="standings-scroll"><table className="standings"><caption>Round standings</caption><thead><tr><th scope="col">Rank</th><th scope="col">Team</th><th scope="col">Score</th>{coding && <th scope="col">Fully correct tasks</th>}<th scope="col">{coding ? 'Final submission' : 'Last counted solve'}</th>{qualifiers && <th scope="col">Qualification</th>}</tr></thead><tbody>{entries.map(entry => <tr key={entry.team_code} className={entry.team_code === ownCode ? 'own-team' : ''}>
+    <td>{entry.rank ?? '—'}</td><th scope="row">{entry.team_name}<small>{entry.team_code}{entry.team_code === ownCode ? ' · your team' : ''}{!entry.eligible ? ` · ${entry.team_status.toLowerCase()}` : ''}</small></th><td>{entry.score} / {entry.max_score}</td>{coding && <td>{entry.fully_correct_tasks ?? 0}</td>}<td>{coding ? entry.final_submission_at?.replace('T',' ').replace('+00:00',' UTC') ?? '—' : entry.tie_time_ms === null ? '—' : `${(entry.tie_time_ms / 1000).toFixed(3)} active seconds`}</td>{qualifiers && <td>{qualifiers.includes(entry.team_code) ? 'Qualified' : entry.eligible ? 'Not qualified' : 'Ineligible'}</td>}
   </tr>)}</tbody></table></div>
 }
 
@@ -42,7 +43,7 @@ export function PublishedResults() {
       {snapshot.metadata.tie_reason && <p>Reserve-clue decision: {snapshot.metadata.tie_reason}</p>}
       {snapshot.supersedes && <p>This revision supersedes the previous publication. Earlier results remain in the history below.</p>}
       <Standings entries={snapshot.entries} ownCode={ownCode} qualifiers={snapshot.status === 'FINAL' ? snapshot.qualifier_codes : undefined} />
-      <p className="muted">Rank uses score, then active time at the last counted solve. Zero-score teams remain tied; team-code display order does not break a competitive tie.</p>
+      <p className="muted">{snapshot.entries.some(entry=>entry.fully_correct_tasks!==undefined) ? 'Rank uses score, then fully correct tasks, then earlier supervisor-confirmed final submission. Display order does not break an exact competitive tie.' : 'Rank uses score, then active time at the last counted solve. Zero-score teams remain tied; team-code display order does not break a competitive tie.'}</p>
     </section>}
     {history.length > 1 && <details className="panel"><summary>Publication history ({history.length} revisions)</summary>{history.map(item => <details key={item.id}><summary>Revision {item.revision} · {item.status.toLowerCase()} · {dateLabel(item.published_at)}</summary><p>{item.metadata.publication_reason}</p><Standings entries={item.entries} ownCode={ownCode} qualifiers={item.status === 'FINAL' ? item.qualifier_codes : undefined} /></details>)}</details>}
   </section>

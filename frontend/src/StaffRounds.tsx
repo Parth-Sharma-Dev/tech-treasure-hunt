@@ -3,7 +3,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { ApiError, getJson, postJson } from './api'
 import { RoundClock, pollInterval, stateLabels, type Clock } from './RoundClock'
 
-type StaffRound = Clock & { title: string; number: number; attempt_no: number; is_demo: boolean }
+type StaffRound = Clock & { title: string; number: number; attempt_no: number; is_demo: boolean; delivery_mode?: string }
 type ActionRequest = { action: string; action_id: string; expected_version: number; reason: string; extension_ms: number }
 const actionLabels: Record<string, string> = { open_lobby: 'Open lobby', start: 'Start round', freeze: 'Pause round', resume: 'Resume round', extend: 'Extend active budget', end: 'End round' }
 const available: Record<string, string[]> = { READY: ['open_lobby'], LOBBY: ['start'], LIVE: ['freeze', 'extend', 'end'], FROZEN: ['resume', 'extend', 'end'] }
@@ -38,6 +38,7 @@ function Controls({ round, receivedAt, refresh }: { round: StaffRound; receivedA
     <h2>{round.title}</h2><p role="status">{stateLabels[round.state] ?? round.state}</p>
     <RoundClock clock={round} receivedAt={receivedAt} />
     <p className="muted">Control version {round.control_version}</p>
+    {round.delivery_mode==='CODING' && <p><a href={`/staff/coding?round=${round.round_id}`}>Coding workstations and lab judging</a></p>}
     {round.play_mode === 'PAPER' && <p>Paper play is active. <a href={`/staff/results?round=${round.round_id}`}>Review paper slips or end paper play</a>.</p>}
     {actions.length > 0 || pending ? <form className="form-stack" onSubmit={event => { event.preventDefault(); submit() }}>
       <label>Round action<select disabled={!!pending || mutation.isPending} value={pending?.action ?? selected} onChange={event => { setAction(event.target.value); mutation.reset() }}>

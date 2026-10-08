@@ -81,7 +81,10 @@ def portal_dashboard(request):
     from .portal import dashboard
 
     return JsonResponse(
-        {"request_id": request.request_id, **dashboard(require_team(request, allow_inactive=True))}
+        {
+            "request_id": request.request_id,
+            **dashboard(require_team(request, allow_inactive=True), request.team_session),
+        }
     )
 
 
@@ -93,7 +96,9 @@ def portal_overview(request, round_id):
     return JsonResponse(
         {
             "request_id": request.request_id,
-            **participant_overview(require_team(request, allow_inactive=True), round_id),
+            **participant_overview(
+                require_team(request, allow_inactive=True), round_id, request.team_session
+            ),
         }
     )
 
@@ -148,6 +153,7 @@ def staff_rounds(request):
                     "number": round.number,
                     "attempt_no": round.attempt_no,
                     "is_demo": round.is_demo,
+                    "delivery_mode": round.delivery_mode,
                     **clock_payload(round, now),
                 }
                 for round in Round.objects.order_by("number", "-attempt_no")
