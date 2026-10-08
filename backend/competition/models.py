@@ -49,6 +49,7 @@ class Round(models.Model):
 
     class Delivery(models.TextChoices):
         ONLINE_HUNT = "ONLINE_HUNT", "Online treasure hunt"
+        CODING = "CODING", "Supervised Python/C competition"
         EXTERNAL = "EXTERNAL", "Externally judged"
 
     class PlayMode(models.TextChoices):
@@ -152,6 +153,147 @@ class RoundPhase(ImmutableEvidence):
                 condition=Q(ended_at__gte=F("started_at")), name="phase_time_order"
             )
         ]
+
+
+class CodingTask(models.Model):
+    round = models.ForeignKey(Round, on_delete=models.PROTECT)
+    public_id = models.CharField(max_length=24)
+    category = models.CharField(
+        max_length=16,
+        choices=[(key, key.title()) for key in ["OUTPUT", "DEBUG", "FILL", "SHORT", "LOGIC"]],
+    )
+    prompt = models.TextField(max_length=10000)
+    starter_code = models.TextField(max_length=16000, blank=True)
+    languages = models.JSONField(default=list)
+    points = models.DecimalField(max_digits=7, decimal_places=3)
+    version = models.CharField(max_length=40)
+    private_rubric = models.JSONField(
+        default=dict,
+        help_text=(
+            "Private lab judging rubric. SHORT tasks need test_cases "
+            "with unique id/input/expected fields."
+        ),
+    )
+    prepared_by = staff_reference(null=True, blank=True)
+    verified_by = staff_reference(null=True, blank=True)
+    verified_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["round", "public_id"], name="coding_task_id_unique"),
+            models.CheckConstraint(condition=Q(points__gt=0), name="coding_task_points_positive"),
+        ]
+
+    def __str__(self):
+        return f"{self.public_id} ({self.category})"
+
+    def clean(self):
+        from .coding_content import task_errors
+
+        errors = task_errors(self)
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        with transaction.atomic():
+            round = Round.objects.select_for_update().get(pk=self.round_id)
+            if round.state != "DRAFT":
+                raise ValidationError("Coding tasks are frozen after READY.")
+            if self.pk:
+                old = CodingTask.objects.get(pk=self.pk)
+                fields = [
+                    "round_id",
+                    "public_id",
+                    "category",
+                    "prompt",
+                    "starter_code",
+                    "languages",
+                    "points",
+                    "version",
+                    "private_rubric",
+                    "prepared_by_id",
+                ]
+                if any(getattr(old, key) != getattr(self, key) for key in fields):
+                    self.verified_by = self.verified_at = None
+                    if kwargs.get("update_fields"):
+                        kwargs["update_fields"] = set(kwargs["update_fields"]) | {
+                            "verified_by",
+                            "verified_at",
+                        }
+            return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        with transaction.atomic():
+            if Round.objects.select_for_update().get(pk=self.round_id).state != "DRAFT":
+                raise ValidationError("Released coding tasks cannot be deleted.")
+            return super().delete(*args, **kwargs)
+
+
+class CodingWorkstation(models.Model):
+    round = models.ForeignKey(Round, on_delete=models.PROTECT)
+    team = models.ForeignKey("Team", on_delete=models.PROTECT)
+    session = models.ForeignKey("TeamSession", on_delete=models.PROTECT)
+    label = models.CharField(max_length=100)
+    supervisor = staff_reference()
+    evidence_references = models.JSONField(default=list)
+    assigned_at = models.DateTimeField()
+    version = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["round", "team"], name="coding_one_station_per_team"),
+            models.UniqueConstraint(fields=["round", "label"], name="coding_station_unique"),
+        ]
+
+
+class CodingRevision(ImmutableEvidence):
+    round = models.ForeignKey(Round, on_delete=models.PROTECT)
+    team = models.ForeignKey("Team", on_delete=models.PROTECT)
+    task = models.ForeignKey(CodingTask, on_delete=models.PROTECT)
+    action_id = models.UUIDField(unique=True)
+    revision = models.PositiveIntegerField()
+    language = models.CharField(max_length=16)
+    body = models.TextField()
+    source_hash = models.CharField(max_length=64)
+    admitted_at = models.DateTimeField()
+    active_elapsed_ms = models.PositiveBigIntegerField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["team", "task", "revision"], name="coding_revision_unique"
+            )
+        ]
+
+
+class CodingSubmission(ImmutableEvidence):
+    round = models.ForeignKey(Round, on_delete=models.PROTECT)
+    team = models.ForeignKey("Team", on_delete=models.PROTECT)
+    kind = models.CharField(max_length=16)
+    submitted_at = models.DateTimeField()
+    active_elapsed_ms = models.PositiveBigIntegerField()
+    manifest = models.JSONField(default=list)
+    manifest_digest = models.CharField(max_length=64)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["round", "team"], name="coding_final_once")]
+
+
+class CodingJudgmentProposal(ImmutableEvidence):
+    submission = models.ForeignKey(CodingSubmission, on_delete=models.PROTECT)
+    maker = staff_reference()
+    payload = models.JSONField()
+    reason = models.TextField()
+    evidence_digest = models.CharField(max_length=64)
+
+
+class CodingJudgment(ImmutableEvidence):
+    proposal = models.OneToOneField(CodingJudgmentProposal, on_delete=models.PROTECT)
+    submission = models.ForeignKey(CodingSubmission, on_delete=models.PROTECT)
+    verifier = staff_reference()
+    score = models.DecimalField(max_digits=7, decimal_places=3)
+    fully_correct_tasks = models.PositiveSmallIntegerField()
+    task_marks = models.JSONField(default=list)
 
 
 class PublishedInformation(models.Model):

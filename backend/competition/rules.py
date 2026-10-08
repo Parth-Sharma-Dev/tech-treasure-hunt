@@ -27,7 +27,7 @@ REQUIRED_POLICIES = (
 
 
 def round_snapshot(round):
-    return {
+    snapshot = {
         "round_number": round.number,
         "attempt_id": str(round.attempt_id),
         "rules_version": round.rules_version,
@@ -39,6 +39,11 @@ def round_snapshot(round):
         "title": round.title,
         "is_demo": round.is_demo,
     }
+    if round.delivery_mode == "CODING":
+        from .coding_content import tasks_snapshot
+
+        snapshot["coding_tasks"] = tasks_snapshot(round)
+    return snapshot
 
 
 def snapshot_digest(snapshot):
@@ -56,8 +61,12 @@ def readiness_errors(round):
         errors.append("Select a delivery method.")
     if round.number == 1 and round.delivery_mode != Round.Delivery.ONLINE_HUNT:
         errors.append("Round 1 requires the online hunt delivery method.")
-    if round.number > 1 and round.delivery_mode != Round.Delivery.EXTERNAL:
-        errors.append("Rounds 2–5 currently require external delivery.")
+    if (
+        round.number > 1
+        and round.delivery_mode != Round.Delivery.EXTERNAL
+        and not (round.number == 3 and round.delivery_mode == "CODING")
+    ):
+        errors.append("Use external delivery for later rounds or native CODING for Round 3.")
     if round.number < 5 and not round.advancement_count:
         errors.append("Set an explicit advancement count.")
     if not isinstance(round.owners, dict):
@@ -155,6 +164,10 @@ def readiness_errors(round):
                 )
             ):
                 errors.append(f"Mission {mission.public_id} needs versioned answer verifiers.")
+    elif round.number == 3 and round.delivery_mode == "CODING":
+        from .coding_content import readiness_errors as coding_errors
+
+        errors += coding_errors(round)
     else:
         if not isinstance(round.rules.get("score_schema"), dict) or not round.rules["score_schema"]:
             errors.append("Set the round-specific score schema and tie metrics.")

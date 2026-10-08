@@ -97,6 +97,62 @@ class RoundAdmin(ReadOnlyAdmin):
                 self.message_user(request, f"{round}: READY.", messages.SUCCESS)
 
 
+@admin.register(models.CodingTask)
+class CodingTaskAdmin(ReadOnlyAdmin):
+    view_permissions = ("prepare_content", "verify_evidence")
+    list_display = ("public_id", "round", "category", "points", "version", "verified_by")
+    list_filter = ("round", "category")
+    readonly_fields = ("prepared_by", "verified_by", "verified_at")
+    actions = ("verify_tasks",)
+
+    def has_add_permission(self, request):
+        return permitted(request, "prepare_content")
+
+    def has_change_permission(self, request, obj=None):
+        return permitted(request, "prepare_content") and (obj is None or obj.round.state == "DRAFT")
+
+    def save_model(self, request, obj, form, change):
+        obj.prepared_by = request.user
+        super().save_model(request, obj, form, change)
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        if not permitted(request, "verify_evidence"):
+            actions.pop("verify_tasks", None)
+        return actions
+
+    @admin.action(
+        permissions=["view"],
+        description="Independently verify selected coding tasks and lab rubric",
+    )
+    def verify_tasks(self, request, queryset):
+        for item in queryset:
+            with transaction.atomic():
+                round = models.Round.objects.select_for_update().get(pk=item.round_id)
+                task = models.CodingTask.objects.get(pk=item.pk)
+                if (
+                    round.state != "DRAFT"
+                    or task.prepared_by_id == request.user.pk
+                    or task.prepared_by_id is None
+                ):
+                    self.message_user(
+                        request,
+                        "Verification requires a draft and a different preparer.",
+                        messages.ERROR,
+                    )
+                    continue
+                task.full_clean()
+                task.verified_by = request.user
+                task.verified_at = timezone.now()
+                task.save(update_fields=["verified_by", "verified_at"])
+                models.AuditEvent.objects.create(
+                    actor=request.user,
+                    action="verify_coding_task",
+                    after={"round_id": round.pk, "task_id": task.pk},
+                    reason="Independent task/rubric verification.",
+                )
+
+
 class InformationAdmin(ReadOnlyAdmin):
     view_permissions = ("prepare_content", "verify_evidence", "control_round", "publish_results")
     readonly_fields = ("prepared_by", "published_by", "published_at", "published_snapshot")
@@ -305,6 +361,11 @@ for model in (
     models.PaperProposal,
     models.PaperSlip,
     models.RecoveryProposal,
+    models.CodingWorkstation,
+    models.CodingRevision,
+    models.CodingSubmission,
+    models.CodingJudgmentProposal,
+    models.CodingJudgment,
     models.AuditEvent,
 ):
     admin.site.register(model, ReadOnlyAdmin)
