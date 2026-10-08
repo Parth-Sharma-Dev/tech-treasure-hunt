@@ -154,6 +154,79 @@ class RoundPhase(ImmutableEvidence):
         ]
 
 
+class PublishedInformation(models.Model):
+    prepared_by = staff_reference(null=True, blank=True)
+    published_by = staff_reference(null=True, blank=True)
+    published_at = models.DateTimeField(null=True, blank=True)
+    published_snapshot = models.JSONField(default=dict, editable=False)
+    visible = models.BooleanField(default=True)
+
+    class Meta:
+        abstract = True
+
+
+class RoundInformation(PublishedInformation):
+    round = models.OneToOneField(Round, on_delete=models.PROTECT)
+    summary = models.TextField(max_length=1000, blank=True)
+    instructions = models.TextField(
+        max_length=10000,
+        blank=True,
+        help_text=(
+            "General participant instructions. Keep clues, answers and interview questions private."
+        ),
+    )
+    venue = models.CharField(max_length=200, blank=True)
+    scheduled_start = models.DateTimeField(null=True, blank=True)
+    scheduled_end = models.DateTimeField(null=True, blank=True)
+    contacts = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            'Approved contacts: [{"name":"Name", "role":"Role", '
+            '"location":"Desk", "channel":"Public contact"}]'
+        ),
+    )
+
+    def clean(self):
+        from .portal import validate_information
+
+        validate_information(self)
+        if (
+            self.pk
+            and self.published_snapshot
+            and self.published_snapshot.get("round_id") != self.round_id
+        ):
+            raise ValidationError(
+                "Create a new information record instead of moving a published one."
+            )
+
+    def __str__(self):
+        return f"Information: {self.round}"
+
+
+class EventAnnouncement(PublishedInformation):
+    title = models.CharField(max_length=150)
+    body = models.TextField(max_length=3000)
+    is_demo = models.BooleanField(default=False)
+    round = models.ForeignKey(Round, on_delete=models.PROTECT, null=True, blank=True)
+
+    def clean(self):
+        if self.round_id and self.round.is_demo != self.is_demo:
+            raise ValidationError("Announcement and round must use the same demo/live cohort.")
+        if (
+            self.pk
+            and self.published_snapshot
+            and (
+                self.published_snapshot.get("is_demo") != self.is_demo
+                or self.published_snapshot.get("round_id") != self.round_id
+            )
+        ):
+            raise ValidationError("Published announcements cannot move between cohorts or rounds.")
+
+    def __str__(self):
+        return self.title
+
+
 class Team(models.Model):
     class Status(models.TextChoices):
         ACTIVE = "ACTIVE"

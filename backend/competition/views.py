@@ -77,6 +77,29 @@ def me(request):
 
 @require_GET
 @api_errors
+def portal_dashboard(request):
+    from .portal import dashboard
+
+    return JsonResponse(
+        {"request_id": request.request_id, **dashboard(require_team(request, allow_inactive=True))}
+    )
+
+
+@require_GET
+@api_errors
+def portal_overview(request, round_id):
+    from .portal import participant_overview
+
+    return JsonResponse(
+        {
+            "request_id": request.request_id,
+            **participant_overview(require_team(request, allow_inactive=True), round_id),
+        }
+    )
+
+
+@require_GET
+@api_errors
 def practice(request):
     mission = practice_mission(require_team(request))
     return JsonResponse(

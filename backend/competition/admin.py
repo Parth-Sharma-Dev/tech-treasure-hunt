@@ -97,6 +97,55 @@ class RoundAdmin(ReadOnlyAdmin):
                 self.message_user(request, f"{round}: READY.", messages.SUCCESS)
 
 
+class InformationAdmin(ReadOnlyAdmin):
+    view_permissions = ("prepare_content", "verify_evidence", "control_round", "publish_results")
+    readonly_fields = ("prepared_by", "published_by", "published_at", "published_snapshot")
+    actions = ("publish_selected",)
+
+    def has_add_permission(self, request):
+        return permitted(request, "prepare_content")
+
+    def has_change_permission(self, request, obj=None):
+        return permitted(request, "prepare_content")
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        if not permitted(request, "verify_evidence"):
+            actions.pop("publish_selected", None)
+        return actions
+
+    def save_model(self, request, obj, form, change):
+        obj.prepared_by = request.user
+        super().save_model(request, obj, form, change)
+
+    @admin.action(
+        permissions=["view"], description="Independently review and publish selected information"
+    )
+    def publish_selected(self, request, queryset):
+        from .portal import publish_information
+
+        for item in queryset:
+            try:
+                publish_information(queryset.model, item.pk, request.user)
+            except (ValidationError, PermissionDenied) as error:
+                self.message_user(request, str(error), messages.ERROR)
+            else:
+                self.message_user(
+                    request, f"{item}: participant information published.", messages.SUCCESS
+                )
+
+
+@admin.register(models.RoundInformation)
+class RoundInformationAdmin(InformationAdmin):
+    list_display = ("round", "visible", "prepared_by", "published_by", "published_at")
+
+
+@admin.register(models.EventAnnouncement)
+class EventAnnouncementAdmin(InformationAdmin):
+    list_display = ("title", "round", "is_demo", "visible", "published_at")
+    list_filter = ("is_demo", "round")
+
+
 @admin.register(models.Team)
 class TeamAdmin(ReadOnlyAdmin):
     view_permissions = ("prepare_content", "control_round", "verify_evidence")

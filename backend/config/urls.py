@@ -12,6 +12,8 @@ urlpatterns = [
     path("api/auth/login", views.team_login),
     path("api/auth/logout", views.team_logout),
     path("api/me", views.me),
+    path("api/rounds", views.portal_dashboard),
+    path("api/rounds/<int:round_id>/overview", views.portal_overview),
     path("api/practice", views.practice),
     path("api/practice/submit", views.submit_practice),
     path("api/missions/open", gameplay_views.open),
