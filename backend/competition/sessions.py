@@ -25,7 +25,7 @@ def safe_return_path(value):
         or re.fullmatch(r"/missions/[A-Za-z0-9_-]{20,64}", value)
         or re.fullmatch(r"/rounds/[1-9][0-9]{0,9}/results", value)
         or re.fullmatch(r"/rounds/[1-9][0-9]{0,9}", value)
-        or re.fullmatch(r'/rounds/[1-9][0-9]{0,9}/coding', value)
+        or re.fullmatch(r"/rounds/[1-9][0-9]{0,9}/coding", value)
     ):
         return value
     return "/lobby"

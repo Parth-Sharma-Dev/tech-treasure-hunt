@@ -461,7 +461,7 @@ def build_preview(round, now):
         new_metrics = [{key: item.get(key) for key in fields} for item in entries]
         if old_metrics != new_metrics:
             blockers.append(
-                'Publish revised provisional coding results after scoring changes; restart appeals.'
+                "Publish revised provisional coding results after scoring changes; restart appeals."
             )
     if latest is None or latest.status != "PROVISIONAL":
         blockers.append("Publish provisional results before finalization.")
