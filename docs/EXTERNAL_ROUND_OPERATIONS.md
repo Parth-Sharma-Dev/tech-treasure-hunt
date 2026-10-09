@@ -1,6 +1,6 @@
 # Round 2 and Round 4 operations
 
-M9 supports paper-quiz scores, faculty interview scores and reviewed roster administration. M12 now implements [Round 5's website buzzer](ROUND5_OPERATIONS.md) and qualifier gates. Its offline score intake/winners remain M13 and native signed recovery remains M14; external score schemas currently support Rounds 2/4 only.
+M9 supports paper-quiz/faculty scores and roster administration. M12/M13 add [Round 5 buzzer and reviewed final scoring](ROUND5_SCORING.md). `/staff/scores` supports its separate native-evidence-linked `round5-v1` ledger; the legacy unlinked external service remains Round 2/4 only. Signed native recovery remains M14.
 
 Use `/staff/scores` for source scores, `/staff/results` for provisional/final publication and appeals, `/staff/roster` for teams, and Django admin **Faculty profiles** for the approved directory. Staff workflow links appear on each desk. Sign in with an authorized staff account; participant accounts cannot use these endpoints.
 
@@ -102,4 +102,4 @@ Unknown write outcomes on score/roster desks retain their UUID/body across reloa
 
 Synthetic tests cover source validation, atomic/idempotent commit, independence, revisions, global voids, reserve ties, qualification, consent/draft redaction, faculty averaging, roster review and session invalidation. An isolated actual Django/PostgreSQL browser journey exercises score intake, independent commit/publication, participant results, roster creation/review and credentials. See [test evidence](TEST_EVIDENCE.md).
 
-Actual paper/key, applications, faculty details, panel slots, venues, owner/appeal policies and content verification remain organizer inputs. M10 recovery is complete for Rounds 1–4 and M12 setup/buzzer is complete locally. M13/M14 add final scoring/winners and buzzer recovery; M11 covers the full five-round journey. See [milestone status](DEVELOPMENT_STATUS.md). No production deployment or physical-event verification is implied.
+Actual paper/key, applications, faculty details, panel slots, venues and private content remain organizer inputs. M10 recovery covers Rounds 1–4; M12/M13 buzzer and final scoring are complete locally. M14 adds signed native recovery and M11 covers the complete event journey/load/outage rehearsal. See [milestone status](DEVELOPMENT_STATUS.md). No production deployment or physical-event verification is implied.

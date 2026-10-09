@@ -2,7 +2,7 @@
 
 Competition website for the AI Nexus Club, CSE Department, SKIT Jaipur, Tech-Pravah 26.
 
-The website supports team login, Round 1 QR missions, native supervised Round 3 submissions, reviewed Round 1–4 results, and the Round 5 website buzzer. Its five stages are answered offline; the admin sees database-recorded press times and closes each window to confirm first-answer priority. Participant latency receives no compensation. See [Round 5 operations](docs/ROUND5_OPERATIONS.md) and [milestone status](docs/DEVELOPMENT_STATUS.md). Round 5 scoring/winners and signed recovery remain M13/M14.
+The website supports Round 1 QR missions, supervised Round 3 submissions, reviewed Round 1–4 results, and Round 5's website buzzer, host completion records and reviewed event winner. The final has 25 questions × 2 marks, zero penalties and carry-over from final Round 1–4 scores. Equal cumulative scores use last-correct completion time; answers remain offline. See [Round 5 scoring](docs/ROUND5_SCORING.md) and [milestone status](docs/DEVELOPMENT_STATUS.md). Native signed recovery remains M14.
 
 The current implementation includes a responsive event page, competition/evidence models, draft content preparation and rule approval in Django admin, team sign-in, a participant lobby, organizer round controls, server clocks, QR/fallback mission access, answer submissions, team progress and signed receipts. Organizer-reviewed Round 1 standings, provisional/final publication, incident review and final qualification are available. Production deployment remains deferred.
 

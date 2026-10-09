@@ -19,8 +19,9 @@ Copy this template privately and replace each `PENDING` field before release. Do
 | Round 5 questions/durations, images/keys, encoding rule and reveal sequences | PENDING |
 | Round 5 buzzer and order policy | CONFIRMED — website presses ordered by authoritative server receipt time; earliest valid team answers first offline; no latency compensation |
 | Round 5 equal-server-time handling, answer time limit and early-buzz policy | PENDING |
-| Round 5 points/penalties, answer passing and reveal-dependent scoring | PENDING |
-| Round 5 stage weights/maximum, prior-score carry-over and winner/prize count | PENDING |
+| Round 5 points, passing and reveal credit | CONFIRMED — 5 questions/stage, 2/correct, 0/wrong, no penalties; pass only through buzzing teams; reveal does not change marks |
+| Round 5 totals, carry-over and winner | CONFIRMED — 10/stage, 50 total; sum final Rounds 1–4 scores; one event winner |
+| Round 5 score tie-break | CONFIRMED — earlier last-correct completion; implemented using original host server confirmations |
 | Round 5 faulty/disputed question policy, appeals and original score-sheet retention | PENDING |
 
 | Draft faculty slot | Actual name | Role | Venue/public contact | Consent reference | Approved portrait |
@@ -34,7 +35,7 @@ Copy this template privately and replace each `PENDING` field before release. Do
 
 Panel labels are proposed placeholders, not approved assignments. Supply actual faculty IDs and qualifying team slots through the reviewed Round 4 configuration. Preserve two-person approval for faculty publication and scores.
 
-The [Round 5 format](../ROUND5_FORMAT.md) confirms the five stages, website buzzer and first-server-press policy. Remaining PENDING entries require organizer decisions; placeholders do not establish scoring, equal-time or early-buzz rules.
+The [Round 5 scoring guide](../ROUND5_SCORING.md) records the supplied scoring/carry-over rules. Actual packs, schedules, time limits, exact unresolved-tie procedures and event evidence remain organizer inputs; placeholders never stand in for score or recovery evidence.
 
 ## Recovery evidence to supply during a drill or incident
 

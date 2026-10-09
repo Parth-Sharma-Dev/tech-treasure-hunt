@@ -1,6 +1,6 @@
 # Round 5 — offline answers with a website buzzer
 
-Requirements recorded 9 October 2026, updated after M12. Information, qualification gates, the website buzzer and admin queue are implemented locally. Offline score intake/winners remain M13 and native signed recovery remains M14. See [operating instructions](ROUND5_OPERATIONS.md).
+Requirements recorded 9 October 2026, updated with the organizer's M13 scoring rules. Information/buzzer are implemented in M12; reviewed cumulative scores and one winner are implemented in M13. Signed native recovery remains M14. See [buzzer operation](ROUND5_OPERATIONS.md) and [scoring operation](ROUND5_SCORING.md).
 
 ## Confirmed format
 
@@ -14,7 +14,7 @@ Round 5 has **five stages within the final round**. The host presents images, ke
 | 4 — Image abnormalities | Show an image containing an abnormality. | Identify the abnormality, such as a keyboard with a missing key. |
 | 5 — Progressive image guessing | Show only part of an image, then expand the visible area sequentially until the whole image is visible. | Guess the image. Record the reveal step at which the team buzzed/answered; whether this changes points remains pending. |
 
-These are five activity stages, not a confirmed question count or five separate event rounds. Questions per stage, stage durations and total duration remain pending.
+Each of the five stages has five questions. Correct answers earn two marks, so each stage totals ten and Round 5 totals fifty. Wrong/unanswered answers earn zero with no negative marks. Stage/overall duration still needs organizer input.
 
 ## Entry and public information — implemented locally in M12
 
@@ -50,11 +50,11 @@ Assign stable stage/question IDs and versions. Keep the host's presentation pack
 
 The host may use local slides or another approved offline presentation tool. A website slideshow/reveal controller is a separate feature decision, not included automatically. Rehearse the local display, image legibility, participating smartphones and admin buzzer queue with the event staff.
 
-## Scoring, review and evidence — planned
+## Scoring, review and evidence — implemented locally in M13
 
 Reuse the external scoring/publication architecture with a Round 5-specific schema and ranking strategy. Retain original question-level records rather than accepting an unexplained total. The proposed source record identifies stage/question/version, team, the native server buzzer event/window/order, offline answer/verdict, any reveal step, awarded points or penalty, official sequence/time reference and source-sheet/judge evidence. Imports must reference retained buzzer evidence rather than inventing client timestamps or a different first team. Exact columns and required fields depend on the approved scoring rules.
 
-Provide bounded CSV/manual dry runs, eligibility/duplicate/range validation, independent atomic/idempotent commits and appended reviewed corrections. Aggregate stage totals and the final total from original evidence. Publish provisional standings, resolve appeals/ties and obtain independent approval before publishing final winners. Winner count, prize positions and any overall-event score carry-over remain pending; do not substitute advancement to a nonexistent Round 6.
+M13 provides bounded CSV/manual validation, native press/host evidence linkage, independently committed ledgers, appended corrections and reviewed provisional/final publication. Another team can answer after an earlier wrong/unanswered response only if it has a native buzz in the queue. Cumulative totals sum final Round 1–4 points and Round 5 credit. Equal totals use the earlier host-confirmed completion of the last credited correct Round 5 answer. One team receives **The Winner of Tech Treasure Hunt**; no Round 6 qualification is produced.
 
 Extend signed inventories/recovery to Round 5 rules, question/reveal versions, buzzer windows/press times/order and staff controls, original score records, reviewed corrections, tie decisions and winner snapshots. Preserve restrictions and session revocation. Do not replay an old press into a newly opened window or reopen a recovered window automatically. A lost source sheet or unresolved disputed buzzer decision must remain a material coverage gap.
 
@@ -64,19 +64,22 @@ Extend signed inventories/recovery to Round 5 rules, question/reveal versions, b
 |---|---|
 | Date, venue, start/end and host/judges | PENDING |
 | Confirmed finalist count | PENDING — existing Round 4 plan selects five |
-| Questions and duration per stage | PENDING |
+| Questions per stage | CONFIRMED — five; 25 questions total |
+| Duration per stage / overall | PENDING |
 | Encoding rule and acceptable answers | PENDING |
 | Approved images, abnormality keys and reveal sequences | PENDING |
 | Buzzer mechanism and first answering opportunity | CONFIRMED — website buzzer; earliest valid server-recorded press answers first offline |
 | Participant latency/phone policy | CONFIRMED — participant responsibility; no client-time or network-latency compensation |
 | Exact equal-server-timestamp resolution and early-buzz rules | PENDING |
 | Answer time limit and who may answer for a team | PENDING |
-| Correct/wrong/no-answer points and negative marks | PENDING |
-| Whether another team may answer after a wrong answer | PENDING |
-| Reveal timing and any reveal-dependent scoring | PENDING |
-| Stage weights, maximum score and prior-round carry-over | PENDING |
+| Correct/wrong/no-answer points and negative marks | CONFIRMED — 2/0/0; no negative marks |
+| Passing after a wrong answer | CONFIRMED — only teams with native buzzes, preserving queue order |
+| Reveal timing | PENDING — correct guesses still earn two marks |
+| Stage/round totals | CONFIRMED — 10 per stage; 50 before reviewed voids |
+| Carry-over | CONFIRMED — scores carry over; implemented as summed latest final Round 1–4 scores |
 | Faulty-question voids and disputed buzzer/answer review | PENDING |
-| Tie-break procedure, winner/prize count and appeal window | PENDING |
+| Score tie-break and winner count | CONFIRMED — earlier last-correct completion; one event winner |
+| Exact equal/missing completion-time tie and appeal window | Organizer approval required; no automatic team-code winner |
 | Scorekeeper, independent verifier and retained evidence procedure | PENDING |
 
 `PENDING` values are editable planning placeholders. They are not approved scoring, consent or evidence references. Real rule/content approval is required before READY.
@@ -84,7 +87,7 @@ Extend signed inventories/recovery to Round 5 rules, question/reveal versions, b
 ## Delivery milestones
 
 - **M12 — complete locally:** Round 5 configuration, information/navigation, Round 4 → 5 eligibility, participant buzzer, durable server ordering and admin window/queue controls. Actual reviewed content/rules remain inputs.
-- **M13:** Offline answer/source-score intake bound to native buzzer evidence, stage totals/ranking, reviewed corrections, provisional/final results and winners.
+- **M13 — complete locally:** Host completion evidence, reviewed buzzer-linked sources, stage/carried totals and one independently published event winner. Actual private content and final prior results remain required inputs.
 - **M14:** Signed buzzer/source/winner exports and recovery, plus host/scorekeeper/smartphone rehearsal procedures.
 - **M11:** Integrated Round 1 → 2 → 3 → 4 → 5 acceptance, including concurrent presses, timestamp ordering, retries, window isolation, recovery, authorization and winners.
 

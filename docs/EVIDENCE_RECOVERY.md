@@ -2,7 +2,7 @@
 
 Updated 9 October 2026. M10 extends the existing Round 1 recovery and paper tools to coding, external scores, faculty and roster evidence. Use `/staff/results`, select the exact round attempt, and open **Evidence exports and recovery**. Paper activation and receipt verification remain Round 1 operations.
 
-The [Round 5 website buzzer](ROUND5_OPERATIONS.md) is implemented in M12. M14 still extends native signed inventories/reconciliation to its window/press timestamps/order/admin controls and future linked scores/winners. Whole-database backups include these tables, but current signed per-round reconciliation covers Rounds 1–4. Recovery must not reopen old windows or replay presses into a new question. See [milestone status](DEVELOPMENT_STATUS.md).
+Round 5 buzzer and [reviewed scoring/winners](ROUND5_SCORING.md) are implemented in M12/M13. M14 still extends signed native inventories/reconciliation to windows, presses, host completion evidence, question ledgers, carried-result provenance and awards. Whole-database backups include these tables; current signed per-round reconciliation covers Rounds 1–4. Recovery must preserve original completion times and cannot reopen old windows or restore revoked access.
 
 ## Capture and retain
 

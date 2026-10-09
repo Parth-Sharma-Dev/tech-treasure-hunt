@@ -1,6 +1,6 @@
 # Development milestone status
 
-Updated 9 October 2026 after M12 implementation. The Round 5 website buzzer and admin queue are implemented locally; answers remain offline. Actual event approval and production release remain separate.
+Updated 9 October 2026 after M13 and the organizer's scoring clarification. Round 5 now has native buzzer/host evidence, reviewed cumulative scoring and one event winner. Actual event inputs and production release remain separate.
 
 | Milestone | Status | Scope |
 |---|---|---|
@@ -12,10 +12,10 @@ Updated 9 October 2026 after M12 implementation. The Round 5 website buzzer and 
 | M10 | Completed locally for original scope | Round 1–4 signed evidence exports, reviewed recovery, retained paper reconciliation and isolated backup/restore rehearsal. Round 5 recovery is new M14 work. |
 | M11 | Remaining; partial regression coverage | Full five-round journey, concurrent server-ordered buzzes, duplicate/retry/window guards, winners, outages/restarts, load and accessibility/smartphone checks. |
 | M12 — Round 5 setup, eligibility and website buzzer | Completed locally | Verified/frozen five-stage private content, information/navigation, final Round 4 qualifier gates, participant buzzer, durable database timestamps/order, replay recovery and admin window/queue controls. Answers remain offline; actual content/rules are pending. |
-| M13 — Round 5 scoring and winners | Planned; not implemented | Offline answer/verdict records linked to native server buzzer evidence, CSV/manual validation and independent commits, stage totals, ranking/ties, corrections, appeals and final winners. |
+| M13 — Round 5 scoring and winners | Completed locally | Five questions/stage, two marks/correct, zero penalties; host completion records, buzzer-linked source ledgers, independent review/corrections, final Round 1–4 carry-over, last-correct completion ranking and one event winner. |
 | M14 — Round 5 recovery and rehearsal | Planned; not implemented | Signed buzzer window/press/source/winner inventories and recovery, host/admin/scorekeeper procedures and smartphone rehearsal evidence. |
 
-Keep existing milestone numbers. **M1–M10 and M12 are complete locally.** Continue with **M13 → M14 → finish M11**. Individual regression checks continue throughout; integrated acceptance closes after Round 5 scoring/recovery and the complete event journey are implemented.
+Keep existing milestone numbers. **M1–M10, M12 and M13 are complete locally.** Continue with **M14 → finish M11**. Integrated acceptance still requires signed native recovery, the complete competitive chain, broader outages/load and actual event rehearsal.
 
 ## Round 5 scope
 
@@ -27,6 +27,8 @@ M1–M10 retain their completed status for the delivered Round 1–4 scope. The 
 
 M10 recorded 201 backend tests passed, one opt-in load test skipped, 100 desktop/mobile browser checks passed, supplementary focused recovery/placeholder checks and an isolated PostgreSQL restore. See [test evidence](TEST_EVIDENCE.md). Those results do not certify Round 5 or the complete five-round event.
 
-M12 adds **213 passed / 1 skipped** in the full backend suite and **112 passed** in the full desktop/mobile browser suite. A fifth actual Django HTTP/PostgreSQL browser journey covers window opening, a press with a deliberately lost acknowledgment, reload/recovery, confirmed closure and a second question. Concurrency tests verify server-time order survives reversed commit order. Native score/winner acceptance remains M13 and signed buzz recovery remains M14.
+M12 recorded **213 passed / 1 skipped** in the backend suite and **112 passed** in the browser suite. Its fifth actual HTTP/PostgreSQL journey covers lost-response recovery and window isolation; concurrency tests preserve received-time order through reversed commits. M13 adds final scoring/awards below; signed native recovery remains M14.
+
+M13's final clean run passed **230 backend tests / 1 skipped** and **122 desktop/mobile browser checks**. A sixth actual browser/database journey covers the last live answer, independent source commit, provisional publication and final event award. A synthetic fixture advances only its publication clock; the application cannot skip appeals. See [scoring operation](ROUND5_SCORING.md) and [test evidence](TEST_EVIDENCE.md).
 
 Actual tasks/images/answer keys, faculty/hosts/consent, rosters, schedules, venue/network/buzzer procedures, appeal policies and scoring decisions remain organizer inputs. Existing hidden faculty drafts and the [organizer data template](templates/ORGANIZER_DATA.md) provide placeholders. Hosting/TLS, deployed capacity, actual devices/campus checks and physical rehearsal remain separate release gates.

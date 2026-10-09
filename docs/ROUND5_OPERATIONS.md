@@ -1,12 +1,12 @@
 # Round 5: website buzzer and offline answers
 
-Implemented locally in M12 on 9 October 2026. All five stages use the same buzzer; the host presents material and receives answers offline. Reviewed scoring/winners remain M13 and native buzzer export/reconciliation remains M14. See [format and remaining inputs](ROUND5_FORMAT.md).
+Implemented locally in M12/M13 on 9 October 2026. All five stages use the same buzzer; presentation and answers remain offline. M13 adds host completion records, reviewed ledgers, cumulative scores and one winner. Native signed recovery remains M14. See [scoring instructions](ROUND5_SCORING.md) and [remaining inputs](ROUND5_FORMAT.md).
 
 ## Prepare an attempt
 
 1. Prepare Round 5 with **BUZZER** delivery and an explicit approved active budget. Leave advancement count empty because this is the final.
 2. In Django admin **Buzzer questions**, add stable public question IDs, stage 1–5, version, private source reference and private content. The latter requires an `answer` and `presentation_reference`; it can retain encoding/provenance/reveal references as additional private metadata. Actual images and host packs stay private, outside Git/public assets.
-3. A different authorized verifier uses **Independently verify selected private buzzer questions**. Content edits, including partial updates, invalidate verification. At least one verified question in every stage and no more than 200 total are required. The five seeded questions do not establish the real question count.
+3. A different authorized verifier checks the content. Edits, including partial updates, invalidate verification. M13's scoring contract requires exactly five questions per stage; the original five-question M12 demo is buzzer-only. Prepare 25 verified questions for scored play.
 4. Configure the shared owner/accessibility/appeal/retention rules and an `offline_rules_reference` identifying independently reviewed answer/scoring/tie procedures. The supported buzzer policies are below. Real attempts reject marked placeholder source/rules references; actual scoring and content still require human verification.
 5. Have the verifier approve the rules and the controller mark READY. This freezes the question set and private versions. Revisions after READY require a new attempt.
 6. Independently finalize real Round 4 qualification before opening the Round 5 lobby/start. Only active same-cohort qualifiers in the latest attempts may participate; recovery/qualification-impact incidents suspend access.
@@ -19,7 +19,7 @@ Implemented locally in M12 on 9 October 2026. All five stages use the same buzze
 | `buzzer_early_policy` | `reject_closed_window` |
 | `offline_rules_reference` | Actual approved host/rules reference; synthetic/PENDING values are local demo placeholders only |
 
-Closed/early presses are rejected without awarding points or applying penalties. Exact equal recorded timestamps are held for staff review; no automatic team-code tie-break is implemented. Actual penalty, answer-passing, reveal scoring and winner policies remain organizer inputs for M13.
+Closed/early presses are rejected. Exact equal recorded buzz times are held for reviewed priority; team code never breaks them. The supplied scoring rules award two per correct answer, zero otherwise, allow queue-based passing and carry prior scores into one event award. Reveal steps do not change marks.
 
 For local unsigned preparation:
 
@@ -37,7 +37,7 @@ Use `/staff/rounds` to open the lobby/start, and `/staff/buzzer` for question co
 2. Participants open Round 5 from their dashboard and press its large buzzer. CSRF is prefetched before enabling it, so the press sends one network request. The page polls window/status changes every 750 ms while visible.
 3. The admin sees one effective position per team, ordered by precise server timestamps. While the window is open, **Current earliest team** can still change if an earlier admitted request is completing.
 4. Click **Close buzzer and confirm order** before calling the first team. Closing waits for admitted press transactions to finish, then preserves the complete window. **First team to answer offline** identifies the earliest team; equal times instead display a staff-review alert.
-5. The host receives the answer offline and retains its verdict/score evidence for M13. A buzz grants an answering opportunity and does not itself award marks.
+5. Record the offline answer immediately under **Offline answer evidence**, before the next question opens. The server captures completion time. Wrong/no-answer permits the next buzzing team to respond; a correct response stops passing. These observations need independent ledger review before awarding points.
 6. Select the next question and open a new window. Reusing a question for an approved retry also creates a new version; it never deletes older presses. Round pause/end/extension closes the current window. Resume requires the host to open a fresh window.
 
 A control changed through another reviewed workflow invalidates the old window's round version, even if no explicit closure was recorded at that moment. Such a stale window cannot accept presses; opening the next window closes and retains it.
@@ -62,5 +62,6 @@ After an unknown response, **Recover saved press** checks the original receipt f
 | `GET /api/staff/buzzer/rounds` | Authorized buzzer attempt list |
 | `GET /api/staff/rounds/{id}/buzzer` | Ordered queue, tie flag, frozen question labels and up to 100 retained windows |
 | `POST /api/staff/rounds/{id}/buzzer/control` | Authorized open/close with UUID, reason, expected round/window versions and question ID for open |
+| `POST /api/staff/rounds/{id}/buzzer/answer` | Authorized original answer/verdict/reference and native press; completion time comes from the server |
 
 Participant responses contain no private question packs, answer keys, other teams' timestamps or session cookies. Admin queue responses contain question identifiers and timing, not private answers/images. Private content preparation remains in restricted Django admin.

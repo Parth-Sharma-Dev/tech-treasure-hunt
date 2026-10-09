@@ -4,7 +4,7 @@ Recorded 7 October 2026. Scope: implemented Round 1 behavior using synthetic fix
 
 M7 participant portal validation was added on 8 October; the original Round 1 evidence below is retained as a dated record.
 
-Round 5's format, website-buzzer clarification and M12 implementation were recorded on 9 October. The M12 section below covers local buzzer validation; scoring/winners and signed native recovery remain M13/M14. Existing dated results retain their original scope. See [Round 5 operations](ROUND5_OPERATIONS.md) and [updated milestones](DEVELOPMENT_STATUS.md).
+Round 5 M12/M13 implementation and supplied scoring rules were recorded on 9 October. The sections below cover local buzzer and winner validation; signed native recovery remains M14. Earlier results retain their dated scope. See [Round 5 scoring](ROUND5_SCORING.md) and [updated milestones](DEVELOPMENT_STATUS.md).
 
 ## Environment
 
@@ -160,3 +160,16 @@ M10 is complete for the implemented local scope. Missing account identities, con
 - Signed private backup `.local/m12-before-migration-20261009.dump` preceded migration 0014. Source Round 1 remains READY; Rounds 2–5 remain DRAFT. `seed_buzzer_demo` prepared five unverified Round 5 placeholders and an unpublished information draft; repeat setup preserved them. Source native press count remains zero and no Round 4 qualification was fabricated.
 
 M12 is complete locally. Actual question packs/images/encoding/reveals, host rules, schedule and real Round 4 qualifiers must still be independently supplied/reviewed before live play. M13 scoring/winners, M14 signed buzzer reconciliation, broader M11 load/outage/full-chain acceptance and actual phone/network/event rehearsal remain. See [operating instructions](ROUND5_OPERATIONS.md).
+
+## M13 cumulative final scoring and one event winner — 9 October 2026
+
+- Final clean, serial backend run with `TTH_BROWSER_INTEGRATION=1`: **230 passed, 1 skipped** (opt-in load test). A supplemental runner initially collided with the full suite's shared test database; the competing setup and two legacy browser requests failed. The non-overlapping rerun passed all journeys. The application database was not used by those fixtures.
+- Full desktop/mobile Chromium: **122 passed**; the focused host/buzzer/results/external group passed 68 checks. TypeScript/Vite build, Ruff lint/format, Django system/migration drift checks and Node script syntax checks passed.
+- The organizer supplied five questions per stage, two marks/correct, zero wrong/unanswered penalties, buzzer-only passing, carry-over, earlier last-solved completion and one winner. The implementation uses summed latest final Round 1–4 scores and original host-server completion of the last credited correct Round 5 answer; it never substitutes buzzer time or import/review time.
+- Native tests cover exact 25-question/50-mark rules, response priority, host UUID replay and timestamp forgery rejection; atomic independent ledger commits, exact press/answer references, explicit per-finalist rows, corrected verdicts retaining original time, stage totals, missing question coverage, carried scores outweighing Round 5 credit, completion tie ranking and missing-time ties held for review.
+- Further tests cover staff/CSRF guards, imported-points rejection, stale carry-over, pending batches, renewed provisional appeals, retained equal-time adjudication across draft rows and rejection of Round 5 through the legacy unlinked score service.
+- A sixth actual Django HTTP/PostgreSQL browser journey prepares the first 24 questions in an isolated fixture, then exercises the last live buzz/host answer, end, CSV dry run, independent source commit, provisional publication, final review and one event winner. Only the fixture advances its publication clock after provisional results. The first script assertion saw an older 'Published' marker before the final acknowledgment; waiting for the actual final response fixed the test race.
+- Final snapshots carry one `winner_codes` entry, an event title and empty `qualifier_codes`; no Round 6 is created. Public entries contain aggregate stage/carried totals and completion time, not raw answers, receipts or source references. Historical/under-review awards retain their evidence without automatically promoting another team.
+- Signed private backup `.local/m13-before-migration-20261009.dump` preceded migration 0015. The source Round 5 draft now has 25 unverified slots (five per stage) and the supplied scoring contract. Repeated preparation adds zero records and preserves existing content. Source R1 remains READY; R2–R5 remain DRAFT; native answer/score-ledger/final-award counts remain zero. No prior scores or qualifiers were fabricated. The local backend was refreshed for the new routes.
+
+M13 is complete locally. Actual packs/images, approved host/rules references, final prior-round results and event procedures still require release review. M14 signed native recovery and M11 complete-chain/load/outage/device acceptance remain. See [scoring operation](ROUND5_SCORING.md).

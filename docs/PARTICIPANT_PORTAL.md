@@ -8,7 +8,7 @@ After login, `/lobby` displays the latest attempt of each round in the team's de
 
 All five rounds have **Open Round N** information links. These remain useful before/after active play; entering a page does not grant participation. M12 adds Round 5's same-cohort overview and buzzer; qualification and live question-window checks remain authoritative on the backend.
 
-M12 implements [Round 5](ROUND5_OPERATIONS.md) with five offline-answer stages, latest-final Round 4 eligibility, a participant buzzer and admin controls/queue. The earliest valid database-recorded press gets first answering priority after the window closes; no latency compensation is applied. Private host questions/answers remain excluded. M13 adds reviewed scores/winners linked to buzzer evidence. Earlier validation figures below remain dated M7 evidence.
+M12/M13 implement Round 5's [buzzer](ROUND5_OPERATIONS.md) and [reviewed event award](ROUND5_SCORING.md). Public results show five stage totals, prior carried points, cumulative score and last-correct completion; one final winner replaces next-round qualification. Private question packs, answers and sheet references remain staff-only. Earlier figures below retain their dated M7 scope.
 
 Each round page shows global and round-specific organizer announcements, reviewed schedules/venues and approved contacts. Eligible teams can read released activity instructions and approved rules from READY onward. Draft or ineligible teams receive public overviews and a specific eligibility reason, without restricted instructions. Active controls require LIVE plus eligibility; expired clocks are treated as ended.
 
