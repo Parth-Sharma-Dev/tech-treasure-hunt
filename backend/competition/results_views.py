@@ -74,10 +74,17 @@ def published_results(request, round_id):
             "current_attempt": current.pk == round.pk,
             "qualification_active": current.pk == round.pk
             and round.state == "FINALIZED"
+            and round.number != 5
             and not Incident.objects.filter(
                 round=round, material=True, closed_at__isnull=True
             ).exists(),
             "own_team_code": team.code,
+            "award_active": round.number == 5
+            and current.pk == round.pk
+            and round.state == "FINALIZED"
+            and not Incident.objects.filter(
+                round=round, material=True, closed_at__isnull=True
+            ).exists(),
             "server_time": database_now().isoformat(),
             "snapshot": public_snapshot(history[0]) if history else None,
             "history": [public_snapshot(snapshot) for snapshot in history],

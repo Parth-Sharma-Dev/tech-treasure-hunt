@@ -70,6 +70,10 @@ def locked_round(round_id):
 
 
 def build_preview(round, now):
+    if round.number == 5 and round.delivery_mode == "BUZZER":
+        from .buzzer_results import build_preview as buzzer_preview
+
+        return buzzer_preview(round, now)
     if round.number in [2, 4] and round.delivery_mode == Round.Delivery.EXTERNAL:
         from .external_results import build_preview as external_preview
 
@@ -633,7 +637,7 @@ def approve_result(round_id, actor, data):
         revision=previous.revision + 1 if previous else 1,
         status=proposal.target_status,
         ranked_entries=preview["entries"],
-        qualifier_codes=qualifiers,
+        qualifier_codes=[] if round.number == 5 else qualifiers,
         cut_count=preview["cut_count"],
         rules_digest=round.rules_digest,
         evidence_digest=preview["evidence_digest"],
@@ -646,6 +650,16 @@ def approve_result(round_id, actor, data):
         if proposal.target_status == "PROVISIONAL"
         else previous.appeal_deadline,
         metadata={
+            **(
+                {
+                    "winner_codes": qualifiers,
+                    "award_count": 1,
+                    "winner_title": "The Winner of Tech Treasure Hunt",
+                    "round5_max_score": preview["round5_max_score"],
+                }
+                if round.number == 5
+                else {}
+            ),
             "ranking_kind": preview.get("ranking_kind", "TREASURE_HUNT"),
             "max_score": preview["max_score"],
             "cutoff_tie": preview["cutoff_tie"],
@@ -664,6 +678,7 @@ def approve_result(round_id, actor, data):
         "revision": snapshot.revision,
         "status": snapshot.status,
         "qualifier_codes": snapshot.qualifier_codes,
+        **({"winner_codes": qualifiers} if round.number == 5 else {}),
     }
     record_action(action_id, actor, "publish_result", reason, fingerprint, response)
     return response

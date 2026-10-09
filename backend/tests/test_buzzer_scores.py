@@ -1,4 +1,6 @@
 import uuid
+from datetime import timedelta
+from unittest.mock import patch
 
 import pytest
 from django.utils import timezone
@@ -238,3 +240,124 @@ def test_corrections_append_and_retain_original_completion_time(final):
     assert revised.supersedes_id == original.pk and BuzzerScoreRevision.objects.count() == 2
     assert original.payload["rows"][0]["completed_at"] == revised.payload["rows"][0]["completed_at"]
     assert original.payload["rows"][0]["points"] == 2 and revised.payload["rows"][0]["points"] == 0
+
+
+def publish(final, status="PROVISIONAL", **extra):
+    from competition.results import approve_result, build_preview, propose_result
+
+    round = final[0]
+    round.refresh_from_db()
+    preview = build_preview(round, timezone.now())
+    proposal = propose_result(
+        round.pk,
+        final[3],
+        action(
+            status=status,
+            expected_version=round.control_version,
+            evidence_digest=preview["evidence_digest"],
+            evidence_confirmed=True,
+            **extra,
+        ),
+    )
+    return approve_result(
+        round.pk, final[4], action(proposal_id=proposal["proposal_id"], evidence_confirmed=True)
+    )
+
+
+def test_complete_final_has_fifty_marks_carry_over_and_one_winner_not_round6(final):
+    from competition.results import build_preview
+
+    rows = played(final, count=25)
+    intake(final, rows)
+    preview = build_preview(final[0], timezone.now())
+    assert preview["evidence_gaps"] == [] and preview["configuration_errors"] == []
+    assert preview["round5_max_score"] == 50
+    assert preview["entries"][0]["round5_score"] == 50 and preview["entries"][0]["score"] == 70
+    assert list(preview["entries"][0]["stage_scores"].values()) == [10] * 5
+    publish(final)
+    snapshot = ResultSnapshot.objects.filter(round=final[0]).latest("revision")
+    when = snapshot.appeal_deadline + timedelta(seconds=1)
+    with patch("competition.results.database_now", return_value=when):
+        round = final[0]
+        round.refresh_from_db()
+        preview = build_preview(round, when)
+        from competition.results import approve_result, propose_result
+
+        proposal = propose_result(
+            round.pk,
+            final[3],
+            action(
+                status="FINAL",
+                expected_version=round.control_version,
+                evidence_digest=preview["evidence_digest"],
+                evidence_confirmed=True,
+            ),
+        )
+        result = approve_result(
+            round.pk, final[4], action(proposal_id=proposal["proposal_id"], evidence_confirmed=True)
+        )
+    assert result["qualifier_codes"] == [] and result["winner_codes"] == [final[2][0].code]
+    winner = ResultSnapshot.objects.filter(round=round).latest("revision")
+    assert (
+        winner.qualifier_codes == []
+        and winner.metadata["winner_title"] == "The Winner of Tech Treasure Hunt"
+    )
+    assert "private answer" not in str(winner.ranked_entries) and round.advancement_count is None
+
+
+def test_missing_question_coverage_blocks_publication(final):
+    from competition.results import build_preview
+
+    intake(final, played(final, count=1))
+    preview = build_preview(final[0], timezone.now())
+    assert any("All 25" in message for message in preview["evidence_gaps"])
+    with pytest.raises(ApiProblem, match="All 25"):
+        publish(final)
+
+
+def test_equal_cumulative_scores_rank_by_last_correct_completion_not_buzz_time(final):
+    from competition.results import build_preview
+
+    rows = played(final, count=25, winners=[0, 1] + [0] * 23)
+    for row in rows:
+        if row["window_id"] != rows[0]["window_id"] and row["window_id"] != rows[2]["window_id"]:
+            row["verdict"] = "VOID"
+            row["adjudication_reference"] = "synthetic-faulty-question-report"
+    intake(final, rows)
+    preview = build_preview(final[0], timezone.now())
+    first, second = preview["entries"]
+    assert first["score"] == second["score"] == 22
+    assert (
+        first["team_code"] == final[2][0].code
+        and first["last_correct_at"] < second["last_correct_at"]
+    )
+    assert not preview["cutoff_tie"]
+
+
+def test_carry_over_can_outweigh_the_round5_score(final):
+    from competition.results import build_preview
+
+    snapshot = ResultSnapshot.objects.filter(round__number=4).latest("revision")
+    entries = snapshot.ranked_entries
+    entries[1]["score"] = 40
+    ResultSnapshot.objects.create(
+        round=snapshot.round,
+        revision=3,
+        status="FINAL",
+        ranked_entries=entries,
+        qualifier_codes=snapshot.qualifier_codes,
+        maker=final[3],
+        approver=final[4],
+        published_at=timezone.now(),
+    )
+    rows = played(final, count=25)
+    for row in rows[2:]:
+        row["verdict"] = "VOID"
+        row["adjudication_reference"] = "synthetic-cancelled-question"
+    intake(final, rows)
+    first = build_preview(final[0], timezone.now())["entries"][0]
+    assert (
+        first["team_code"] == final[2][1].code
+        and first["round5_score"] == 0
+        and first["score"] == 52
+    )
