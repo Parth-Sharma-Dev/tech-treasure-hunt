@@ -64,6 +64,27 @@ test('recovery submits a signed checkpoint and shows independent review requirem
   await expect(page.getByRole('status').filter({ hasText: 'Results action confirmed' })).toBeVisible()
 })
 
+for (const number of [2, 3, 4]) {
+  test(`Round ${number} offers source recovery and sends a retained checkpoint`, async ({ page }) => {
+    await page.route('**/api/staff/rounds/1/results', route => route.fulfill({ json: { ...preview, number } }))
+    await page.route('**/api/staff/rounds/1/recovery', async route => {
+      expect(route.request().postDataJSON()).toMatchObject({ action: 'propose', signed_bundle: 'later-round-checkpoint', evidence_refs: ['retained-source-log'] })
+      await route.fulfill({ json: { recovery_proposal_id: 7 } })
+    })
+    await page.goto('/staff/results')
+    await expect(page.getByRole('heading', { name: 'Evidence exports and recovery' })).toBeVisible()
+    await expect(page.getByText('Verify retained signed receipts', { exact: true })).toHaveCount(0)
+    await page.getByText('Download evidence pages', { exact: true }).click()
+    await expect(page.getByRole('link', { name: number === 3 ? 'Download saved source evidence page' : number === 4 ? 'Download original faculty score batch evidence page' : 'Download original score batch evidence page', exact: true })).toBeVisible()
+    await page.getByLabel('Signed checkpoint file').setInputFiles({ name: 'later-round.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ signed_bundle: 'later-round-checkpoint' })) })
+    await page.getByLabel('Recovery reason').fill('Recover retained source evidence')
+    await page.getByLabel('Recovery evidence references').fill('retained-source-log')
+    await page.getByRole('button', { name: 'Propose checkpoint reconciliation' }).click()
+    await expect(page.getByRole('status').filter({ hasText: 'Results action confirmed' })).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
+  })
+}
+
 test('a retained final publication shows qualification under review during recovery', async ({ page }) => {
   const finalized = { ...snapshot, status: 'FINAL', qualifier_codes: ['TEAM-A'] }
   await page.route('**/api/rounds/1/results', route => route.fulfill({ json: { title: 'Synthetic hunt', attempt_no: 1, own_team_code: 'TEAM-A', current_attempt: true, qualification_active: false, snapshot: finalized, history: [finalized] } }))
