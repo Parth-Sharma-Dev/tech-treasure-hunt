@@ -4,6 +4,8 @@ Recorded 7 October 2026. Scope: implemented Round 1 behavior using synthetic fix
 
 M7 participant portal validation was added on 8 October; the original Round 1 evidence below is retained as a dated record.
 
+Round 5's offline buzzer format was documented on 9 October after M10. It is planned work, with no Round 5 implementation or acceptance evidence yet. Existing dated results below cover their original scope. See [Round 5 requirements](ROUND5_FORMAT.md) and [updated milestones](DEVELOPMENT_STATUS.md).
+
 ## Environment
 
 | Component | Tested version |

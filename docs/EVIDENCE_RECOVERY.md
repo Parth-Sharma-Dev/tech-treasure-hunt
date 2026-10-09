@@ -2,6 +2,8 @@
 
 Updated 9 October 2026. M10 extends the existing Round 1 recovery and paper tools to coding, external scores, faculty and roster evidence. Use `/staff/results`, select the exact round attempt, and open **Evidence exports and recovery**. Paper activation and receipt verification remain Round 1 operations.
 
+The newly specified [Round 5 offline buzzer final](ROUND5_FORMAT.md) needs an additional M14 recovery extension for its original buzzer/question/reveal score records, corrections, tie decisions and winners. Current M10 tooling covers its implemented Round 1–4 scope; see [milestone status](DEVELOPMENT_STATUS.md).
+
 ## Capture and retain
 
 Download a signed round checkpoint after ENDED, PROVISIONAL or FINALIZED. A v2 checkpoint includes:

@@ -15,6 +15,12 @@ Copy this template privately and replace each `PENDING` field before release. Do
 | Technical/event help desk and approved public contact channel | PENDING |
 | Appeal handling, retention and recovery/paper drill owners | PENDING |
 | Hosting/TLS and deployed capacity/recovery rehearsal | PENDING |
+| Round 5 date/venue, host/judges and confirmed finalists | PENDING |
+| Round 5 questions/durations, images/keys, encoding rule and reveal sequences | PENDING |
+| Round 5 buzzer/order/tie rules, answer time limit and early-buzz policy | PENDING |
+| Round 5 points/penalties, answer passing and reveal-dependent scoring | PENDING |
+| Round 5 stage weights/maximum, prior-score carry-over and winner/prize count | PENDING |
+| Round 5 faulty/disputed question policy, appeals and original score-sheet retention | PENDING |
 
 | Draft faculty slot | Actual name | Role | Venue/public contact | Consent reference | Approved portrait |
 |---|---|---|---|---|---|
@@ -26,6 +32,8 @@ Copy this template privately and replace each `PENDING` field before release. Do
 | Panel B / faculty 3 | PENDING | PENDING | PENDING | PENDING | Optional; blank uses initials |
 
 Panel labels are proposed placeholders, not approved assignments. Supply actual faculty IDs and qualifying team slots through the reviewed Round 4 configuration. Preserve two-person approval for faculty publication and scores.
+
+The [Round 5 format](../ROUND5_FORMAT.md) confirms the five activity stages. Its PENDING entries above require organizer decisions; placeholders do not establish a scoring or buzzer contract.
 
 ## Recovery evidence to supply during a drill or incident
 

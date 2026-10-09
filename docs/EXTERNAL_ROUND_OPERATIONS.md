@@ -1,6 +1,6 @@
 # Round 2 and Round 4 operations
 
-M9 supports paper-quiz scores, faculty interview scores and reviewed roster administration. Participants see published results inside the corresponding round. Round 5 stays deferred even after Green Cards are awarded.
+M9 supports paper-quiz scores, faculty interview scores and reviewed roster administration. Participants see published results inside the corresponding round. The newly specified [Round 5 offline buzzer final](ROUND5_FORMAT.md) is planned under M12–M14; its score intake and winners are not implemented yet.
 
 Use `/staff/scores` for source scores, `/staff/results` for provisional/final publication and appeals, `/staff/roster` for teams, and Django admin **Faculty profiles** for the approved directory. Staff workflow links appear on each desk. Sign in with an authorized staff account; participant accounts cannot use these endpoints.
 
@@ -69,7 +69,7 @@ SYNTHETIC-A,103,8,7,6,5,private-faculty-sheet-103
 
 Every criterion is 0–10, finite, with at most three decimal places. All three assigned faculty rows are required for each imported team; missing marks are never inferred. Original per-faculty marks/references remain immutable private source evidence. The precision policy computes `technical × 4 + problem_solving × 2.5 + communication × 2 + coordination × 1.5` from exact panel sums divided by three, then rounds the total half-up to three decimals. Displayed averages are rounded separately to three decimals; tie comparison uses exact criterion sums, so display rounding cannot invent a tie. Independently verify this precision policy with organizers before real release.
 
-Rank by total, then technical average, then problem-solving average. A remaining qualification-boundary tie requires one common reserve question, complete tied-team order and private evidence reviewed during final publication. Public results show reviewed totals and criterion averages, not individual faculty score sheets. Final top-five qualifiers receive Green Cards; the site announces Round 5 details later and provides no Round 5 entry.
+Rank by total, then technical average, then problem-solving average. A remaining qualification-boundary tie requires one common reserve question, complete tied-team order and private evidence reviewed during final publication. Public results show reviewed totals and criterion averages, not individual faculty score sheets. Final top-five qualifiers receive Green Cards. Round 5 entry is currently disabled; M12 will use this reviewed final qualification for the offline buzzer final rather than treating the displayed card as authorization.
 
 ## Intake, corrections and publication
 
@@ -102,4 +102,4 @@ Unknown write outcomes on score/roster desks retain their UUID/body across reloa
 
 Synthetic tests cover source validation, atomic/idempotent commit, independence, revisions, global voids, reserve ties, qualification, consent/draft redaction, faculty averaging, roster review and session invalidation. An isolated actual Django/PostgreSQL browser journey exercises score intake, independent commit/publication, participant results, roster creation/review and credentials. See [test evidence](TEST_EVIDENCE.md).
 
-Actual paper/key, team applications, faculty names/portraits/consent/contact channels, panel slots, venues, owner/appeal policies and content verification remain organizer-supplied release inputs. M10 adds later-round recovery exports/reconciliation; M11 adds the complete Round 1→2→3→4 journey and event capacity/accessibility acceptance. No production deployment or physical-event verification is implied.
+Actual paper/key, team applications, faculty names/portraits/consent/contact channels, panel slots, venues, owner/appeal policies and content verification remain organizer-supplied release inputs. M10 recovery exports/reconciliation are complete for Rounds 1–4. M12–M14 add Round 5 setup, external scoring/winners and recovery; M11 acceptance now covers the complete Round 1→2→3→4→5 journey. See [milestone status](DEVELOPMENT_STATUS.md). No production deployment or physical-event verification is implied.

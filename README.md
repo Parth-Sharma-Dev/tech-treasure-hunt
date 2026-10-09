@@ -2,11 +2,11 @@
 
 Competition website for the AI Nexus Club, CSE Department, SKIT Jaipur, Tech-Pravah 26.
 
-The website supports team login, Round 1 QR missions, native supervised Round 3 submissions, and independently reviewed Round 1–4 results. Round 5 is deferred.
+The website supports team login, Round 1 QR missions, native supervised Round 3 submissions, and independently reviewed Round 1–4 results. Round 5 is now specified as an offline buzzer final with five stages; its website integration is planned, not implemented. See [Round 5 requirements](docs/ROUND5_FORMAT.md) and [completed/remaining milestones](docs/DEVELOPMENT_STATUS.md).
 
 The current implementation includes a responsive event page, competition/evidence models, draft content preparation and rule approval in Django admin, team sign-in, a participant lobby, organizer round controls, server clocks, QR/fallback mission access, answer submissions, team progress and signed receipts. Organizer-reviewed Round 1 standings, provisional/final publication, incident review and final qualification are available. Production deployment remains deferred.
 
-The participant portal provides round-specific information pages for Rounds 1–4, reviewed schedules/venues, approved contacts, announcements and explicit eligibility reasons. Information revisions are independently published in Django admin without changing frozen competition rules. See [participant portal operations](docs/PARTICIPANT_PORTAL.md). Round 5 remains a placeholder.
+The participant portal provides round-specific information pages for Rounds 1–4, reviewed schedules/venues, approved contacts, announcements and explicit eligibility reasons. Information revisions are independently published in Django admin without changing frozen competition rules. See [participant portal operations](docs/PARTICIPANT_PORTAL.md). Round 5 currently remains a placeholder; M12–M14 will add its information/eligibility, reviewed external scores/winners and recovery.
 
 Native supervised Round 3 submissions are implemented: assigned browser/workstation, versioned text/source saves, locked final bundles, cutoff finalization, independently reviewed lab verdicts, ranking and provisional/final qualification. Participants execute Python/C in approved lab tools; the website does not run their code. See [Round 3 operations](docs/ROUND3_OPERATIONS.md). Reviewed final Round 2 qualifiers are required before coding play opens.
 
