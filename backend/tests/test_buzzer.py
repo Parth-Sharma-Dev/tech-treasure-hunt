@@ -383,3 +383,52 @@ def test_close_drains_inflight_earlier_receipt_even_when_later_press_commits_fir
     assert BuzzerClosure.objects.get().closed_at >= max(
         BuzzerPress.objects.values_list("admitted_at", flat=True)
     )
+
+
+def test_buzzer_demo_seed_preserves_existing_data_and_never_grants_qualification(buzzer, settings):
+    from django.core.management import call_command
+    from django.core.management.base import CommandError
+
+    round, _, _, maker, _ = buzzer
+    settings.DEBUG = True
+    call_command("seed_buzzer_demo", actor=maker.username)
+    assert BuzzerQuestion.objects.count() == 5
+    BuzzerQuestion.objects.all().delete()
+    before = ResultSnapshot.objects.count()
+    call_command("seed_buzzer_demo", actor=maker.username)
+    round.refresh_from_db()
+    assert round.state == "DRAFT" and round.delivery_mode == "BUZZER"
+    assert not BuzzerQuestion.objects.filter(verified_at__isnull=False).exists()
+    assert ResultSnapshot.objects.count() == before
+    call_command("seed_buzzer_demo", actor=maker.username)
+    assert BuzzerQuestion.objects.count() == 5
+    settings.DEBUG = False
+    with pytest.raises(CommandError, match="DEBUG"):
+        call_command("seed_buzzer_demo", actor=maker.username)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_actual_browser_buzzer_recovery_and_admin_queue(buzzer, live_server):
+    import os
+    import shutil
+    import subprocess
+    from pathlib import Path
+
+    if os.environ.get("TTH_BROWSER_INTEGRATION") != "1":
+        pytest.skip("Opt-in: Vite and Playwright Chromium required.")
+    ready(buzzer)
+    result = subprocess.run(
+        [shutil.which("node"), "frontend/scripts/live-buzzer-smoke.mjs"],
+        cwd=Path(__file__).resolve().parents[2],
+        capture_output=True,
+        text=True,
+        timeout=90,
+        env={
+            **os.environ,
+            "TTH_BACKEND_URL": live_server.url.replace("localhost", "127.0.0.1"),
+            "TTH_BUZZER_ROUND": str(buzzer[0].pk),
+        },
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert BuzzerPress.objects.count() == 2 and BuzzerClosure.objects.count() == 2
+    assert BuzzerWindow.objects.count() == 2
