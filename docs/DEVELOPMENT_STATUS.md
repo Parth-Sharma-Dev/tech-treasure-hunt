@@ -17,6 +17,8 @@ Updated 9 October 2026 after M14. Round 5 now has native buzzer/host evidence, r
 
 Keep existing milestone numbers. **M1–M10 and M12–M14 are complete locally.** Next: **finish M11**. Integrated acceptance still requires the complete competitive chain, broader outages/load and actual event rehearsal.
 
+Use the [M11 manual acceptance walkthrough](M11_ACCEPTANCE_TESTING.md) for the complete operator journey, expected scores/gates, interruption/recovery branches and pending sign-off record. Section 25 of the private admin/round operations guide contains the same checklist. Preparing the guide does not mark M11 complete.
+
 ## Round 5 scope
 
 The final has five stages: AI-generated image recognition, answer from keywords, word decoding, image abnormalities and progressive image guessing. Teams press the website buzzer; the admin sees server press times and closes the window to confirm the earliest valid team's offline answering opportunity. No client-time or latency compensation is applied. See [Round 5 operations](ROUND5_OPERATIONS.md) and [remaining inputs](ROUND5_FORMAT.md).

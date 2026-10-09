@@ -112,6 +112,8 @@ Before READY, configure the rule version, delivery method, advancement counts, a
 
 ## Validation
 
+For the manual Round 1–5 journey, expected outcomes and acceptance sign-off, use the [M11 acceptance walkthrough](docs/M11_ACCEPTANCE_TESTING.md). The private `.local/ADMIN_AND_ROUND_OPERATIONS_GUIDE.md` includes the same full checklist as section 25. M11 remains pending until the checks are performed and reviewed.
+
 For signed evidence exports and independently reviewed Round 1–5 restoration, see [recovery operations](docs/EVIDENCE_RECOVERY.md). Local organizer placeholders can be prepared with `.venv/Scripts/python backend/manage.py seed_organizer_placeholders --actor DEMO-content`; these remain unpublished demo drafts. See the [organizer data template](docs/templates/ORGANIZER_DATA.md) for actual release inputs.
 
 From the repository root, with PostgreSQL running:
