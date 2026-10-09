@@ -8,6 +8,7 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from django.db import transaction
 
 from .api import ApiProblem
+from .buzzer_scores import HEADERS as BUZZER_HEADERS
 from .clock import database_now
 from .models import ImportBatch, Round, ScoreRevision, Team
 from .participant import round_eligible
@@ -31,6 +32,7 @@ HEADERS = {
     2: ["team_code", "correct_question_ids", "official_finish_active_ms", "source_reference"],
     4: ["team_code", "faculty_id", *CRITERIA, "source_reference"],
 }
+HEADERS[5] = BUZZER_HEADERS
 
 
 def decimal_value(value, maximum):
@@ -325,6 +327,10 @@ def validate_rows(round, rows, enforce_eligibility=True):
 
 @transaction.atomic
 def validate_import(round_id, actor, data):
+    if Round.objects.filter(pk=round_id, number=5, delivery_mode="BUZZER").exists():
+        from .buzzer_scores import validate_import as buzzer_import
+
+        return buzzer_import(round_id, actor, data)
     require_result_role(actor)
     action_id, reason = validate_request(data)
     round = locked_round(round_id)
@@ -369,6 +375,10 @@ def validate_import(round_id, actor, data):
 
 @transaction.atomic
 def commit_import(round_id, actor, data):
+    if Round.objects.filter(pk=round_id, number=5, delivery_mode="BUZZER").exists():
+        from .buzzer_scores import commit_import as buzzer_commit
+
+        return buzzer_commit(round_id, actor, data)
     require_staff_permission(actor, "verify_evidence")
     action_id, reason = validate_request(data)
     round = locked_round(round_id)
