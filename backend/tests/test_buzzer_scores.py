@@ -50,6 +50,7 @@ def final(buzzer):
         "ranking_policy": "cumulative_score_then_last_correct",
         "qualification_tie_policy": "supervised_reserve_question",
     }
+    round.active_budget_ms = 300000
     round.save()
     for number in range(1, 5):
         previous = Round.objects.filter(number=number, is_demo=True).first()
@@ -130,7 +131,7 @@ def test_live_host_record_captures_server_completion_and_passes_only_after_wrong
         record_answer(round.pk, final[3], {**second, "completed_at": "1999-01-01"})
 
 
-def played(final, count=1, winners=None):
+def played(final, count=1, winners=None, end=True):
     from competition.clock import control_round
 
     round = start(final)
@@ -181,7 +182,10 @@ def played(final, count=1, winners=None):
                 }
             )
     round.refresh_from_db()
-    control_round(round.pk, final[3], action(action="end", expected_version=round.control_version))
+    if end:
+        control_round(
+            round.pk, final[3], action(action="end", expected_version=round.control_version)
+        )
     round.refresh_from_db()
     return rows
 
@@ -424,6 +428,117 @@ def test_revised_credit_restarts_provisional_appeal_requirement(final):
         "revised provisional" in message
         for message in build_preview(final[0], timezone.now())["finalization_blockers"]
     )
+
+
+def test_native_drafts_preserve_adjudicated_equal_time_order_for_uncalled_teams(final):
+    from competition.buzzer_scores import source_context
+    from competition.clock import control_round
+
+    round = start(final)
+    window = open_window(final)
+    clients = [client_for(final, index) for index in range(2)]
+    with patch("competition.buzzer.database_now", return_value=timezone.now()):
+        receipts = [
+            post(
+                client,
+                f"/api/rounds/{round.pk}/buzzer/press",
+                {"action_id": str(uuid.uuid4()), "window_id": window["id"]},
+            ).json()["press"]
+            for client in clients
+        ]
+    control_window(
+        round.pk,
+        final[3],
+        action(
+            operation="close", expected_version=round.control_version, expected_window_version=1
+        ),
+    )
+    order = [team.code for team in final[2][:2]]
+    record_answer(
+        round.pk,
+        final[3],
+        action(
+            window_id=window["id"],
+            press_id=receipts[0]["id"],
+            verdict="CORRECT",
+            answer="private answer",
+            source_reference="synthetic-host-sheet",
+            buzzer_order=order,
+            adjudication_reference="synthetic-buzzer-tie-review",
+        ),
+    )
+    control_round(round.pk, final[3], action(action="end", expected_version=round.control_version))
+    round.refresh_from_db()
+    rows = source_context(round)["draft_source_rows"]
+    assert all(row["buzzer_tie_order"] == "|".join(order) for row in rows)
+    rows[1]["verdict"], rows[1]["source_reference"] = "NOT_CALLED", "synthetic-uncalled-sheet"
+    intake(final, rows)
+
+
+def test_round5_cannot_enter_the_legacy_unlinked_external_scoring_service():
+    from competition.external_scores import require_external
+
+    with pytest.raises(ApiProblem, match="Round 2 and Round 4"):
+        require_external(Round(number=5, delivery_mode="EXTERNAL"))
+
+
+def test_scoring_seed_preserves_content_and_never_fabricates_final_scores(buzzer, settings):
+    from django.core.management import call_command
+
+    settings.DEBUG = True
+    before = ResultSnapshot.objects.count()
+    call_command("seed_buzzer_scoring_demo", actor=buzzer[3].username)
+    assert BuzzerQuestion.objects.count() == 25 and ResultSnapshot.objects.count() == before
+    call_command("seed_buzzer_scoring_demo", actor=buzzer[3].username)
+    assert BuzzerQuestion.objects.count() == 25
+    assert (
+        BuzzerQuestion.objects.get(pk=buzzer[1][0].pk).private_content["answer"] == "SECRET-ANSWER"
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_real_browser_final_scores_and_independent_winner_publication(final, live_server):
+    import os
+    import shutil
+    import subprocess
+    from pathlib import Path
+
+    from competition.clock import database_now
+
+    if os.environ.get("TTH_BROWSER_INTEGRATION") != "1":
+        pytest.skip("Opt-in: actual browser and PostgreSQL final-score journey.")
+    played(final, count=24, end=False)
+    open_window(final, question=24)
+
+    def publication_now():
+        latest = (
+            ResultSnapshot.objects.filter(round=final[0], status="PROVISIONAL")
+            .order_by("-revision")
+            .first()
+        )
+        return latest.appeal_deadline + timedelta(seconds=1) if latest else database_now()
+
+    with (
+        patch("competition.results.database_now", side_effect=publication_now),
+        patch("competition.results_views.database_now", side_effect=publication_now),
+    ):
+        result = subprocess.run(
+            [shutil.which("node"), "frontend/scripts/live-final-scores-smoke.mjs"],
+            cwd=Path(__file__).resolve().parents[2],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            env={
+                **os.environ,
+                "TTH_BACKEND_URL": live_server.url.replace("localhost", "127.0.0.1"),
+                "TTH_FINAL_ROUND": str(final[0].pk),
+            },
+        )
+    assert result.returncode == 0, result.stdout + result.stderr
+    snapshot = ResultSnapshot.objects.filter(round=final[0]).latest("revision")
+    assert snapshot.status == "FINAL" and snapshot.qualifier_codes == []
+    assert snapshot.metadata["winner_codes"] == [final[2][0].code]
+    assert BuzzerScoreRevision.objects.count() == 25
 
 
 def test_missing_last_correct_times_hold_equal_cumulative_scores_for_review(final):
