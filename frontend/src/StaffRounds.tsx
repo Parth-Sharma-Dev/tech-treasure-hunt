@@ -40,6 +40,7 @@ function Controls({ round, receivedAt, refresh }: { round: StaffRound; receivedA
     <RoundClock clock={round} receivedAt={receivedAt} />
     <p className="muted">Control version {round.control_version}</p>
     {round.delivery_mode==='CODING' && <p><a href={`/staff/coding?round=${round.round_id}`}>Coding workstations and lab judging</a></p>}
+    {round.delivery_mode==='BUZZER' && <p><a href="/staff/buzzer">Question windows and server-time buzzer queue</a></p>}
     {round.play_mode === 'PAPER' && <p>Paper play is active. <a href={`/staff/results?round=${round.round_id}`}>Review paper slips or end paper play</a>.</p>}
     {actions.length > 0 || pending ? <form className="form-stack" onSubmit={event => { event.preventDefault(); submit() }}>
       <label>Round action<select disabled={!!pending || mutation.isPending} value={pending?.action ?? selected} onChange={event => { setAction(event.target.value); mutation.reset() }}>

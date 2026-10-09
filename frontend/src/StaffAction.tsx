@@ -29,5 +29,5 @@ export function StaffActionStatus({ action }: { action: ReturnType<typeof useSta
 }
 
 export function StaffNavigation() {
-  return <nav className="staff-navigation" aria-label="Staff workflows"><a href="/staff/rounds">Round controls</a><a href="/staff/results">Results and appeals</a><a href="/staff/coding">Coding lab</a><a href="/staff/scores">External scores</a><a href="/staff/roster">Team roster</a><a href="/admin/competition/facultyprofile/">Faculty profiles</a></nav>
+  return <nav className="staff-navigation" aria-label="Staff workflows"><a href="/staff/rounds">Round controls</a><a href="/staff/results">Results and appeals</a><a href="/staff/buzzer">Round 5 buzzer</a><a href="/staff/coding">Coding lab</a><a href="/staff/scores">External scores</a><a href="/staff/roster">Team roster</a><a href="/admin/competition/facultyprofile/">Faculty profiles</a></nav>
 }

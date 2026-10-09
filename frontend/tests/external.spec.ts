@@ -87,11 +87,11 @@ test('Round 4 shows approved faculty and the own panel assignment', async ({ pag
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
 })
 
-test('faculty final results award Green Cards and leave Round 5 deferred', async ({ page }) => {
+test('faculty final results award Green Cards and link to Round 5 information', async ({ page }) => {
   const snapshot = { id: 1, revision: 1, status: 'FINAL', cut_count: 5, qualifier_codes: ['TEAM-A'], published_at: '2026-10-13T09:00:00Z', appeal_deadline: null, supersedes: null, metadata: { ranking_kind: 'FACULTY', publication_reason: 'Reviewed interview', tie_reason: '', open_material_incidents: 0 }, entries: [{ team_code: 'TEAM-A', team_name: 'Alpha', team_status: 'ACTIVE', eligible: true, score: 69, max_score: 100, tie_time_ms: null, criterion_averages: { technical: '8.000', problem_solving: '7.000', communication: '6.000', coordination: '5.000' }, rank: 1 }] }
   await page.route('**/api/rounds/4/results', route => route.fulfill({ json: { title: 'Interview', attempt_no: 1, own_team_code: 'TEAM-A', current_attempt: true, qualification_active: true, snapshot, history: [snapshot] } }))
   await page.goto('/rounds/4/results')
-  await expect(page.getByText('Your team received a Green Card. Round 5 details will be announced later.')).toBeVisible()
+  await expect(page.getByText('Your team received a Green Card and qualified for Round 5. Open Round 5 from your dashboard.')).toBeVisible()
   await expect(page.getByRole('columnheader', { name: 'technical average' })).toBeVisible()
-  await expect(page.getByRole('link', { name: /round 5/i })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: /round 5/i })).toHaveAttribute('href', '/lobby')
 })

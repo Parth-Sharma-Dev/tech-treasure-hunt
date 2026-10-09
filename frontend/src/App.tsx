@@ -8,13 +8,14 @@ import { CodingWorkspace } from './CodingWorkspace'
 import { StaffCoding } from './StaffCoding'
 import { StaffScores } from './StaffScores'
 import { StaffRoster } from './StaffRoster'
+import { StaffBuzzer } from './StaffBuzzer'
 
 const rounds = [
   ['01', 'Treasure hunt', 'Follow the clues. Find your next move.'],
   ['02', 'Quiz & puzzles', 'Connect your discoveries.'],
   ['03', 'Coding & debugging', 'Turn a problem into a solution.'],
   ['04', 'Faculty challenge', 'Put your thinking to the test.'],
-  ['05', 'The visual final', 'Make the last connection.'],
+  ['05', 'The buzzer final', 'Buzz online. Answer at the venue.'],
 ] as const
 
 export function App() {
@@ -44,6 +45,7 @@ export function App() {
       </header>
 
       <main id="main">
+        {location.pathname === '/staff/buzzer' ? <StaffBuzzer /> : <>
         {location.pathname === '/staff/scores' ? <StaffScores /> : location.pathname === '/staff/roster' ? <StaffRoster /> : location.pathname === '/staff/coding' ? <StaffCoding /> : /^\/rounds\/[1-9][0-9]*\/coding$/.test(location.pathname) ? <CodingWorkspace /> : location.pathname === '/staff/results' ? <StaffResults /> : /^\/rounds\/[1-9][0-9]*\/results$/.test(location.pathname) ? <PublishedResults /> : /^\/rounds\/[1-9][0-9]*$/.test(location.pathname) ? <Lobby roundId={Number(location.pathname.split('/')[2])} /> : location.pathname === '/staff/rounds' ? <StaffRounds /> : location.pathname === '/login' ? <Login /> : location.pathname.startsWith('/missions/') ? <Mission /> : location.pathname === '/lobby' ? <Lobby /> : <>
         <section className="hero" aria-labelledby="hero-heading">
           <div className="hero-copy">
@@ -80,6 +82,7 @@ export function App() {
             ))}
           </ol>
         </section>
+        </>}
         </>}
       </main>
 

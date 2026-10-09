@@ -13,8 +13,7 @@ test.beforeEach(async ({ page }) => {
 
 test('dashboard exposes all in-scope round pages, approved schedule and announcements', async ({ page }) => {
   await page.goto('/lobby')
-  for (const number of [1,2,3,4]) await expect(page.getByRole('link', { name: `Open Round ${number}`, exact: true })).toHaveAttribute('href', `/rounds/${number}`)
-  await expect(page.getByRole('link', { name: 'Open Round 5' })).toHaveCount(0)
+  for (const number of [1,2,3,4,5]) await expect(page.getByRole('link', { name: `Open Round ${number}`, exact: true })).toHaveAttribute('href', `/rounds/${number}`)
   await expect(page.getByRole('heading', { name: 'Meet your supervisor' })).toBeVisible()
   await expect(page.getByText('13 Oct 2026, 12:00 pm IST', { exact: true }).first()).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
@@ -39,8 +38,10 @@ test('Round 2 retains published results after closing and shows released instruc
   await expect(page.getByLabel('Mission fallback code')).toHaveCount(0)
 })
 
-test('a direct Round 5 URL stays unavailable', async ({ page }) => {
-  await page.route('**/api/rounds/5/overview', route => route.fulfill({ status: 404, json: { error: { message: 'Round information is not available.' } } }))
+test('Round 5 information is readable without granting finalist participation', async ({ page }) => {
+  await page.route('**/api/rounds/5/overview', route => route.fulfill({ json: { ...rounds[4], information: info, eligibility_reason: 'Eligibility awaits final Round 4 results.' } }))
   await page.goto('/rounds/5')
-  await expect(page.getByRole('heading', { name: 'Round unavailable' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'The five final stages' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Approved organizer' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Press Round 5 buzzer' })).toHaveCount(0)
 })
