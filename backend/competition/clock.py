@@ -92,6 +92,10 @@ def control_round(round_id, actor, data):
         or (action != "extend" and extension != 0)
     ):
         raise ApiProblem("invalid_request", "Extensions must be positive and at most 24 hours.")
+    if Round.objects.filter(pk=round_id, delivery_mode="BUZZER").exists():
+        from .buzzer import admission_fence
+
+        admission_fence(round_id)
     round = Round.objects.select_for_update().filter(pk=round_id).first()
     if round is None:
         raise ApiProblem("not_found", "Round not found.", 404)
@@ -125,7 +129,7 @@ def control_round(round_id, actor, data):
     }
     if round.play_mode != Round.PlayMode.ONLINE:
         raise ApiProblem("paper_mode", "Online controls cannot reopen paper play.", 409)
-    if round.number in [2, 3, 4] and action in ["open_lobby", "start"]:
+    if round.number in [2, 3, 4, 5] and action in ["open_lobby", "start"]:
         from .models import Team
         from .participant import round_eligible
 
@@ -186,6 +190,10 @@ def control_round(round_id, actor, data):
             round.state = Round.State.FROZEN if action == "freeze" else Round.State.ENDED
             if round.state == Round.State.FROZEN:
                 round.phase_started_at = now
+    if round.delivery_mode == "BUZZER":
+        from .buzzer import close_current_window
+
+        close_current_window(round, actor, "Round control: " + action + ": " + reason, now)
     round.control_version += 1
     round.save()
     response = {**clock_payload(round, now), "deadline_reached": expired}

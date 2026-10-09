@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path
 
 from competition import (
+    buzzer_views,
     coding_views,
     external_views,
     gameplay_views,
@@ -21,6 +22,12 @@ urlpatterns = [
     path("api/me", views.me),
     path("api/rounds", views.portal_dashboard),
     path("api/rounds/<int:round_id>/overview", views.portal_overview),
+    path("api/rounds/<int:round_id>/buzzer", buzzer_views.status),
+    path("api/rounds/<int:round_id>/buzzer/press", buzzer_views.press),
+    path("api/rounds/<int:round_id>/buzzer/presses/<str:identity>", buzzer_views.receipt),
+    path("api/staff/buzzer/rounds", buzzer_views.rounds),
+    path("api/staff/rounds/<int:round_id>/buzzer", buzzer_views.desk),
+    path("api/staff/rounds/<int:round_id>/buzzer/control", buzzer_views.control),
     path("api/rounds/<int:round_id>/coding/submission", coding_views.submission),
     path("api/rounds/<int:round_id>/coding/tasks/<int:task_id>/response", coding_views.response),
     path("api/rounds/<int:round_id>/coding/finalize", coding_views.final),
