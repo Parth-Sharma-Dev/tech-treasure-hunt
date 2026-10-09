@@ -51,6 +51,7 @@ class Round(models.Model):
         ONLINE_HUNT = "ONLINE_HUNT", "Online treasure hunt"
         CODING = "CODING", "Supervised Python/C competition"
         EXTERNAL = "EXTERNAL", "Externally judged"
+        BUZZER = "BUZZER", "Website buzzer with offline answers"
 
     class PlayMode(models.TextChoices):
         ONLINE = "ONLINE"
@@ -153,6 +154,92 @@ class RoundPhase(ImmutableEvidence):
                 condition=Q(ended_at__gte=F("started_at")), name="phase_time_order"
             )
         ]
+
+
+class BuzzerQuestion(models.Model):
+    round = models.ForeignKey(Round, on_delete=models.PROTECT)
+    public_id = models.CharField(max_length=40)
+    stage = models.PositiveSmallIntegerField()
+    version = models.CharField(max_length=40)
+    source_reference = models.CharField(max_length=200)
+    private_content = models.JSONField(default=dict)
+    prepared_by = staff_reference(null=True, blank=True)
+    verified_by = staff_reference(null=True, blank=True)
+    verified_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["round", "public_id"], name="buzzer_question_unique"),
+            models.CheckConstraint(
+                condition=Q(stage__gte=1, stage__lte=5), name="buzzer_stage_range"
+            ),
+        ]
+
+    def clean(self):
+        from .buzzer_content import question_errors
+
+        if errors := question_errors(self):
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        with transaction.atomic():
+            target = Round.objects.select_for_update().get(pk=self.round_id)
+            previous = type(self).objects.filter(pk=self.pk).first() if self.pk else None
+            if target.state != "DRAFT" or previous and previous.round_id != self.round_id:
+                raise ValidationError("Released buzzer questions cannot be edited or moved.")
+            if previous and any(
+                getattr(previous, field) != getattr(self, field)
+                for field in [
+                    "public_id",
+                    "stage",
+                    "version",
+                    "source_reference",
+                    "private_content",
+                ]
+            ):
+                self.verified_by = None
+                self.verified_at = None
+            return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        with transaction.atomic():
+            if Round.objects.select_for_update().get(pk=self.round_id).state != "DRAFT":
+                raise ValidationError("Released buzzer questions cannot be deleted.")
+            return super().delete(*args, **kwargs)
+
+
+class BuzzerWindow(ImmutableEvidence):
+    round = models.ForeignKey(Round, on_delete=models.PROTECT)
+    question = models.ForeignKey(BuzzerQuestion, on_delete=models.PROTECT)
+    version = models.PositiveIntegerField()
+    round_version = models.PositiveIntegerField()
+    opened_at = models.DateTimeField()
+    actor = staff_reference()
+    reason = models.TextField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["round", "version"], name="buzzer_window_version"),
+        ]
+
+
+class BuzzerClosure(ImmutableEvidence):
+    window = models.OneToOneField(BuzzerWindow, on_delete=models.PROTECT)
+    closed_at = models.DateTimeField()
+    actor = staff_reference()
+    reason = models.TextField()
+
+
+class BuzzerPress(ImmutableEvidence):
+    id = models.UUIDField(primary_key=True, editable=False)
+    window = models.ForeignKey(BuzzerWindow, on_delete=models.PROTECT)
+    team = models.ForeignKey("Team", on_delete=models.PROTECT)
+    session = models.ForeignKey("TeamSession", on_delete=models.PROTECT)
+    received_at = models.DateTimeField()
+    admitted_at = models.DateTimeField()
+
+    class Meta:
+        indexes = [models.Index(fields=["window", "team", "received_at"], name="buzzer_team_time")]
 
 
 class CodingTask(models.Model):

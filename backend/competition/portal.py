@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 
 from .api import ApiProblem
+from .buzzer_content import STAGES
 from .clock import clock_payload, database_now
 from .models import (
     AuditEvent,
@@ -101,8 +102,6 @@ def announcements(team, round_id=None):
 
 
 def eligibility_reason(team, round, eligible):
-    if round.number == 5:
-        return "Round 5 details will be announced later."
     if team.status != "ACTIVE":
         return f"Your team is {team.status.lower()}. Contact an organizer."
     if eligible:
@@ -131,15 +130,13 @@ def overview(team, round, now=None, session=None):
 
     now = now or database_now()
     clock = clock_payload(round, now)
-    eligible = round_eligible(team, round) and round.number != 5
+    eligible = round_eligible(team, round)
     info = RoundInformation.objects.filter(round=round).first()
     published = info.published_snapshot if info and info.published_snapshot.get("visible") else {}
     if published.get("is_demo") != team.is_demo:
         published = {}
-    if round.number == 5:
-        published = {}
     state = clock["state"]
-    released = state != "DRAFT" and round.number != 5
+    released = state != "DRAFT"
     instructions_visible = released and eligible
     information = {key: value for key, value in published.items() if key != "instructions"}
     information["instructions"] = published.get("instructions", "") if instructions_visible else ""
@@ -155,9 +152,11 @@ def overview(team, round, now=None, session=None):
         "rules": public_rules(round) if released and eligible else None,
         "information": information,
         **participant_faculty(team, round, eligible, state),
-        "announcements": announcements(team, round.pk) if round.number != 5 else [],
+        "announcements": announcements(team, round.pk),
+        "buzzer_stages": STAGES if round.number == 5 else [],
         "capabilities": {
-            "view_information": round.number != 5,
+            "view_information": True,
+            "buzzer_supported": round.number == 5 and round.delivery_mode == "BUZZER",
             "enter_activity": eligible and state == "LIVE",
             "open_mission": eligible
             and state == "LIVE"
@@ -175,8 +174,7 @@ def overview(team, round, now=None, session=None):
                 ).exists()
             ),
             "instructions_visible": instructions_visible,
-            "view_results": round.number != 5
-            and ResultSnapshot.objects.filter(round=round).exists(),
+            "view_results": ResultSnapshot.objects.filter(round=round).exists(),
         },
         "earned_keywords": list(
             Completion.objects.filter(
@@ -204,7 +202,7 @@ def dashboard(team, session=None):
 
 def participant_overview(team, round_id, session=None):
     round = Round.objects.filter(pk=round_id, is_demo=team.is_demo).first()
-    if round is None or round.number == 5:
+    if round is None:
         raise ApiProblem("not_found", "Round information is not available.", 404)
     latest = (
         Round.objects.filter(number=round.number, is_demo=team.is_demo)

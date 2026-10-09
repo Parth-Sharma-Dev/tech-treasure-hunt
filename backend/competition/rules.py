@@ -43,6 +43,10 @@ def round_snapshot(round):
         from .coding_content import tasks_snapshot
 
         snapshot["coding_tasks"] = tasks_snapshot(round)
+    if round.delivery_mode == "BUZZER":
+        from .buzzer_content import questions_snapshot
+
+        snapshot["buzzer_questions"] = questions_snapshot(round)
     if round.number == 4 and isinstance(round.rules.get("faculty_panels"), list):
         from .models import FacultyProfile
 
@@ -72,12 +76,15 @@ def readiness_errors(round):
         errors.append("Select a delivery method.")
     if round.number == 1 and round.delivery_mode != Round.Delivery.ONLINE_HUNT:
         errors.append("Round 1 requires the online hunt delivery method.")
+    if round.number == 5 and round.delivery_mode != Round.Delivery.BUZZER:
+        errors.append("Round 5 requires website BUZZER delivery with offline answers.")
     if (
         round.number > 1
         and round.delivery_mode != Round.Delivery.EXTERNAL
         and not (round.number == 3 and round.delivery_mode == "CODING")
+        and not (round.number == 5 and round.delivery_mode == "BUZZER")
     ):
-        errors.append("Use external delivery for later rounds or native CODING for Round 3.")
+        errors.append("Use external delivery, CODING for Round 3 or BUZZER for Round 5.")
     if round.number < 5 and not round.advancement_count:
         errors.append("Set an explicit advancement count.")
     if not isinstance(round.owners, dict):
@@ -179,6 +186,10 @@ def readiness_errors(round):
         from .coding_content import readiness_errors as coding_errors
 
         errors += coding_errors(round)
+    elif round.number == 5 and round.delivery_mode == "BUZZER":
+        from .buzzer_content import readiness_errors as buzzer_errors
+
+        errors += buzzer_errors(round)
     else:
         if round.number in [2, 4]:
             from .external_scores import schema_errors

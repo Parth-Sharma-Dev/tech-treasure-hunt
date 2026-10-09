@@ -63,6 +63,10 @@ def public_rules(round):
             "cooldown_seconds",
             "team_answer_limit",
             "team_answer_window_ms",
+            "buzzer_order_policy",
+            "buzzer_latency_policy",
+            "buzzer_equal_time_policy",
+            "buzzer_early_policy",
         )
         if key in rules
     }

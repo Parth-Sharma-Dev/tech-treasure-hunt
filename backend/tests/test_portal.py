@@ -81,16 +81,17 @@ def test_ineligible_teams_see_public_overview_but_no_restricted_instructions(por
     assert result["eligibility_reason"] == "Eligibility awaits final Round 2 results."
 
 
-def test_dashboard_latest_attempt_cohort_and_round5_release_guard(portal):
+def test_dashboard_latest_attempt_cohort_and_round5_information_guard(portal):
     team, rounds, _, _ = portal
     newer = Round.objects.create(number=1, attempt_no=2, title="New attempt", is_demo=True)
     foreign = Round.objects.create(number=1, attempt_no=3, title="Other cohort")
     assert dashboard(team)["rounds"][0]["id"] == newer.pk
     with pytest.raises(ApiProblem, match="latest attempt"):
         participant_overview(team, rounds[0].pk)
-    for identifier in [foreign.pk, rounds[4].pk]:
-        with pytest.raises(ApiProblem, match="not available"):
-            participant_overview(team, identifier)
+    with pytest.raises(ApiProblem, match="not available"):
+        participant_overview(team, foreign.pk)
+    final = participant_overview(team, rounds[4].pk)
+    assert final["capabilities"]["view_information"] and not final["capabilities"]["enter_activity"]
 
 
 def test_only_published_announcements_are_visible_and_can_be_withdrawn(portal):
@@ -152,7 +153,7 @@ def test_portal_endpoints_require_team_session_and_redact_draft_instructions(por
         client.get(f"/api/rounds/{rounds[2].pk}/overview").json()["information"]["instructions"]
         == ""
     )
-    assert client.get(f"/api/rounds/{rounds[4].pk}/overview").status_code == 404
+    assert client.get(f"/api/rounds/{rounds[4].pk}/overview").status_code == 200
     assert len(client.get("/api/rounds").json()["rounds"]) == 5
 
 

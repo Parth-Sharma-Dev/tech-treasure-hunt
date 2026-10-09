@@ -97,6 +97,70 @@ class RoundAdmin(ReadOnlyAdmin):
                 self.message_user(request, f"{round}: READY.", messages.SUCCESS)
 
 
+@admin.register(models.BuzzerQuestion)
+class BuzzerQuestionAdmin(ReadOnlyAdmin):
+    view_permissions = ("prepare_content", "verify_evidence")
+    list_display = ("public_id", "round", "stage", "version", "verified_by")
+    list_filter = ("round", "stage")
+    readonly_fields = ("prepared_by", "verified_by", "verified_at")
+    actions = ("verify_questions",)
+
+    def has_add_permission(self, request):
+        return permitted(request, "prepare_content")
+
+    def has_change_permission(self, request, obj=None):
+        return permitted(request, "prepare_content") and (obj is None or obj.round.state == "DRAFT")
+
+    def save_model(self, request, obj, form, change):
+        obj.prepared_by = request.user
+        super().save_model(request, obj, form, change)
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        if not permitted(request, "verify_evidence"):
+            actions.pop("verify_questions", None)
+        return actions
+
+    @admin.action(
+        permissions=["view"], description="Independently verify selected private buzzer questions"
+    )
+    def verify_questions(self, request, queryset):
+        for item in queryset:
+            try:
+                with transaction.atomic():
+                    models.Round.objects.select_for_update().get(pk=item.round_id)
+                    item.refresh_from_db()
+                    item.full_clean()
+                    if item.prepared_by_id is None or item.prepared_by_id == request.user.pk:
+                        raise ValidationError(
+                            "A different verifier must check the private content."
+                        )
+                    item.verified_by = request.user
+                    item.verified_at = timezone.now()
+                    item.save()
+                    models.AuditEvent.objects.create(
+                        actor=request.user,
+                        action="verify_buzzer_question",
+                        after={
+                            "round_id": item.round_id,
+                            "question_id": item.pk,
+                            "version": item.version,
+                        },
+                        reason="Independently verified host content and answer key.",
+                    )
+            except ValidationError as error:
+                self.message_user(request, "; ".join(error.messages), messages.ERROR)
+            else:
+                self.message_user(
+                    request, f"{item.public_id}: independently verified.", messages.SUCCESS
+                )
+
+
+@admin.register(models.BuzzerWindow, models.BuzzerClosure, models.BuzzerPress)
+class BuzzerEvidenceAdmin(ReadOnlyAdmin):
+    view_permissions = ("control_round", "verify_evidence", "adjudicate")
+
+
 @admin.register(models.CodingTask)
 class CodingTaskAdmin(ReadOnlyAdmin):
     view_permissions = ("prepare_content", "verify_evidence")
