@@ -2,7 +2,7 @@
 
 Updated 9 October 2026. M10 extends the existing Round 1 recovery and paper tools to coding, external scores, faculty and roster evidence. Use `/staff/results`, select the exact round attempt, and open **Evidence exports and recovery**. Paper activation and receipt verification remain Round 1 operations.
 
-The planned [Round 5 website buzzer with offline answers](ROUND5_FORMAT.md) needs an M14 extension for native window/press timestamps/order/admin controls, linked question/reveal scores, corrections, ties and winners. Recovery must not reopen old windows or replay presses into a new question. Current M10 tooling covers its implemented Round 1–4 scope; see [milestone status](DEVELOPMENT_STATUS.md).
+The [Round 5 website buzzer](ROUND5_OPERATIONS.md) is implemented in M12. M14 still extends native signed inventories/reconciliation to its window/press timestamps/order/admin controls and future linked scores/winners. Whole-database backups include these tables, but current signed per-round reconciliation covers Rounds 1–4. Recovery must not reopen old windows or replay presses into a new question. See [milestone status](DEVELOPMENT_STATUS.md).
 
 ## Capture and retain
 

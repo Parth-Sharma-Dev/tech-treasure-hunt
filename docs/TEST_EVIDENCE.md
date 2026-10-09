@@ -4,7 +4,7 @@ Recorded 7 October 2026. Scope: implemented Round 1 behavior using synthetic fix
 
 M7 participant portal validation was added on 8 October; the original Round 1 evidence below is retained as a dated record.
 
-Round 5's format and subsequent website-buzzer clarification were documented on 9 October after M10. Server-ordered website presses with offline answers are planned work, with no Round 5 implementation or acceptance evidence yet. Existing dated results below cover their original scope. See [Round 5 requirements](ROUND5_FORMAT.md) and [updated milestones](DEVELOPMENT_STATUS.md).
+Round 5's format, website-buzzer clarification and M12 implementation were recorded on 9 October. The M12 section below covers local buzzer validation; scoring/winners and signed native recovery remain M13/M14. Existing dated results retain their original scope. See [Round 5 operations](ROUND5_OPERATIONS.md) and [updated milestones](DEVELOPMENT_STATUS.md).
 
 ## Environment
 
@@ -147,3 +147,16 @@ No complete R1→2→3→4 competitive chain, deployed load certification, actua
 - On the source, `seed_organizer_placeholders` created six hidden, unpublished demo faculty drafts. Repeating it created zero additional drafts. Source Round 1 remains READY and Rounds 2–5 remain DRAFT. Existing information was preserved; dates/consent/real assignments remain unset. Tests verify production refusal, real-cohort/released-round preservation and retained organizer edits. A subsequent focused **2 passed** verifies stable faculty slot identities preserve renamed drafts on repeat setup, with compatibility for the initial local audit inventory.
 
 M10 is complete for the implemented local scope. Missing account identities, conflicting originals and records lost beyond a checkpoint still require independently reviewed retained evidence; placeholders never satisfy those checks. M11's complete competitive chain, broader outage/load acceptance and actual campus/deployment validation remain. See [recovery operations](EVIDENCE_RECOVERY.md) and [organizer inputs](templates/ORGANIZER_DATA.md).
+
+## M12 website buzzer and finalist portal — 9 October 2026
+
+- Full PostgreSQL backend suite with `TTH_BROWSER_INTEGRATION=1`: **213 passed, 1 skipped** (opt-in load test). The focused content/portal/rules suite passed 28 checks; native buzzer/round-clock checks passed 27. Initial existing temporary-directory access restrictions were resolved with approved execution.
+- Full desktop/mobile Chromium suite: **112 passed**. The focused buzzer/portal/external suite passed 34 checks. The first mocked participant cases omitted a required clock fixture; the corrected fixture and final suites passed.
+- TypeScript/Vite build, Ruff lint/format checks, Django system checks, migration drift check and Node syntax checks passed.
+- A fifth actual Django HTTP/PostgreSQL browser journey covers staff login/start, frozen question opening, team login, native press with deliberate response loss, reload/exact-receipt recovery, confirmed closure and a second question window. All data uses the isolated test database; it does not create application qualification or scores.
+- A threaded database test holds an earlier press before its team lock, lets a later same-team press commit first and starts admin closure. Closure waits for the earlier transaction, then retains its earlier database time and one effective team position. This tests reversed commit order and draining, not production capacity.
+- Readiness tests cover all five stages, independent verification, frozen private content and partial-update verification invalidation. Endpoint tests cover duplicate UUID replay, repeated taps, private-key redaction, unqualified teams, forged client time, foreign receipt IDs, CSRF/participant staff denial, qualification-impact incidents, pause/resume window isolation and exact timestamp ties held for review.
+- Frontend checks cover the single-request buzzer with prefetched CSRF, six-digit timestamp display, disabled/ineligible/paused states, lost-response recovery across reload, same-UUID/window retry, admin confirmed order/ties, Round 4 dashboard progression and mobile overflow.
+- Signed private backup `.local/m12-before-migration-20261009.dump` preceded migration 0014. Source Round 1 remains READY; Rounds 2–5 remain DRAFT. `seed_buzzer_demo` prepared five unverified Round 5 placeholders and an unpublished information draft; repeat setup preserved them. Source native press count remains zero and no Round 4 qualification was fabricated.
+
+M12 is complete locally. Actual question packs/images/encoding/reveals, host rules, schedule and real Round 4 qualifiers must still be independently supplied/reviewed before live play. M13 scoring/winners, M14 signed buzzer reconciliation, broader M11 load/outage/full-chain acceptance and actual phone/network/event rehearsal remain. See [operating instructions](ROUND5_OPERATIONS.md).

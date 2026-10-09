@@ -6,9 +6,9 @@ Implemented 8 October 2026. M7 provides the participant information portal and r
 
 After login, `/lobby` displays the latest attempt of each round in the team's demo/live cohort. Cards show round status, eligibility, reviewed overview, venue, schedule in IST, countdown where applicable and published-result availability.
 
-Rounds 1–4 have **Open Round N** information links. These remain useful before/after active play; entering a page does not grant participation. Round 5 has a “Details to be announced” card with no entry action, and its direct overview endpoint returns 404.
+All five rounds have **Open Round N** information links. These remain useful before/after active play; entering a page does not grant participation. M12 adds Round 5's same-cohort overview and buzzer; qualification and live question-window checks remain authoritative on the backend.
 
-The organizer has specified [Round 5](ROUND5_FORMAT.md) with five offline-answer stages and a website buzzer. Planned M12 adds information, Round 4 qualifier gates, an eligible-team buzzer and admin window/queue controls. The earliest valid server-recorded press gets the first offline answering opportunity; no client-time or latency compensation is applied. M13 adds reviewed offline scores/winners linked to that buzzer evidence. Existing behavior and validation below describe the implemented portal.
+M12 implements [Round 5](ROUND5_OPERATIONS.md) with five offline-answer stages, latest-final Round 4 eligibility, a participant buzzer and admin controls/queue. The earliest valid database-recorded press gets first answering priority after the window closes; no latency compensation is applied. Private host questions/answers remain excluded. M13 adds reviewed scores/winners linked to buzzer evidence. Earlier validation figures below remain dated M7 evidence.
 
 Each round page shows global and round-specific organizer announcements, reviewed schedules/venues and approved contacts. Eligible teams can read released activity instructions and approved rules from READY onward. Draft or ineligible teams receive public overviews and a specific eligibility reason, without restricted instructions. Active controls require LIVE plus eligibility; expired clocks are treated as ended.
 
@@ -63,7 +63,7 @@ Draft announcements and unreviewed edits are hidden. Published notices remain vi
 | GET /api/rounds/{id}/overview | Current same-cohort round information, redacted instructions, precise eligibility reason, capabilities, scoped announcements and relevant own keywords |
 | GET /api/rounds/{id}/results | Existing immutable published standings/history; no private previews |
 
-Both new endpoints require a valid team session. Cross-cohort/unknown/Round 5 overview IDs return 404; an older attempt returns 409 with guidance to the dashboard. Withdrawn/disqualified and unqualified teams can read approved public information but cannot enter activity. A reviewed release is bound to its cohort; changing a draft round's cohort requires information to be reviewed again.
+Both endpoints require a valid team session. Cross-cohort/unknown overview IDs return 404; an older attempt returns 409 with guidance to the dashboard. Round 5 overviews are now supported. Withdrawn/disqualified and unqualified teams can read approved public information but cannot enter activity. A reviewed release is bound to its cohort; changing a draft round's cohort requires information to be reviewed again.
 
 Capabilities distinguish reading information/results from participating. `open_mission` requires Round 1 ONLINE play; `submit_code` requires native Round 3 LIVE play, eligibility and the current assigned browser session. Backend activity endpoints enforce their own permissions, state and eligibility regardless of hidden frontend buttons.
 

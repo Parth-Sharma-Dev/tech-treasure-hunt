@@ -1,6 +1,6 @@
 # Round 2 and Round 4 operations
 
-M9 supports paper-quiz scores, faculty interview scores and reviewed roster administration. Participants see published results inside the corresponding round. Planned [Round 5](ROUND5_FORMAT.md) combines native server-ordered website buzzer presses with offline answers and reviewed scores. M12–M14 cover its buzzer, source intake, winners and recovery; they are not implemented yet.
+M9 supports paper-quiz scores, faculty interview scores and reviewed roster administration. M12 now implements [Round 5's website buzzer](ROUND5_OPERATIONS.md) and qualifier gates. Its offline score intake/winners remain M13 and native signed recovery remains M14; external score schemas currently support Rounds 2/4 only.
 
 Use `/staff/scores` for source scores, `/staff/results` for provisional/final publication and appeals, `/staff/roster` for teams, and Django admin **Faculty profiles** for the approved directory. Staff workflow links appear on each desk. Sign in with an authorized staff account; participant accounts cannot use these endpoints.
 
@@ -69,7 +69,7 @@ SYNTHETIC-A,103,8,7,6,5,private-faculty-sheet-103
 
 Every criterion is 0–10, finite, with at most three decimal places. All three assigned faculty rows are required for each imported team; missing marks are never inferred. Original per-faculty marks/references remain immutable private source evidence. The precision policy computes `technical × 4 + problem_solving × 2.5 + communication × 2 + coordination × 1.5` from exact panel sums divided by three, then rounds the total half-up to three decimals. Displayed averages are rounded separately to three decimals; tie comparison uses exact criterion sums, so display rounding cannot invent a tie. Independently verify this precision policy with organizers before real release.
 
-Rank by total, then technical average, then problem-solving average. A remaining qualification-boundary tie requires one common reserve question, complete tied-team order and private evidence reviewed during final publication. Public results show reviewed totals and criterion averages, not individual faculty score sheets. Final top-five qualifiers receive Green Cards. Round 5 entry is currently disabled; M12 will use this reviewed final qualification for the offline buzzer final rather than treating the displayed card as authorization.
+Rank by total, then technical average, then problem-solving average. A remaining qualification-boundary tie requires one common reserve question, complete tied-team order and private evidence reviewed during final publication. Public results show reviewed totals and criterion averages, not individual faculty score sheets. Final top-five qualifiers receive Green Cards; M12 uses the latest reviewed final qualification to gate the Round 5 buzzer. Published results link back to the dashboard; the displayed card alone never authorizes a press.
 
 ## Intake, corrections and publication
 
@@ -102,4 +102,4 @@ Unknown write outcomes on score/roster desks retain their UUID/body across reloa
 
 Synthetic tests cover source validation, atomic/idempotent commit, independence, revisions, global voids, reserve ties, qualification, consent/draft redaction, faculty averaging, roster review and session invalidation. An isolated actual Django/PostgreSQL browser journey exercises score intake, independent commit/publication, participant results, roster creation/review and credentials. See [test evidence](TEST_EVIDENCE.md).
 
-Actual paper/key, team applications, faculty names/portraits/consent/contact channels, panel slots, venues, owner/appeal policies and content verification remain organizer-supplied release inputs. M10 recovery exports/reconciliation are complete for Rounds 1–4. M12–M14 add Round 5 setup, external scoring/winners and recovery; M11 acceptance now covers the complete Round 1→2→3→4→5 journey. See [milestone status](DEVELOPMENT_STATUS.md). No production deployment or physical-event verification is implied.
+Actual paper/key, applications, faculty details, panel slots, venues, owner/appeal policies and content verification remain organizer inputs. M10 recovery is complete for Rounds 1–4 and M12 setup/buzzer is complete locally. M13/M14 add final scoring/winners and buzzer recovery; M11 covers the full five-round journey. See [milestone status](DEVELOPMENT_STATUS.md). No production deployment or physical-event verification is implied.
