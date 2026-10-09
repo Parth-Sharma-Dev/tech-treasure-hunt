@@ -117,4 +117,11 @@ def readiness_errors(round):
         errors.append("Supply actual reviewed offline rules before real release.")
     if round.advancement_count is not None:
         errors.append("Round 5 is the final; leave advancement count empty.")
+    if not round.is_demo or (
+        isinstance(round.rules.get("score_schema"), dict)
+        and round.rules["score_schema"].get("version") == "round5-v1"
+    ):
+        from .buzzer_scoring_rules import schema_errors
+
+        errors += schema_errors(round)
     return errors

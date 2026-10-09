@@ -247,6 +247,45 @@ class BuzzerPress(ImmutableEvidence):
         indexes = [models.Index(fields=["window", "team", "received_at"], name="buzzer_team_time")]
 
 
+class BuzzerAnswerEvidence(ImmutableEvidence):
+    action_id = models.UUIDField(unique=True)
+    window = models.ForeignKey(BuzzerWindow, on_delete=models.PROTECT)
+    team = models.ForeignKey("Team", on_delete=models.PROTECT)
+    press = models.ForeignKey(BuzzerPress, on_delete=models.PROTECT)
+    verdict = models.CharField(
+        max_length=16,
+        choices=[("CORRECT", "Correct"), ("WRONG", "Wrong"), ("NO_ANSWER", "No answer")],
+    )
+    answer = models.TextField(blank=True)
+    source_reference = models.CharField(max_length=200)
+    completed_at = models.DateTimeField()
+    active_elapsed_ms = models.PositiveBigIntegerField()
+    priority_evidence = models.JSONField(default=dict)
+    actor = staff_reference()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["window", "team"], name="buzzer_answer_once")
+        ]
+
+
+class BuzzerScoreRevision(ImmutableEvidence):
+    window = models.ForeignKey(BuzzerWindow, on_delete=models.PROTECT)
+    import_batch = models.ForeignKey("ImportBatch", on_delete=models.PROTECT)
+    payload = models.JSONField()
+    evidence_digest = models.CharField(max_length=64)
+    supersedes = models.OneToOneField("self", on_delete=models.PROTECT, null=True, blank=True)
+    maker = staff_reference()
+    verifier = staff_reference()
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=~Q(maker=F("verifier")), name="buzzer_score_two_reviewers"
+            )
+        ]
+
+
 class CodingTask(models.Model):
     round = models.ForeignKey(Round, on_delete=models.PROTECT)
     public_id = models.CharField(max_length=24)
