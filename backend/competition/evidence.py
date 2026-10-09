@@ -2,7 +2,7 @@
 
 import json
 from datetime import datetime
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from django.core import serializers
 from django.core.management.color import no_style
@@ -18,7 +18,6 @@ from .corrections import evidence_refs
 from .results import (
     audit_replay,
     digest,
-    locked_round,
     record_action,
     require_result_role,
     require_result_view,
@@ -27,6 +26,28 @@ from .results import (
 from .rules import require_staff_permission
 
 EXPORT_SIGNER = Signer(salt="competition.evidence-export.v1")
+
+
+def locked_evidence_round(round_id):
+    """Use the roster lock order for shared cohort evidence and access revocation."""
+    cohort = m.Round.objects.filter(pk=round_id).values_list("is_demo", flat=True).first()
+    if cohort is None:
+        raise ApiProblem("not_found", "Round not found.", 404)
+    from .roster import locked_roster
+
+    rounds, _ = locked_roster(cohort)
+    # Faculty publication locks the same rows before changing approved profiles.
+    list(m.FacultyProfile.objects.select_for_update().filter(is_demo=cohort).order_by("pk"))
+    return next(item for item in rounds if item.pk == round_id)
+
+
+def require_stopped_cohort(round):
+    if m.Round.objects.filter(is_demo=round.is_demo, state__in=["LIVE", "FROZEN"]).exists():
+        raise ApiProblem(
+            "invalid_transition",
+            "Stop all cohort play before recovery revokes shared team access.",
+            409,
+        )
 
 
 class EvidenceEncoder(DjangoJSONEncoder):
@@ -152,7 +173,15 @@ def make_bundle(round):
     sessions = list(
         m.TeamSession.objects.filter(team__is_demo=round.is_demo)
         .order_by("pk")
-        .values("id", "team_id", "revoked_at")
+        .values(
+            "id",
+            "team_id",
+            "session_version",
+            "created_at",
+            "last_seen_at",
+            "expires_at",
+            "revoked_at",
+        )
     )
     payload = json.loads(
         json.dumps(
@@ -203,11 +232,51 @@ def read_bundle(value, round):
 def compare_bundle(round, payload):
     current = inventory(export_objects(round, payload["format"] == "round-evidence-v2"))
     baseline = payload["inventory"]
-    return {
+    comparison = {
         "missing": [key for key in baseline if key not in current],
         "changed": [key for key in baseline if key in current and baseline[key] != current[key]],
         "additional": [key for key in current if key not in baseline],
     }
+    if payload["format"] == "round-evidence-v2":
+        comparison["team_changes"] = team_changes(round, payload)
+    return comparison
+
+
+def team_changes(round, payload):
+    """Roster/account identities require manual recovery; access is never replayed."""
+    current = {team.pk: team for team in m.Team.objects.filter(is_demo=round.is_demo)}
+    changes = []
+    for item in payload["teams"]:
+        team = current.get(item["id"])
+        if team is None:
+            changes.append({"team_id": item["id"], "kind": "missing_identity"})
+        elif any(
+            getattr(team, field) != item[field]
+            for field in [
+                "code",
+                "name",
+                "leader_name",
+                "member_count",
+                "roster_reference",
+                "user_id",
+            ]
+        ):
+            changes.append({"team_id": item["id"], "kind": "changed_identity"})
+        elif team.status != item["status"]:
+            changes.append(
+                {
+                    "team_id": item["id"],
+                    "kind": "status",
+                    "current": team.status,
+                    "checkpoint": item["status"],
+                }
+            )
+    changes.extend(
+        {"team_id": pk, "kind": "additional_identity"}
+        for pk in current
+        if pk not in {item["id"] for item in payload["teams"]}
+    )
+    return changes
 
 
 def checkpoint_digest(round):
@@ -226,10 +295,12 @@ def checkpoint_digest(round):
 def propose_recovery(round_id, actor, data):
     require_result_role(actor)
     action_id, reason = validate_request(data)
-    round = locked_round(round_id)
-    if round.number != 1 or round.state in ["LIVE", "FROZEN"]:
+    round = locked_evidence_round(round_id)
+    if round.number not in [1, 2, 3, 4] or round.state in ["LIVE", "FROZEN"]:
         raise ApiProblem(
-            "invalid_transition", "Stop Round 1 play before reconciling a restored database.", 409
+            "invalid_transition",
+            "Stop in-scope round play before reconciling a restored database.",
+            409,
         )
     bundle = data.get("signed_bundle")
     if not isinstance(bundle, str) or len(bundle) > 8_000_000:
@@ -239,6 +310,7 @@ def propose_recovery(round_id, actor, data):
     fingerprint = {**data, "kind": "recovery_propose", "round_id": round_id, "actor_id": actor.pk}
     if original := audit_replay(action_id, fingerprint):
         return original
+    require_stopped_cohort(round)
     if (
         type(data.get("expected_version")) is not int
         or data["expected_version"] != round.control_version
@@ -278,7 +350,8 @@ def propose_recovery(round_id, actor, data):
 
 def restore_missing(round, payload):
     """Append absent signed records; never overwrite conflicting current evidence."""
-    queries = round_queries(round)
+    extended = payload["format"] == "round-evidence-v2"
+    queries = round_queries(round, extended)
     allowed = {query.model._meta.label_lower: query.model for query in queries.values()}
     pending = []
     mutable = {
@@ -289,6 +362,21 @@ def restore_missing(round, payload):
         "competition.incident",
     }
     baseline = payload["inventory"]
+    if extended:
+        changes = team_changes(round, payload)
+        if any(item["kind"] != "status" for item in changes):
+            raise ApiProblem(
+                "evidence_conflict",
+                "Roster/account identities differ; reconcile them before recovery.",
+                409,
+            )
+        # Replay only stricter restrictions, never ACTIVE over a revoked/withdrawn identity.
+        priority = {"ACTIVE": 0, "WITHDRAWN": 1, "DISQUALIFIED": 2}
+        for item in payload["teams"]:
+            team = m.Team.objects.get(pk=item["id"], is_demo=round.is_demo)
+            if priority[item["status"]] > priority[team.status]:
+                team.status = item["status"]
+                team.save(update_fields=["status"])
     for query in queries.values():
         for obj in query:
             key = f"{obj._meta.label_lower}:{obj.pk}"
@@ -336,10 +424,54 @@ def restore_missing(round, payload):
         else:
             pending.append(item)
     # Dependencies may refer forward within the signed bundle; PostgreSQL checks at commit.
+    if extended:
+        sessions = {item["id"]: item for item in payload["sessions"]}
+        for item in pending:
+            if item["model"] != "competition.codingworkstation":
+                continue
+            session_id = item["fields"]["session"]
+            session = m.TeamSession.objects.filter(pk=session_id).first()
+            if session is not None:
+                if session.team_id != item["fields"]["team"]:
+                    raise ApiProblem(
+                        "evidence_conflict", "Workstation session identity differs.", 409
+                    )
+                continue
+            retained = sessions.get(session_id)
+            if not retained or retained["team_id"] != item["fields"]["team"]:
+                raise ApiProblem(
+                    "evidence_gap", "Missing retained workstation session identity.", 409
+                )
+            # A tombstone keeps historical FKs without restoring a cookie or usable session.
+            m.TeamSession.objects.create(
+                **{key: value for key, value in retained.items() if key != "revoked_at"},
+                session_key=uuid4().hex,
+                revoked_at=database_now(),
+            )
+        pending_keys = {(item["model"], str(item["pk"])) for item in pending}
+        for item in pending:
+            model = allowed[item["model"]]
+            for field in model._meta.fields:
+                if not field.many_to_one and not field.one_to_one:
+                    continue
+                identity = item["fields"].get(field.name)
+                target = field.remote_field.model
+                if (
+                    identity is not None
+                    and (target._meta.label_lower, str(identity)) not in pending_keys
+                    and not target.objects.filter(pk=identity).exists()
+                ):
+                    raise ApiProblem(
+                        "evidence_gap",
+                        "A retained record needs missing account or earlier-round evidence.",
+                        409,
+                    )
     for obj in serializers.deserialize("json", json.dumps(pending), ignorenonexistent=False):
         obj.save()
     with connection.cursor() as cursor:
-        for statement in connection.ops.sequence_reset_sql(no_style(), list(allowed.values())):
+        for statement in connection.ops.sequence_reset_sql(
+            no_style(), [*allowed.values(), m.TeamSession]
+        ):
             cursor.execute(statement)
     round.refresh_from_db()
     if round.state in ["LIVE", "FROZEN"]:
@@ -354,10 +486,11 @@ def restore_missing(round, payload):
 def approve_recovery(round_id, actor, data):
     require_staff_permission(actor, "verify_evidence")
     action_id, reason = validate_request(data)
-    round = locked_round(round_id)
+    round = locked_evidence_round(round_id)
     fingerprint = {**data, "kind": "recovery_approve", "round_id": round_id, "actor_id": actor.pk}
     if original := audit_replay(action_id, fingerprint):
         return original
+    require_stopped_cohort(round)
     proposal = (
         m.RecoveryProposal.objects.select_related("incident", "maker")
         .filter(pk=data.get("proposal_id"), round=round)
@@ -388,6 +521,13 @@ def approve_recovery(round_id, actor, data):
             require_staff_permission(actor, "publish_results")
         payload = read_bundle(proposal.payload["signed_bundle"], round)
         restore_missing(round, payload)
+        # Also revoke sessions issued between proposal and independent review.
+        m.TeamSession.objects.filter(team__is_demo=round.is_demo, revoked_at__isnull=True).update(
+            revoked_at=database_now()
+        )
+        m.Team.objects.filter(is_demo=round.is_demo).update(
+            session_version=F("session_version") + 1
+        )
         from .results import build_preview
 
         preview = build_preview(round, database_now())
@@ -411,7 +551,7 @@ def approve_recovery(round_id, actor, data):
 @transaction.atomic
 def evidence_page(round_id, actor, kind, cursor=None, limit=200):
     require_result_view(actor)
-    round = locked_round(round_id)
+    round = locked_evidence_round(round_id)
     queries = round_queries(round)
     if kind not in queries:
         raise ApiProblem("invalid_request", "Choose a supported evidence export type.")

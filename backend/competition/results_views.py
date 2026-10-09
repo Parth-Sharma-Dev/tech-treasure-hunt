@@ -286,12 +286,12 @@ def paper_action(request, round_id):
 @require_GET
 @api_errors
 def export_evidence(request, round_id, kind):
-    from .evidence import evidence_page, make_bundle
+    from .evidence import evidence_page, locked_evidence_round, make_bundle
 
     if kind == "bundle":
         require_result_view(request.user)
         with transaction.atomic():
-            round = locked_round(round_id)
+            round = locked_evidence_round(round_id)
             result = make_bundle(round)
             if (
                 len(result["signed_bundle"]) > 8_000_000

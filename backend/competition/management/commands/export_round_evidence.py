@@ -5,8 +5,8 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from competition.evidence import make_bundle
-from competition.results import locked_round, require_result_view
+from competition.evidence import locked_evidence_round, make_bundle
+from competition.results import require_result_view
 
 
 class Command(BaseCommand):
@@ -23,7 +23,7 @@ class Command(BaseCommand):
             raise CommandError("Staff actor not found.")
         require_result_view(actor)
         with transaction.atomic():
-            bundle = make_bundle(locked_round(options["round"]))
+            bundle = make_bundle(locked_evidence_round(options["round"]))
         path = Path(options["output"])
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("x", encoding="utf-8") as stream:

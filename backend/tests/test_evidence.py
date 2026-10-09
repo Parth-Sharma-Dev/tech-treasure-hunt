@@ -10,9 +10,12 @@ from test_results import ended_hunt as _ended_hunt
 
 from competition.api import ApiProblem
 from competition.evidence import (
+    EXPORT_SIGNER,
     approve_recovery,
     compare_bundle,
     evidence_page,
+    export_objects,
+    inventory,
     make_bundle,
     propose_recovery,
     read_bundle,
@@ -37,6 +40,40 @@ def test_signed_inventory_identifies_missing_decision_and_detects_tampering(ende
     Completion.objects.all().delete()
     SubmissionDecision.objects.filter(pk=item.source_decision_id)._raw_delete("default")
     assert len(compare_bundle(round, payload)["missing"]) == 2
+
+
+def test_legacy_round1_checkpoint_still_reconciles(ended_hunt):
+    round, _, _, maker, reviewer, _ = ended_hunt
+    item = completion(ended_hunt)
+    payload = read_bundle(make_bundle(round)["signed_bundle"], round)
+    payload["format"] = "round-evidence-v1"
+    payload["objects"] = export_objects(round, extended=False)
+    payload["inventory"] = inventory(payload["objects"])
+    signed = EXPORT_SIGNER.sign_object(payload)
+    Completion.objects.all().delete()
+    SubmissionDecision.objects.filter(pk=item.source_decision_id)._raw_delete("default")
+    proposed = propose_recovery(
+        round.pk,
+        maker,
+        {
+            "action_id": str(uuid.uuid4()),
+            "expected_version": round.control_version,
+            "reason": "Legacy checkpoint recovery",
+            "evidence_refs": ["legacy-checkpoint"],
+            "signed_bundle": signed,
+        },
+    )
+    approve_recovery(
+        round.pk,
+        reviewer,
+        {
+            "action_id": str(uuid.uuid4()),
+            "proposal_id": proposed["recovery_proposal_id"],
+            "reason": "Checked legacy checkpoint",
+            "evidence_confirmed": True,
+        },
+    )
+    assert Completion.objects.count() == 1
 
 
 def test_reviewed_recovery_restores_exact_decision_once_and_revokes_sessions(ended_hunt):
