@@ -5,6 +5,10 @@ from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
+from django.core.exceptions import PermissionDenied
+from django.test import Client
 from django.utils import timezone
 from test_buzzer import buzzer as _buzzer
 from test_buzzer_scores import final as _final
@@ -200,3 +204,50 @@ def test_completed_earlier_recovery_bookkeeping_does_not_change_carried_basis(fi
         decision="Earlier recovery reviewed",
     )
     assert recover(final[0], final[3], final[4], bundle)["reconciled"]
+
+
+def test_restoring_final_from_ended_copy_requires_publication_permission(final):
+    bundle = checkpoint(final, award=True)
+    m.Round.objects.filter(pk=final[0].pk).update(state="ENDED")
+    final[0].refresh_from_db()
+    verifier = get_user_model().objects.create_user(username="recovery-only", is_staff=True)
+    verifier.user_permissions.add(Permission.objects.get(codename="verify_evidence"))
+    with pytest.raises(PermissionDenied):
+        recover(final[0], final[3], verifier, bundle)
+    assert m.Incident.objects.filter(category="RECOVERY", closed_at__isnull=True).exists()
+
+
+@pytest.mark.parametrize("damage", ["credit", "winner"])
+def test_inconsistent_signed_award_does_not_clear_recovery_incident(final, damage):
+    checkpoint(final, award=True)
+    snapshot = m.ResultSnapshot.objects.filter(round=final[0]).latest("revision")
+    if damage == "credit":
+        entries = snapshot.ranked_entries
+        entries[0]["last_correct_at"] = "1999-01-01T00:00:00+00:00"
+        m.ResultSnapshot.objects.filter(pk=snapshot.pk).update(ranked_entries=entries)
+    else:
+        m.ResultSnapshot.objects.filter(pk=snapshot.pk).update(
+            metadata={**snapshot.metadata, "winner_codes": [final[2][1].code]}
+        )
+    bundle = make_bundle(final[0])
+    with pytest.raises(ApiProblem, match="Published standings|retained event award"):
+        recover(final[0], final[3], final[4], bundle)
+    assert m.Incident.objects.filter(category="RECOVERY", closed_at__isnull=True).exists()
+
+
+def test_native_exports_are_private_bounded_and_invalidate_cursor_on_carry_change(final):
+    checkpoint(final)
+    client = Client()
+    client.force_login(final[2][0].user)
+    url = f"/api/staff/rounds/{final[0].pk}/exports/buzzerpress"
+    assert client.get(url).status_code == 403
+    client.force_login(final[3])
+    response = client.get(url, {"limit": 1})
+    assert response.status_code == 200 and response["Cache-Control"] == "no-store"
+    page = response.json()
+    assert len(page["objects"]) == 1 and page["next_cursor"]
+    assert "session_key" not in str(page)
+    csv = client.get(url, {"limit": 1, "format": "csv"})
+    assert csv.status_code == 200 and csv["X-Evidence-Manifest"] and csv["X-Next-Cursor"]
+    m.Round.objects.filter(number=1, is_demo=True).update(rules_digest="changed")
+    assert client.get(url, {"limit": 1, "cursor": page["next_cursor"]}).status_code == 409
