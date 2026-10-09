@@ -44,9 +44,16 @@ def contains(value, name, ids):
     return False
 
 
-def round_queries(round):
+def round_queries(round, extended=True):
     mission_ids = set(m.Mission.objects.filter(round=round).values_list("pk", flat=True))
     incident_ids = set(m.Incident.objects.filter(round=round).values_list("pk", flat=True))
+    faculty_ids = set(
+        m.FacultyProfile.objects.filter(is_demo=round.is_demo).values_list("pk", flat=True)
+    )
+    roster_ids = set(
+        m.RosterProposal.objects.filter(payload__is_demo=round.is_demo).values_list("pk", flat=True)
+    )
+    team_ids = set(m.Team.objects.filter(is_demo=round.is_demo).values_list("pk", flat=True))
     audits = [
         item.pk
         for item in m.AuditEvent.objects.all()
@@ -55,6 +62,15 @@ def round_queries(round):
         or contains(item.before, "mission_id", mission_ids)
         or contains(item.after, "mission_id", mission_ids)
         or item.incident_id in incident_ids
+        or extended
+        and (
+            item.action == "publish_faculty"
+            and contains(item.after, "faculty_id", faculty_ids)
+            or item.action in ["propose_roster", "review_roster"]
+            and contains(item.after, "proposal_id", roster_ids)
+            or item.action == "team_credentials"
+            and contains(item.after, "team_id", team_ids)
+        )
     ]
     queries = [m.Round.objects.filter(pk=round.pk), m.Mission.objects.filter(round=round)]
     for model in [
@@ -71,15 +87,35 @@ def round_queries(round):
         queries.append(model.objects.filter(round=round))
     for model in [m.Visit, m.AttemptState, m.MissionResolution, m.Completion]:
         queries.append(model.objects.filter(mission__round=round))
+    if extended:
+        for model in [
+            m.CodingTask,
+            m.CodingWorkstation,
+            m.CodingRevision,
+            m.CodingSubmission,
+            m.ImportBatch,
+            m.ScoreRevision,
+            m.ExternalVoidProposal,
+        ]:
+            queries.append(model.objects.filter(round=round))
+        for model in [m.CodingJudgmentProposal, m.CodingJudgment]:
+            queries.append(model.objects.filter(submission__round=round))
+        queries.extend(
+            [
+                m.ExternalQuestionVoid.objects.filter(proposal__round=round),
+                m.FacultyProfile.objects.filter(pk__in=faculty_ids),
+                m.RosterProposal.objects.filter(pk__in=roster_ids),
+            ]
+        )
     queries.append(m.AuditEvent.objects.filter(pk__in=audits))
     return {query.model._meta.model_name: query.order_by("pk") for query in queries}
 
 
-def export_objects(round):
+def export_objects(round, extended=True):
     return json.loads(
         serializers.serialize(
             "json",
-            [item for query in round_queries(round).values() for item in query],
+            [item for query in round_queries(round, extended).values() for item in query],
             cls=EvidenceEncoder,
         )
     )
@@ -100,7 +136,18 @@ def make_bundle(round):
     teams = list(
         m.Team.objects.filter(is_demo=round.is_demo)
         .order_by("pk")
-        .values("id", "code", "status", "session_version")
+        .values(
+            "id",
+            "code",
+            "name",
+            "leader_name",
+            "member_count",
+            "roster_reference",
+            "roster_digest",
+            "status",
+            "session_version",
+            "user_id",
+        )
     )
     sessions = list(
         m.TeamSession.objects.filter(team__is_demo=round.is_demo)
@@ -110,7 +157,7 @@ def make_bundle(round):
     payload = json.loads(
         json.dumps(
             {
-                "format": "round-evidence-v1",
+                "format": "round-evidence-v2",
                 "attempt_id": str(round.attempt_id),
                 "round_id": round.pk,
                 "rules_digest": round.rules_digest,
@@ -138,7 +185,9 @@ def read_bundle(value, round):
         ) from None
     if (
         not isinstance(payload, dict)
-        or payload.get("format") != "round-evidence-v1"
+        or payload.get("format") not in ["round-evidence-v1", "round-evidence-v2"]
+        or payload.get("format") == "round-evidence-v1"
+        and round.number != 1
         or payload.get("round_id") != round.pk
         or payload.get("attempt_id") != str(round.attempt_id)
         or payload.get("rules_digest") != round.rules_digest
@@ -152,7 +201,7 @@ def read_bundle(value, round):
 
 
 def compare_bundle(round, payload):
-    current = inventory(export_objects(round))
+    current = inventory(export_objects(round, payload["format"] == "round-evidence-v2"))
     baseline = payload["inventory"]
     return {
         "missing": [key for key in baseline if key not in current],
