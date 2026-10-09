@@ -120,7 +120,7 @@ def schema_errors(round, rules=None):
 
 
 def require_external(round):
-    if round.number not in HEADERS or round.delivery_mode != Round.Delivery.EXTERNAL:
+    if round.number not in [2, 4] or round.delivery_mode != Round.Delivery.EXTERNAL:
         raise ApiProblem("unsupported_round", "External score intake supports Round 2 and Round 4.")
     errors = schema_errors(round, round.rules_snapshot.get("rules", {}))
     if errors:

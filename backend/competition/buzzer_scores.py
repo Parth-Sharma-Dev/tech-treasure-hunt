@@ -373,10 +373,11 @@ def source_context(round):
             item.team.code: item
             for item in BuzzerAnswerEvidence.objects.filter(window=window).select_related("team")
         }
+        retained_priority = next(iter(notes.values())).priority_evidence if notes else {}
         for code in codes:
             own = next((item for item in entries if item["team_code"] == code), None)
             note = notes.get(code)
-            order = note.priority_evidence.get("order", []) if note else []
+            order = retained_priority.get("order", [])
             tied = len({item["received_at"] for item in entries}) != len(entries)
             draft.append(
                 {
@@ -388,11 +389,7 @@ def source_context(round):
                     "answer": note.answer if note else "",
                     "reveal_step": "0",
                     "buzzer_tie_order": "|".join(order) if tied and order else "",
-                    "adjudication_reference": note.priority_evidence.get(
-                        "adjudication_reference", ""
-                    )
-                    if note
-                    else "",
+                    "adjudication_reference": retained_priority.get("adjudication_reference", ""),
                     "source_reference": note.source_reference if note else "",
                 }
             )
