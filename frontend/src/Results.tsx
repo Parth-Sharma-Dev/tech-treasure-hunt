@@ -170,7 +170,7 @@ function ResultsDesk({ preview, refresh }: { preview: CorrectionPreview; refresh
     <IncidentDesk preview={preview} action={action} />
     {preview.number === 1 && <CorrectionDesk preview={preview} action={action} />}
     {preview.number === 1 && <PaperDesk preview={preview} disabled={action.disabled} send={data => action.send('paper', data)} />}
-    {[1, 2, 3, 4].includes(preview.number) && <RecoveryDesk preview={preview} disabled={action.disabled} send={data => action.send('recovery', data)} />}
+    {[1, 2, 3, 4, 5].includes(preview.number) && <RecoveryDesk preview={preview} disabled={action.disabled} send={data => action.send('recovery', data)} />}
     {preview.history.length > 0 && <section className="panel"><h2>Published revisions</h2><ul>{preview.history.map(snapshot => <li key={snapshot.id}>Revision {snapshot.revision} · {snapshot.status.toLowerCase()} · {dateLabel(snapshot.published_at)}</li>)}</ul><a href={`/rounds/${preview.round_id}/results`}>Team results page (requires team sign-in)</a></section>}
   </>
 }

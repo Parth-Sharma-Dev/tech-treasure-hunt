@@ -11,6 +11,7 @@ const roundExports: Record<number, [string, string][]> = {
   2: [['importbatch', 'original score batch'], ['scorerevision', 'reviewed score'], ['externalquestionvoid', 'question void']],
   3: [['codingtask', 'private task'], ['codingrevision', 'saved source'], ['codingsubmission', 'final submission'], ['codingjudgmentproposal', 'judging proposal'], ['codingjudgment', 'reviewed judgment'], ['codingworkstation', 'workstation']],
   4: [['importbatch', 'original faculty score batch'], ['scorerevision', 'reviewed score']],
+  5: [['buzzerquestion', 'private final question'], ['buzzerwindow', 'buzzer window'], ['buzzerclosure', 'window closure'], ['buzzerpress', 'original press'], ['buzzeranswerevidence', 'host completion'], ['importbatch', 'original final score batch'], ['buzzerscorerevision', 'reviewed question ledger'], ['resultsnapshot', 'winner publication']],
 }
 
 export function RecoveryDesk({ preview, disabled, send }: Props) {
@@ -22,6 +23,7 @@ export function RecoveryDesk({ preview, disabled, send }: Props) {
   const verify = useMutation({ mutationFn: () => postJson<{ receipts: { decision_id?: string; status: string }[]; coverage_complete: boolean }>(`/api/staff/rounds/${preview.round_id}/receipts/verify`, { receipts: tokens.split('\n').map(value => value.trim()).filter(Boolean) }) })
   return <section className="panel"><h2>Evidence exports and recovery</h2>
     <p>Save private signed evidence separately from database backups. A signed inventory identifies records absent from an older restore; it cannot prove that no records existed after the checkpoint.</p>
+    {preview.number === 5 && <p>Round 5 checkpoints bind original press and host completion times, reviewed question ledgers, winner history and the exact Round 1–4 carry-over results. Recover missing earlier rounds first. Reconciliation keeps windows closed and revokes team access; newer carry-over results require investigation.</p>}
     {['ENDED', 'PROVISIONAL', 'FINALIZED'].includes(preview.state) && <p><a href={`/api/staff/rounds/${preview.round_id}/exports/bundle`} download>Download signed round checkpoint</a></p>}
     <details><summary>Download evidence pages</summary><ul>{[...(roundExports[preview.number] ?? []), ['roundphase', 'clock'], ['facultyprofile', 'faculty directory'], ['rosterproposal', 'roster change']].map(([kind, label]) => <li key={kind}><a href={`/api/staff/rounds/${preview.round_id}/exports/${kind}?limit=200`} download>Download {label} evidence page</a></li>)}</ul><p>Each page contains at most 200 records. Follow its next cursor for further pages. Keep private source, tests and faculty score sheets with authorized reviewers.</p></details>
     {preview.can_propose && !['LIVE', 'FROZEN'].includes(preview.state) && <form className="form-stack" onSubmit={event => { event.preventDefault(); send({ action: 'propose', signed_bundle: bundle, expected_version: preview.control_version, reason, evidence_refs: refs.split('\n').map(value => value.trim()).filter(Boolean) }) }}>

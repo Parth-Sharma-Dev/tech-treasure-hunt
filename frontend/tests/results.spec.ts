@@ -64,7 +64,7 @@ test('recovery submits a signed checkpoint and shows independent review requirem
   await expect(page.getByRole('status').filter({ hasText: 'Results action confirmed' })).toBeVisible()
 })
 
-for (const number of [2, 3, 4]) {
+for (const number of [2, 3, 4, 5]) {
   test(`Round ${number} offers source recovery and sends a retained checkpoint`, async ({ page }) => {
     await page.route('**/api/staff/rounds/1/results', route => route.fulfill({ json: { ...preview, number } }))
     await page.route('**/api/staff/rounds/1/recovery', async route => {
@@ -75,7 +75,12 @@ for (const number of [2, 3, 4]) {
     await expect(page.getByRole('heading', { name: 'Evidence exports and recovery' })).toBeVisible()
     await expect(page.getByText('Verify retained signed receipts', { exact: true })).toHaveCount(0)
     await page.getByText('Download evidence pages', { exact: true }).click()
-    await expect(page.getByRole('link', { name: number === 3 ? 'Download saved source evidence page' : number === 4 ? 'Download original faculty score batch evidence page' : 'Download original score batch evidence page', exact: true })).toBeVisible()
+    await expect(page.getByRole('link', { name: number === 5 ? 'Download original press evidence page' : number === 3 ? 'Download saved source evidence page' : number === 4 ? 'Download original faculty score batch evidence page' : 'Download original score batch evidence page', exact: true })).toBeVisible()
+    if (number === 5) {
+      await expect(page.getByRole('link', { name: 'Download host completion evidence page' })).toBeVisible()
+      await expect(page.getByRole('link', { name: 'Download winner publication evidence page' })).toBeVisible()
+      await expect(page.getByText('Recover missing earlier rounds first.', { exact: false })).toBeVisible()
+    }
     await page.getByLabel('Signed checkpoint file').setInputFiles({ name: 'later-round.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ signed_bundle: 'later-round-checkpoint' })) })
     await page.getByLabel('Recovery reason').fill('Recover retained source evidence')
     await page.getByLabel('Recovery evidence references').fill('retained-source-log')
