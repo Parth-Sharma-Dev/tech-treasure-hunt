@@ -33,6 +33,11 @@ def locked_evidence_round(round_id):
     cohort = m.Round.objects.filter(pk=round_id).values_list("is_demo", flat=True).first()
     if cohort is None:
         raise ApiProblem("not_found", "Round not found.", 404)
+    if m.Round.objects.filter(pk=round_id, number=5).exists():
+        from .buzzer import admission_fence
+
+        # Drain native admissions before taking roster/team locks, like window closure.
+        admission_fence(round_id)
     from .roster import locked_roster
 
     rounds, _ = locked_roster(cohort)
@@ -109,6 +114,17 @@ def round_queries(round, extended=True):
     for model in [m.Visit, m.AttemptState, m.MissionResolution, m.Completion]:
         queries.append(model.objects.filter(mission__round=round))
     if extended:
+        if round.number == 5:
+            queries.extend(
+                [
+                    m.BuzzerQuestion.objects.filter(round=round),
+                    m.BuzzerWindow.objects.filter(round=round),
+                    m.BuzzerClosure.objects.filter(window__round=round),
+                    m.BuzzerPress.objects.filter(window__round=round),
+                    m.BuzzerAnswerEvidence.objects.filter(window__round=round),
+                    m.BuzzerScoreRevision.objects.filter(window__round=round),
+                ]
+            )
         for model in [
             m.CodingTask,
             m.CodingWorkstation,
@@ -144,6 +160,57 @@ def export_objects(round, extended=True):
 
 def inventory(objects):
     return {f"{item['model']}:{item['pk']}": digest(item) for item in objects}
+
+
+def carry_provenance(round):
+    """Bind earlier final attempts without replaying their clocks or publications."""
+    from .buzzer_scores import carry_over
+    from .results import latest_snapshot
+
+    _, _, basis, errors = carry_over(round)
+    dependencies = []
+    attempts = []
+    for number in range(1, 5):
+        prior = (
+            m.Round.objects.filter(number=number, is_demo=round.is_demo)
+            .order_by("-attempt_no")
+            .first()
+        )
+        if prior:
+            # Earlier recovery advances controls and adds recovery incidents. Bind
+            # approved identity/state, not those operational bookkeeping changes.
+            attempts.append(
+                {
+                    "round_id": prior.pk,
+                    "attempt_id": str(prior.attempt_id),
+                    "attempt_no": prior.attempt_no,
+                    "state": prior.state,
+                    "rules_digest": prior.rules_digest,
+                    "approval_digest": prior.approval_digest,
+                    "rules_snapshot_digest": digest(prior.rules_snapshot),
+                }
+            )
+            snapshot = latest_snapshot(prior)
+            if snapshot:
+                dependencies.append(snapshot)
+            dependencies.extend(
+                m.Incident.objects.filter(round=prior, material=True)
+                .exclude(category="RECOVERY")
+                .order_by("pk")
+            )
+    return json.loads(
+        json.dumps(
+            {
+                "basis": basis,
+                "attempts": attempts,
+                "errors": errors,
+                "inventory": inventory(
+                    json.loads(serializers.serialize("json", dependencies, cls=EvidenceEncoder))
+                ),
+            },
+            cls=DjangoJSONEncoder,
+        )
+    )
 
 
 def make_bundle(round):
@@ -186,7 +253,7 @@ def make_bundle(round):
     payload = json.loads(
         json.dumps(
             {
-                "format": "round-evidence-v2",
+                "format": "round-evidence-v3" if round.number == 5 else "round-evidence-v2",
                 "attempt_id": str(round.attempt_id),
                 "round_id": round.pk,
                 "rules_digest": round.rules_digest,
@@ -195,6 +262,7 @@ def make_bundle(round):
                 "inventory": inventory(objects),
                 "teams": teams,
                 "sessions": sessions,
+                **({"carry_over_provenance": carry_provenance(round)} if round.number == 5 else {}),
             },
             cls=DjangoJSONEncoder,
         )
@@ -214,7 +282,15 @@ def read_bundle(value, round):
         ) from None
     if (
         not isinstance(payload, dict)
-        or payload.get("format") not in ["round-evidence-v1", "round-evidence-v2"]
+        or payload.get("format")
+        not in ["round-evidence-v1", "round-evidence-v2", "round-evidence-v3"]
+        or round.number == 5
+        and (
+            payload.get("format") != "round-evidence-v3"
+            or not isinstance(payload.get("carry_over_provenance"), dict)
+        )
+        or payload.get("format") == "round-evidence-v3"
+        and round.number != 5
         or payload.get("format") == "round-evidence-v1"
         and round.number != 1
         or payload.get("round_id") != round.pk
@@ -230,15 +306,19 @@ def read_bundle(value, round):
 
 
 def compare_bundle(round, payload):
-    current = inventory(export_objects(round, payload["format"] == "round-evidence-v2"))
+    current = inventory(export_objects(round, payload["format"] != "round-evidence-v1"))
     baseline = payload["inventory"]
     comparison = {
         "missing": [key for key in baseline if key not in current],
         "changed": [key for key in baseline if key in current and baseline[key] != current[key]],
         "additional": [key for key in current if key not in baseline],
     }
-    if payload["format"] == "round-evidence-v2":
+    if payload["format"] != "round-evidence-v1":
         comparison["team_changes"] = team_changes(round, payload)
+    if round.number == 5:
+        comparison["carry_over_changed"] = payload["carry_over_provenance"] != carry_provenance(
+            round
+        )
     return comparison
 
 
@@ -288,7 +368,12 @@ def checkpoint_digest(round):
             and item["fields"]["action"] in ["propose_recovery", "approve_recovery"]
         )
     ]
-    return digest(inventory(objects))
+    return digest(
+        {
+            "inventory": inventory(objects),
+            **({"carry_over_provenance": carry_provenance(round)} if round.number == 5 else {}),
+        }
+    )
 
 
 @transaction.atomic
@@ -296,7 +381,7 @@ def propose_recovery(round_id, actor, data):
     require_result_role(actor)
     action_id, reason = validate_request(data)
     round = locked_evidence_round(round_id)
-    if round.number not in [1, 2, 3, 4] or round.state in ["LIVE", "FROZEN"]:
+    if round.number not in [1, 2, 3, 4, 5] or round.state in ["LIVE", "FROZEN"]:
         raise ApiProblem(
             "invalid_transition",
             "Stop in-scope round play before reconciling a restored database.",
@@ -350,7 +435,16 @@ def propose_recovery(round_id, actor, data):
 
 def restore_missing(round, payload):
     """Append absent signed records; never overwrite conflicting current evidence."""
-    extended = payload["format"] == "round-evidence-v2"
+    extended = payload["format"] != "round-evidence-v1"
+    if round.number == 5 and (
+        payload["carry_over_provenance"] != carry_provenance(round)
+        or payload["carry_over_provenance"].get("errors")
+    ):
+        raise ApiProblem(
+            "evidence_gap",
+            "Carry-over dependencies differ or are incomplete. Recover earlier rounds first.",
+            409,
+        )
     queries = round_queries(round, extended)
     allowed = {query.model._meta.label_lower: query.model for query in queries.values()}
     pending = []
@@ -427,20 +521,20 @@ def restore_missing(round, payload):
     if extended:
         sessions = {item["id"]: item for item in payload["sessions"]}
         for item in pending:
-            if item["model"] != "competition.codingworkstation":
+            if item["model"] not in ["competition.codingworkstation", "competition.buzzerpress"]:
                 continue
             session_id = item["fields"]["session"]
             session = m.TeamSession.objects.filter(pk=session_id).first()
             if session is not None:
                 if session.team_id != item["fields"]["team"]:
                     raise ApiProblem(
-                        "evidence_conflict", "Workstation session identity differs.", 409
+                        "evidence_conflict", "Historical session identity differs.", 409
                     )
                 continue
             retained = sessions.get(session_id)
             if not retained or retained["team_id"] != item["fields"]["team"]:
                 raise ApiProblem(
-                    "evidence_gap", "Missing retained workstation session identity.", 409
+                    "evidence_gap", "Missing retained historical session identity.", 409
                 )
             # A tombstone keeps historical FKs without restoring a cookie or usable session.
             m.TeamSession.objects.create(
@@ -517,9 +611,12 @@ def approve_recovery(round_id, actor, data):
     ):
         raise ApiProblem("stale_evidence", "Round changed during recovery review.", 409)
     if data.get("reject") is not True:
-        if round.state == "FINALIZED":
-            require_staff_permission(actor, "publish_results")
         payload = read_bundle(proposal.payload["signed_bundle"], round)
+        if round.state == "FINALIZED" or any(
+            item["model"] == "competition.resultsnapshot" and item["fields"]["status"] == "FINAL"
+            for item in payload["objects"]
+        ):
+            require_staff_permission(actor, "publish_results")
         restore_missing(round, payload)
         # Also revoke sessions issued between proposal and independent review.
         m.TeamSession.objects.filter(team__is_demo=round.is_demo, revoked_at__isnull=True).update(
@@ -531,8 +628,13 @@ def approve_recovery(round_id, actor, data):
         from .results import build_preview
 
         preview = build_preview(round, database_now())
-        if preview["evidence_gaps"]:
-            raise ApiProblem("evidence_gap", " ".join(preview["evidence_gaps"]), 409)
+        gaps = preview["evidence_gaps"] + (
+            preview.get("configuration_errors", []) if round.number == 5 else []
+        )
+        if gaps:
+            raise ApiProblem("evidence_gap", " ".join(gaps), 409)
+        if round.number == 5:
+            verify_recovered_award(round, preview)
         round.control_version = max(round.control_version, proposal.expected_version) + 1
         round.save(update_fields=["control_version"])
     else:
@@ -546,6 +648,43 @@ def approve_recovery(round_id, actor, data):
     response = {"recovery_proposal_id": proposal.pk, "reconciled": True}
     record_action(action_id, actor, "approve_recovery", reason, fingerprint, response)
     return response
+
+
+def verify_recovered_award(round, preview):
+    """Reproduce published credit and original completion times, never invent an award."""
+    from .results import latest_snapshot
+
+    snapshot = latest_snapshot(round)
+    if not snapshot:
+        return
+    current = {entry["team_code"]: entry for entry in preview["entries"]}
+    fields = [
+        "score",
+        "max_score",
+        "stage_scores",
+        "round5_score",
+        "carry_over_score",
+        "carry_over_scores",
+        "last_correct_at",
+    ]
+    if len(snapshot.ranked_entries) != len(current) or any(
+        entry.get("team_code") not in current
+        or any(entry.get(field) != current[entry["team_code"]].get(field) for field in fields)
+        for entry in snapshot.ranked_entries
+    ):
+        raise ApiProblem(
+            "evidence_conflict", "Published standings do not reproduce retained credit.", 409
+        )
+    if snapshot.status == "FINAL":
+        winners = snapshot.metadata.get("winner_codes", [])
+        top = [entry["team_code"] for entry in snapshot.ranked_entries if entry.get("rank") == 1]
+        if (
+            snapshot.qualifier_codes
+            or len(winners) != 1
+            or winners[0] not in top
+            or snapshot.maker_id == snapshot.approver_id
+        ):
+            raise ApiProblem("evidence_conflict", "The retained event award is inconsistent.", 409)
 
 
 @transaction.atomic
