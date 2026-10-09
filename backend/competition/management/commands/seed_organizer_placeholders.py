@@ -57,8 +57,31 @@ class Command(BaseCommand):
                     reason="Unpublished synthetic placeholder; actual logistics require review.",
                 )
         if latest.get(4) and latest[4].state == Round.State.DRAFT:
+            retained_slots = {}
+            for audit in AuditEvent.objects.filter(
+                action="prepare_faculty_placeholders", after__round_id=latest[4].pk
+            ).order_by("pk"):
+                retained_slots.update(audit.after.get("faculty_slots", {}))
+                # Initial local rehearsal checkpoints recorded the six IDs in slot order.
+                if not retained_slots and len(audit.after.get("faculty_ids", [])) == 6:
+                    retained_slots.update(
+                        zip(
+                            [f"{panel}-{slot}" for panel in ["A", "B"] for slot in range(1, 4)],
+                            audit.after["faculty_ids"],
+                            strict=True,
+                        )
+                    )
+            faculty_slots = {}
             for panel in ["A", "B"]:
                 for slot in range(1, 4):
+                    slot_key = f"{panel}-{slot}"
+                    retained = retained_slots.get(slot_key)
+                    if (
+                        retained
+                        and FacultyProfile.objects.filter(pk=retained, is_demo=True).exists()
+                    ):
+                        faculty_slots[slot_key] = retained
+                        continue
                     profile, created = FacultyProfile.objects.get_or_create(
                         is_demo=True,
                         display_name=f"PLACEHOLDER — Panel {panel} faculty {slot}",
@@ -74,11 +97,16 @@ class Command(BaseCommand):
                     )
                     if created:
                         created_ids.append(profile.pk)
+                    faculty_slots[slot_key] = profile.pk
             if created_ids:
                 AuditEvent.objects.create(
                     actor=actor,
                     action="prepare_faculty_placeholders",
-                    after={"round_id": latest[4].pk, "faculty_ids": created_ids},
+                    after={
+                        "round_id": latest[4].pk,
+                        "faculty_ids": created_ids,
+                        "faculty_slots": faculty_slots,
+                    },
                     reason="Unpublished faculty placeholders; consent and assignments pending.",
                 )
         self.stdout.write(

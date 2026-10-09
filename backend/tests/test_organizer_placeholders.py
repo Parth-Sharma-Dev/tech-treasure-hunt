@@ -25,6 +25,7 @@ def test_placeholder_seed_is_unpublished_idempotent_and_preserves_real_data(sett
     information = RoundInformation.objects.get(round=draft)
     assert information.scheduled_start is None and information.published_at is None
     profile = FacultyProfile.objects.first()
+    profile.display_name = "Organizer supplied faculty name"
     profile.location = "Organizer edited this draft"
     profile.save()
     information.venue = "Organizer supplied venue"
@@ -35,6 +36,7 @@ def test_placeholder_seed_is_unpublished_idempotent_and_preserves_real_data(sett
     real_info.refresh_from_db()
     assert FacultyProfile.objects.count() == 6
     assert profile.location == "Organizer edited this draft"
+    assert profile.display_name == "Organizer supplied faculty name"
     assert information.venue == "Organizer supplied venue"
     assert real_info.venue == "Existing real venue"
 
