@@ -8,7 +8,7 @@ After login, `/lobby` displays the latest attempt of each round in the team's de
 
 Rounds 1–4 have **Open Round N** information links. These remain useful before/after active play; entering a page does not grant participation. Round 5 has a “Details to be announced” card with no entry action, and its direct overview endpoint returns 404.
 
-The organizer has now specified [Round 5](ROUND5_FORMAT.md) as an offline buzzer final: AI image recognition, answer from keywords, word decoding, image abnormalities and progressive image guessing. Planned M12 will replace the current placeholder with approved information and Round 4 qualifier gates; M13 will add reviewed results/winners. These pages will not accept participant answers or buzzes. Existing behavior and validation below describe the implemented portal.
+The organizer has specified [Round 5](ROUND5_FORMAT.md) with five offline-answer stages and a website buzzer. Planned M12 adds information, Round 4 qualifier gates, an eligible-team buzzer and admin window/queue controls. The earliest valid server-recorded press gets the first offline answering opportunity; no client-time or latency compensation is applied. M13 adds reviewed offline scores/winners linked to that buzzer evidence. Existing behavior and validation below describe the implemented portal.
 
 Each round page shows global and round-specific organizer announcements, reviewed schedules/venues and approved contacts. Eligible teams can read released activity instructions and approved rules from READY onward. Draft or ineligible teams receive public overviews and a specific eligibility reason, without restricted instructions. Active controls require LIVE plus eligibility; expired clocks are treated as ended.
 

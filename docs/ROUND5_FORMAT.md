@@ -1,10 +1,10 @@
-# Round 5 — offline buzzer final
+# Round 5 — offline answers with a website buzzer
 
-Requirements recorded 9 October 2026 from the organizer's description. This document defines planned work; Round 5 gameplay, score intake, qualification gates and winner publication are not implemented yet.
+Requirements recorded 9 October 2026, updated with the organizer's website-buzzer clarification. This document defines planned work; Round 5 buzzer, score intake, qualification gates and winner publication are not implemented yet.
 
 ## Confirmed format
 
-Round 5 is an offline buzzer competition with **five stages within the final round**. Participants answer at the venue. Images, keywords and encoded words are presented by the host; answers and buzzer events are handled offline. The website is planned to show approved information, eligibility, reviewed results and winners. No participant website answer submission or online buzzer is requested.
+Round 5 has **five stages within the final round**. The host presents images, keywords and encoded words at the venue; teams answer offline. Eligible participating teams press a buzzer on the website's Round 5 page. The admin sees the server-recorded press times, and the team with the earliest valid server-recorded press gets the first opportunity to answer offline. The website also provides approved information, eligibility, reviewed results and winners. Answers are not submitted through the website.
 
 | Stage | Activity | Participant objective |
 |---|---|---|
@@ -20,9 +20,23 @@ These are five activity stages, not a confirmed question count or five separate 
 
 Use the latest independently finalized Round 4 qualifier snapshot in the same cohort as the source of Round 5 eligibility. The existing Round 4 plan awards five Green Cards; the expected finalist count follows that plan and still needs organizer confirmation. A visible Green Card alone must not bypass backend eligibility or unresolved qualification-impact/recovery incidents.
 
-The Round 5 page should show its offline format, all five stage descriptions, approved schedule/venue, host/help contacts, qualification reason and published results after play. Nonqualifying teams may read approved public information and same-cohort published results. Only approved finalists may participate at the venue. Private images, unrevealed crops, encoded questions, expected abnormalities and answer keys stay out of participant API responses and public assets.
+The Round 5 page should show its offline-answer/website-buzzer format, all five stage descriptions, approved schedule/venue, host/help contacts, qualification reason, buzzer availability and published results after play. Nonqualifying teams may read approved public information and same-cohort published results but cannot buzz. Only approved finalists may participate at the venue. Private images, unrevealed crops, encoded questions, expected abnormalities and answer keys stay out of participant API responses and public assets.
 
 The current application still displays a Round 5 placeholder and rejects its direct overview URL. M12 replaces that behavior; this documentation does not enable it.
+
+## Website buzzer and admin ordering — planned
+
+The organizer's selected policy is **first valid press received by the server**, without adjustment for participant network latency or phone performance. Participants are responsible for using a responsive smartphone and maintaining connectivity on the available event network. Do not backdate a buzz using client clocks, browser click times, estimated round trips or participant-reported delays.
+
+- Show a large, accessible buzzer on the Round 5 page for authenticated, eligible finalists. The backend checks cohort, latest attempt, team status, Round 4 qualification, LIVE state and the current open question window on every request.
+- The admin opens/closes the buzzer for the current stage/question and starts a new versioned window for the next question or an approved retry. Pause/end closes acceptance. Keep previous windows and press records; resetting never erases history.
+- Record authoritative server UTC receipt time at server ingress using one trusted time source across application instances, before waiting on round/team scoring locks, and retain admission/commit evidence separately. The server supplies the timestamp; client fields cannot determine order. Concurrent requests must preserve the recorded receipt order rather than being ranked by device time, response arrival or accidental lock-acquisition order.
+- Keep durable press identity, team, round/attempt, stage/question, window version and server timestamp. Retries use the original request identity and recover the recorded acknowledgment without another competitive press. Duplicate taps or multiple team sessions cannot give a team extra positions in the same window; retain the team's earliest valid server press.
+- Show the admin a promptly refreshed ordered list of teams and precise server times, highlighting the earliest valid team and its first offline answering opportunity. Display local time in Asia/Kolkata while retaining UTC and full timestamp precision for ordering. Transport choice (polling, SSE or WebSocket) is an implementation decision.
+- Separate **sending**, **recorded**, **already buzzed**, **closed/paused** and **connection/unknown outcome** states. A button click or local animation is not acknowledgment. A lost response must recover/retry the same press; retries cannot claim an earlier local click time.
+- Closing/advancing a window must reconcile admitted/in-flight requests so an earlier server-received press cannot silently disappear behind a later response. Exact equal-timestamp handling, early-buzz penalties and whether the opportunity passes after an incorrect answer remain organizer decisions.
+
+Buzzer priority grants an opportunity to answer, not points. The host records the offline answer/verdict; reviewed scoring follows the approved contract. Staff cancellations or adjudicated exceptions retain original buzz order and a reason/evidence trail. Server/database outage handling and authorized restart/recovery remain required; the participant-latency policy does not waive durable server evidence.
 
 ## Content preparation — planned
 
@@ -34,15 +48,15 @@ Assign stable stage/question IDs and versions. Keep the host's presentation pack
 - For abnormalities, retain the expected defect and the reference used to verify it. Avoid treating a normal keyboard-layout difference as an accidental missing key.
 - For progressive guessing, prebuild and verify the exact sequence of partial-image reveal steps through the final full image. Keep the full answer image and future reveal steps private before they are presented.
 
-The host may use local slides or another approved offline presentation tool. A website slideshow/reveal controller is a separate feature decision, not included automatically. Rehearse the local display, image legibility and buzzer equipment with the event staff.
+The host may use local slides or another approved offline presentation tool. A website slideshow/reveal controller is a separate feature decision, not included automatically. Rehearse the local display, image legibility, participating smartphones and admin buzzer queue with the event staff.
 
 ## Scoring, review and evidence — planned
 
-Reuse the external scoring/publication architecture with a Round 5-specific schema and ranking strategy. Retain original question-level records rather than accepting an unexplained total. The proposed source record identifies stage/question/version, team, recorded buzzer order, answer/verdict, any reveal step, awarded points or penalty, official sequence/time reference and source-sheet/judge evidence. Exact columns and required fields depend on the approved buzzer/scoring rules.
+Reuse the external scoring/publication architecture with a Round 5-specific schema and ranking strategy. Retain original question-level records rather than accepting an unexplained total. The proposed source record identifies stage/question/version, team, the native server buzzer event/window/order, offline answer/verdict, any reveal step, awarded points or penalty, official sequence/time reference and source-sheet/judge evidence. Imports must reference retained buzzer evidence rather than inventing client timestamps or a different first team. Exact columns and required fields depend on the approved scoring rules.
 
 Provide bounded CSV/manual dry runs, eligibility/duplicate/range validation, independent atomic/idempotent commits and appended reviewed corrections. Aggregate stage totals and the final total from original evidence. Publish provisional standings, resolve appeals/ties and obtain independent approval before publishing final winners. Winner count, prize positions and any overall-event score carry-over remain pending; do not substitute advancement to a nonexistent Round 6.
 
-Extend signed inventories/recovery to Round 5 rules, question/reveal versions, original score records, reviewed corrections, tie decisions and winner snapshots. Preserve restrictions and session revocation. A lost source sheet or unresolved disputed buzzer decision must remain a material coverage gap.
+Extend signed inventories/recovery to Round 5 rules, question/reveal versions, buzzer windows/press times/order and staff controls, original score records, reviewed corrections, tie decisions and winner snapshots. Preserve restrictions and session revocation. Do not replay an old press into a newly opened window or reopen a recovered window automatically. A lost source sheet or unresolved disputed buzzer decision must remain a material coverage gap.
 
 ## Organizer decisions and placeholders
 
@@ -53,7 +67,9 @@ Extend signed inventories/recovery to Round 5 rules, question/reveal versions, o
 | Questions and duration per stage | PENDING |
 | Encoding rule and acceptable answers | PENDING |
 | Approved images, abnormality keys and reveal sequences | PENDING |
-| Buzzer mechanism, simultaneous-buzz resolution and early-buzz rules | PENDING |
+| Buzzer mechanism and first answering opportunity | CONFIRMED — website buzzer; earliest valid server-recorded press answers first offline |
+| Participant latency/phone policy | CONFIRMED — participant responsibility; no client-time or network-latency compensation |
+| Exact equal-server-timestamp resolution and early-buzz rules | PENDING |
 | Answer time limit and who may answer for a team | PENDING |
 | Correct/wrong/no-answer points and negative marks | PENDING |
 | Whether another team may answer after a wrong answer | PENDING |
@@ -67,9 +83,9 @@ Extend signed inventories/recovery to Round 5 rules, question/reveal versions, o
 
 ## Delivery milestones
 
-- **M12:** Round 5 configuration, approved information/navigation, private content definitions and Round 4 → 5 eligibility.
-- **M13:** Round 5 source-score intake, stage totals/ranking, reviewed corrections, provisional/final results and winners.
-- **M14:** Round 5 signed exports/recovery and offline host/scorekeeper rehearsal documentation.
-- **M11:** Expanded integrated acceptance across Round 1 → 2 → 3 → 4 → 5, including recovery, authorization and winner publication.
+- **M12:** Round 5 configuration, information/navigation, Round 4 → 5 eligibility, participant buzzer, durable server ordering and admin window/queue controls.
+- **M13:** Offline answer/source-score intake bound to native buzzer evidence, stage totals/ranking, reviewed corrections, provisional/final results and winners.
+- **M14:** Signed buzzer/source/winner exports and recovery, plus host/scorekeeper/smartphone rehearsal procedures.
+- **M11:** Integrated Round 1 → 2 → 3 → 4 → 5 acceptance, including concurrent presses, timestamp ordering, retries, window isolation, recovery, authorization and winners.
 
 See [milestone status](DEVELOPMENT_STATUS.md) for completed work and the remaining implementation sequence.

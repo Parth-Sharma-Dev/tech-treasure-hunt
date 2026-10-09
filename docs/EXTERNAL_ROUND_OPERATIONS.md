@@ -1,6 +1,6 @@
 # Round 2 and Round 4 operations
 
-M9 supports paper-quiz scores, faculty interview scores and reviewed roster administration. Participants see published results inside the corresponding round. The newly specified [Round 5 offline buzzer final](ROUND5_FORMAT.md) is planned under M12–M14; its score intake and winners are not implemented yet.
+M9 supports paper-quiz scores, faculty interview scores and reviewed roster administration. Participants see published results inside the corresponding round. Planned [Round 5](ROUND5_FORMAT.md) combines native server-ordered website buzzer presses with offline answers and reviewed scores. M12–M14 cover its buzzer, source intake, winners and recovery; they are not implemented yet.
 
 Use `/staff/scores` for source scores, `/staff/results` for provisional/final publication and appeals, `/staff/roster` for teams, and Django admin **Faculty profiles** for the approved directory. Staff workflow links appear on each desk. Sign in with an authorized staff account; participant accounts cannot use these endpoints.
 
