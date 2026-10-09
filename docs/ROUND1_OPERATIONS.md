@@ -1,6 +1,6 @@
 # Round 1: local operation and recovery
 
-Updated 7 October 2026. Use synthetic teams and clues for rehearsals. This describes implemented Round 1 functionality; production provisioning, actual roster/content verification and physical event drills are separate release work.
+Updated 9 October 2026. Use synthetic teams and clues for rehearsals. This describes implemented Round 1 functionality; production provisioning, actual roster/content verification and physical event drills are separate release work. [M10 recovery](EVIDENCE_RECOVERY.md) extends signed checkpoints and independent reconciliation to Rounds 2–4 while retaining this paper workflow.
 
 ## Entry points and roles
 
@@ -120,4 +120,4 @@ Signed checkpoints prove only their recorded inventory. Entirely lost records be
 
 ## Current boundaries
 
-The implemented local Round 1 flow includes native scoring, publication, corrections, paper reconciliation and recovery tooling. Real-roster administration and printable QR-card tooling remain separate planned work; Django admin's Teams/evidence sections remain read-only. Production deployment, actual content/route checks, real device/camera checks, physical paper drills and deployed capacity certification are not established by the synthetic local acceptance run.
+The implemented local Round 1 flow includes native scoring, publication, corrections, paper reconciliation and recovery tooling. M9 added reviewed roster administration; M10 added later-round recovery. Printable QR-card tooling remains separate work; Django admin's Teams/evidence sections remain read-only. Production deployment, actual content/route checks, real device/camera checks, physical paper drills and deployed capacity certification are not established by synthetic local acceptance.

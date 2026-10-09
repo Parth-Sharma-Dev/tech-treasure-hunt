@@ -112,6 +112,8 @@ Before READY, configure the rule version, delivery method, advancement counts, a
 
 ## Validation
 
+For signed evidence exports and independently reviewed Round 1–4 restoration, see [recovery operations](docs/EVIDENCE_RECOVERY.md). Local organizer placeholders can be prepared with `.venv/Scripts/python backend/manage.py seed_organizer_placeholders --actor DEMO-content`; these remain unpublished demo drafts. See the [organizer data template](docs/templates/ORGANIZER_DATA.md) for actual release inputs.
+
 From the repository root, with PostgreSQL running:
 
 ```powershell
