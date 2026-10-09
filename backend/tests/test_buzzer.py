@@ -118,7 +118,8 @@ def test_buzzer_content_edit_invalidates_verification_and_approval(buzzer):
     round, questions, _, _, reviewer = buzzer
     approve_rules(round.pk, reviewer)
     questions[0].source_reference = "changed reference"
-    questions[0].save()
+    questions[0].save(update_fields=["source_reference"])
+    questions[0].refresh_from_db()
     assert questions[0].verified_by is None
     assert any("independent" in error for error in readiness_errors(round))
     with pytest.raises(ValidationError):

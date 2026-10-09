@@ -199,6 +199,11 @@ class BuzzerQuestion(models.Model):
             ):
                 self.verified_by = None
                 self.verified_at = None
+                if kwargs.get("update_fields") is not None:
+                    kwargs["update_fields"] = set(kwargs["update_fields"]) | {
+                        "verified_by",
+                        "verified_at",
+                    }
             return super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
