@@ -325,3 +325,108 @@ def test_recovery_cannot_close_a_checkpoint_missing_lab_judging(coding):
     with pytest.raises(ApiProblem, match="reviewed lab judgment"):
         recover(round, maker, reviewer, bundle)
     assert Incident.objects.filter(category="RECOVERY", closed_at__isnull=True).exists()
+
+
+def test_round4_recovery_restores_faculty_panels_original_marks_and_roster_evidence(external):
+    from datetime import timedelta
+
+    from competition.demo import demo_rules
+    from competition.faculty import publish_faculty
+    from competition.models import ImportBatch, ResultSnapshot, Round
+
+    quiz, teams, maker, reviewer = external
+    previous = Round.objects.create(
+        number=3, title="Qualifying fixture", is_demo=True, state="FINALIZED"
+    )
+    ResultSnapshot.objects.create(
+        round=previous,
+        revision=1,
+        status="FINAL",
+        qualifier_codes=[team.code for team in teams],
+        maker=maker,
+        approver=reviewer,
+        published_at=timezone.now(),
+    )
+    profiles = []
+    for index in range(3):
+        profile = FacultyProfile.objects.create(
+            display_name=f"Synthetic faculty {index}",
+            role="Contest faculty",
+            is_demo=True,
+            consent_reference="Synthetic consent",
+            prepared_by=maker,
+        )
+        publish_faculty(profile.pk, reviewer)
+        profiles.append(profile.pk)
+    now = timezone.now()
+    panels = [
+        {
+            "label": "Synthetic panel",
+            "faculty_ids": profiles,
+            "slots": [
+                {
+                    "team_code": team.code,
+                    "start": (now + timedelta(minutes=index * 10)).isoformat(),
+                    "end": (now + timedelta(minutes=index * 10 + 10)).isoformat(),
+                }
+                for index, team in enumerate(teams)
+            ],
+        }
+    ]
+    round = Round.objects.create(
+        number=4,
+        title="Synthetic interview recovery",
+        is_demo=True,
+        delivery_mode="EXTERNAL",
+        active_budget_ms=60000,
+        advancement_count=1,
+        rules_version="interview-v1",
+        owners=quiz.owners,
+        rules={
+            **demo_rules(4),
+            "ranking_policy": "weighted_faculty_criteria",
+            "qualification_tie_policy": "supervised_reserve_question",
+            "score_schema": {"version": "round4-v1", "max_score": "100", "rounding": "half_up_3"},
+            "faculty_panels": panels,
+        },
+    )
+    fixture = round, teams, maker, reviewer
+    end(fixture)
+    intake(
+        fixture,
+        [
+            {
+                "team_code": team.code,
+                "faculty_id": faculty,
+                "technical": "8",
+                "problem_solving": "7",
+                "communication": "6",
+                "coordination": "5",
+                "source_reference": f"Synthetic sheet {team.code}-{faculty}",
+            }
+            for team in teams
+            for faculty in profiles
+        ],
+    )
+    roster = RosterProposal.objects.create(
+        maker=maker,
+        reason="Synthetic retained roster evidence",
+        payload={"is_demo": True, "rows": []},
+        evidence_digest=digest([]),
+    )
+    bundle = make_bundle(round)
+    expected = read_bundle(bundle["signed_bundle"], round)["inventory"]
+    for model in [ScoreRevision, ImportBatch, FacultyProfile, RosterProposal]:
+        model.objects.all()._raw_delete("default")
+    recover(round, maker, reviewer, bundle)
+    round.refresh_from_db()
+    preview = build_preview(round, timezone.now())
+    assert preview["evidence_gaps"] == []
+    assert round.rules_snapshot["rules"]["faculty_panels"] == panels
+    assert RosterProposal.objects.filter(pk=roster.pk).exists()
+    recovered = inventory(export_objects(round))
+    assert all(
+        recovered[key] == value
+        for key, value in expected.items()
+        if not key.startswith("competition.round:")
+    )
