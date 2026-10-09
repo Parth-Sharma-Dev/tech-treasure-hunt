@@ -1,6 +1,6 @@
 # Round 5: website buzzer and offline answers
 
-Implemented locally in M12/M13 on 9 October 2026. All five stages use the same buzzer; presentation and answers remain offline. M13 adds host completion records, reviewed ledgers, cumulative scores and one winner. Native signed recovery remains M14. See [scoring instructions](ROUND5_SCORING.md) and [remaining inputs](ROUND5_FORMAT.md).
+Implemented locally in M12–M14 on 9 October 2026. All five stages use the same buzzer; presentation and answers remain offline. M13 adds host completion records, reviewed ledgers, cumulative scores and one winner. M14 adds [signed native recovery](EVIDENCE_RECOVERY.md) and the [host/rehearsal run sheet](ROUND5_REHEARSAL.md). See [scoring instructions](ROUND5_SCORING.md) and [remaining inputs](ROUND5_FORMAT.md).
 
 ## Prepare an attempt
 
@@ -50,7 +50,7 @@ Staff closure/round controls take the exclusive window gate before round/team lo
 
 Every request carries a press UUID and window ID. Same-request replay returns the exact stored receipt, including after closure. Different taps/sessions retain original receipts but count only once per team/window, using the earliest valid receipt. `admitted_at` records the final validation time before insertion; successful acknowledgment is returned after transaction commit. Client timestamps and supplied team identities are rejected. Closed/stale windows, pauses/end, ineligible teams and revoked sessions cannot create new presses.
 
-After an unknown response, **Recover saved press** checks the original receipt first and, if absent, retries the original UUID/window. It survives reload and never converts a press for one question into a new question's press. A transition-in-progress response preserves the unresolved request. A definitive closed-window rejection cannot backdate a locally cached click. Server/database failures require retained evidence and operational review; native signed reconciliation of buzzes is M14 work.
+After an unknown response, **Recover saved press** checks the original receipt first and, if absent, retries the original UUID/window. It survives reload and never converts a press for one question into a new question's press. A transition-in-progress response preserves the unresolved request. A definitive closed-window rejection cannot backdate a locally cached click. Server/database failures require retained evidence and operational review; M14 signed reconciliation retains original buzzes and host times, requires exact carried results, revokes sessions and keeps restored windows closed. See [recovery instructions](EVIDENCE_RECOVERY.md).
 
 ## Implemented API routes
 

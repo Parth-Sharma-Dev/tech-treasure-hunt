@@ -96,4 +96,4 @@ Final awards require all 25 frozen questions and every retained window to have r
 
 The final snapshot stores one `winner_codes` entry and the event title. `qualifier_codes` is empty; no Round 6 access is created. Historical awards are retained. A later material incident marks the award under review without silently promoting another team. Ordinary edits/imports cannot replace finalized awards.
 
-Native signed export/reconciliation of host evidence and ledgers remains **M14**. Full competitive-chain, load/outage and actual event rehearsal remain **M11** and organizer release work.
+M14 implements [signed native export/reconciliation](EVIDENCE_RECOVERY.md) of host evidence, ledgers, original timing and winner history with exact carried-result dependencies. Use the [host/scorekeeper rehearsal procedure](ROUND5_REHEARSAL.md). Full competitive-chain, load/outage and actual event rehearsal remain **M11** and organizer release work.

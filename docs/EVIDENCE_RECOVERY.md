@@ -1,8 +1,8 @@
-# Round 1–4 evidence recovery
+# Round 1–5 evidence recovery
 
 Updated 9 October 2026. M10 extends the existing Round 1 recovery and paper tools to coding, external scores, faculty and roster evidence. Use `/staff/results`, select the exact round attempt, and open **Evidence exports and recovery**. Paper activation and receipt verification remain Round 1 operations.
 
-Round 5 buzzer and [reviewed scoring/winners](ROUND5_SCORING.md) are implemented in M12/M13. M14 still extends signed native inventories/reconciliation to windows, presses, host completion evidence, question ledgers, carried-result provenance and awards. Whole-database backups include these tables; current signed per-round reconciliation covers Rounds 1–4. Recovery must preserve original completion times and cannot reopen old windows or restore revoked access.
+M14 extends signed recovery to Round 5's native windows, presses, host completion evidence, question ledgers and awards. Round 5 uses a v3 checkpoint with signed carry-over dependencies; Rounds 1–4 retain v2. Recovery preserves original completion times, keeps old windows closed and revokes cohort access. See the [host and rehearsal run sheet](ROUND5_REHEARSAL.md).
 
 ## Capture and retain
 
@@ -14,6 +14,8 @@ Download a signed round checkpoint after ENDED, PROVISIONAL or FINALIZED. A v2 c
 - Round 2/4 original import batches, appended score revisions and reviewed Round 2 question voids.
 - The cohort's faculty drafts/approved snapshots, roster proposals/review audits and team identity/status inventory.
 - Session identities and timestamps, with no session cookies or password hashes.
+
+A Round 5 v3 checkpoint additionally retains private frozen question/reveal references, every window/closure and duplicate press UUID, original received/admitted times, host verdict/completion/priority evidence, original import batches, superseding question ledgers and provisional/final winner snapshots. Its signed `carry_over_provenance` binds the exact latest Round 1–4 attempts, final result inventories, material incidents and score/qualification basis. Those earlier records are dependencies, not automatically replayed by the Round 5 checkpoint. Missing or changed dependencies block recovery, including a newer snapshot with identical points. Recover earlier rounds first; if the original carry-over basis cannot be established, keep the gap open for adjudication.
 
 Checkpoints are signed, **not encrypted**. They contain private tests, sources, original faculty marks and personal information. Retain them privately with authorized reviewers and keep signing secrets separately. Participant endpoints do not expose this evidence.
 
@@ -37,11 +39,13 @@ Replace bracketed arguments with real IDs/usernames. The restore target must be 
 4. Select the exact attempt, upload its signed checkpoint and supply real recovery evidence references. Review missing, changed, additional and team-status differences before proposing reconciliation.
 5. A different authorized verifier checks coverage and approves. Finalized results additionally require publication permission. Repeating the same request UUID returns its original result.
 6. Recovery appends exact missing signed records and restores permitted Round 1 projections/clock state. Changed original sources, faculty records, coding assignments or score batches require investigation; they are not overwritten. Newer unbacked evidence also blocks reconciliation.
-7. Missing historical workstation sessions become revoked tombstones with fresh unusable identifiers. All cohort sessions are revoked again at approval, including any created during review. Existing withdrawal/disqualification restrictions survive; stricter checkpoint restrictions are reapplied.
+7. Missing historical workstation or buzzer-press sessions become revoked tombstones with fresh unusable identifiers. All cohort sessions are revoked again at approval, including any created during review. Existing withdrawal/disqualification restrictions survive; stricter checkpoint restrictions are reapplied.
 8. The native scoring strategy checks recovered evidence. Missing final/no-submission records, source hashes, supervised judging or verified external sources block successful reconciliation and leave the material incident open. Database sequences are advanced so restored IDs cannot cause duplicate insertion.
 9. Independently resolve remaining baseline incidents and any outage interval beyond the retained checkpoint before finalization/progression. A checkpoint cannot prove that no later records were lost.
 
 Original signed v1 Round 1 checkpoints remain supported. They cannot certify later-round evidence; use v2 checkpoints for Rounds 2–4.
+
+Round 5 rejects v1/v2 checkpoints because they do not cover native final evidence. Native recovery checks all 25 questions/windows, reviewed ledgers, carried results, clock/configuration and reproducible published credit/completion times. Restoring a FINAL snapshot requires publication permission even when the older database says ENDED. It restores historical awards without promoting a new winner or removing current roster restrictions. Existing baseline incidents require separate explicit review. Do not issue new credentials or resume play before that review; new live play needs an approved fresh attempt/window.
 
 ## Local placeholder data
 

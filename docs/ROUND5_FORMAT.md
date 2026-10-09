@@ -1,6 +1,6 @@
 # Round 5 — offline answers with a website buzzer
 
-Requirements recorded 9 October 2026, updated with the organizer's M13 scoring rules. Information/buzzer are implemented in M12; reviewed cumulative scores and one winner are implemented in M13. Signed native recovery remains M14. See [buzzer operation](ROUND5_OPERATIONS.md) and [scoring operation](ROUND5_SCORING.md).
+Requirements recorded 9 October 2026, updated through M14. Information/buzzer are implemented in M12; reviewed cumulative scores and one winner in M13; signed native recovery and rehearsal procedures in M14. See [buzzer operation](ROUND5_OPERATIONS.md), [scoring operation](ROUND5_SCORING.md) and [rehearsal](ROUND5_REHEARSAL.md). Actual event inputs remain pending.
 
 ## Confirmed format
 
@@ -88,7 +88,7 @@ Extend signed inventories/recovery to Round 5 rules, question/reveal versions, b
 
 - **M12 — complete locally:** Round 5 configuration, information/navigation, Round 4 → 5 eligibility, participant buzzer, durable server ordering and admin window/queue controls. Actual reviewed content/rules remain inputs.
 - **M13 — complete locally:** Host completion evidence, reviewed buzzer-linked sources, stage/carried totals and one independently published event winner. Actual private content and final prior results remain required inputs.
-- **M14:** Signed buzzer/source/winner exports and recovery, plus host/scorekeeper/smartphone rehearsal procedures.
+- **M14 — complete locally:** Signed buzzer/source/winner exports and recovery, plus host/scorekeeper/smartphone rehearsal procedures. Actual physical rehearsal remains a release gate.
 - **M11:** Integrated Round 1 → 2 → 3 → 4 → 5 acceptance, including concurrent presses, timestamp ordering, retries, window isolation, recovery, authorization and winners.
 
 See [milestone status](DEVELOPMENT_STATUS.md) for completed work and the remaining implementation sequence.

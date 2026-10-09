@@ -2,7 +2,7 @@
 
 Competition website for the AI Nexus Club, CSE Department, SKIT Jaipur, Tech-Pravah 26.
 
-The website supports Round 1 QR missions, supervised Round 3 submissions, reviewed Round 1–4 results, and Round 5's website buzzer, host completion records and reviewed event winner. The final has 25 questions × 2 marks, zero penalties and carry-over from final Round 1–4 scores. Equal cumulative scores use last-correct completion time; answers remain offline. See [Round 5 scoring](docs/ROUND5_SCORING.md) and [milestone status](docs/DEVELOPMENT_STATUS.md). Native signed recovery remains M14.
+The website supports Round 1 QR missions, supervised Round 3 submissions, reviewed Round 1–4 results, and Round 5's website buzzer, host completion records and reviewed event winner. The final has 25 questions × 2 marks, zero penalties and carry-over from final Round 1–4 scores. Equal cumulative scores use last-correct completion time; answers remain offline. See [Round 5 scoring](docs/ROUND5_SCORING.md), [signed recovery](docs/EVIDENCE_RECOVERY.md), [rehearsal procedures](docs/ROUND5_REHEARSAL.md) and [milestone status](docs/DEVELOPMENT_STATUS.md).
 
 The current implementation includes a responsive event page, competition/evidence models, draft content preparation and rule approval in Django admin, team sign-in, a participant lobby, organizer round controls, server clocks, QR/fallback mission access, answer submissions, team progress and signed receipts. Organizer-reviewed Round 1 standings, provisional/final publication, incident review and final qualification are available. Production deployment remains deferred.
 
@@ -112,7 +112,7 @@ Before READY, configure the rule version, delivery method, advancement counts, a
 
 ## Validation
 
-For signed evidence exports and independently reviewed Round 1–4 restoration, see [recovery operations](docs/EVIDENCE_RECOVERY.md). Local organizer placeholders can be prepared with `.venv/Scripts/python backend/manage.py seed_organizer_placeholders --actor DEMO-content`; these remain unpublished demo drafts. See the [organizer data template](docs/templates/ORGANIZER_DATA.md) for actual release inputs.
+For signed evidence exports and independently reviewed Round 1–5 restoration, see [recovery operations](docs/EVIDENCE_RECOVERY.md). Local organizer placeholders can be prepared with `.venv/Scripts/python backend/manage.py seed_organizer_placeholders --actor DEMO-content`; these remain unpublished demo drafts. See the [organizer data template](docs/templates/ORGANIZER_DATA.md) for actual release inputs.
 
 From the repository root, with PostgreSQL running:
 
