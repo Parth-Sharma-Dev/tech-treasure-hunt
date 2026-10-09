@@ -361,3 +361,81 @@ def test_carry_over_can_outweigh_the_round5_score(final):
         and first["round5_score"] == 0
         and first["score"] == 52
     )
+
+
+def test_score_routes_require_staff_csrf_and_never_accept_imported_time_or_marks(final):
+    rows = played(final)
+    client = client_for(final)
+    base = f"/api/staff/rounds/{final[0].pk}"
+    assert client.get(base + "/imports").status_code == 403
+    assert post(client, base + "/buzzer/answer", action()).status_code == 403
+    from django.test import Client
+
+    from competition.buzzer_scores import validate_import
+
+    staff = Client(enforce_csrf_checks=True)
+    staff.force_login(final[3])
+    assert (
+        staff.post(base + "/imports/validate", {}, content_type="application/json").status_code
+        == 403
+    )
+    rows[0]["points"] = 999
+    batch = validate_import(final[0].pk, final[3], action(schema_version="round5-v1", rows=rows))
+    assert batch["errors"] and not BuzzerScoreRevision.objects.exists()
+
+
+def test_carry_over_change_stales_pending_batch_and_unreviewed_batches_block_award(final):
+    from competition.buzzer_scores import commit_import, validate_import
+    from competition.results import build_preview
+
+    rows = played(final, count=25)
+    batch = validate_import(final[0].pk, final[3], action(schema_version="round5-v1", rows=rows))
+    snapshot = ResultSnapshot.objects.filter(round__number=1).latest("revision")
+    ResultSnapshot.objects.create(
+        round=snapshot.round,
+        revision=2,
+        status="FINAL",
+        ranked_entries=snapshot.ranked_entries,
+        qualifier_codes=snapshot.qualifier_codes,
+        maker=final[3],
+        approver=final[4],
+        published_at=timezone.now(),
+    )
+    with pytest.raises(ApiProblem, match="changed"):
+        commit_import(
+            final[0].pk, final[4], action(batch_id=batch["batch_id"], evidence_confirmed=True)
+        )
+    assert any(
+        "pending source batches" in message
+        for message in build_preview(final[0], timezone.now())["finalization_blockers"]
+    )
+
+
+def test_revised_credit_restarts_provisional_appeal_requirement(final):
+    from competition.results import build_preview
+
+    rows = played(final, count=25)
+    intake(final, rows)
+    publish(final)
+    rows[0]["verdict"] = "WRONG"
+    rows[0]["adjudication_reference"] = "reviewed-original-judgment-correction"
+    intake(final, rows)
+    assert any(
+        "revised provisional" in message
+        for message in build_preview(final[0], timezone.now())["finalization_blockers"]
+    )
+
+
+def test_missing_last_correct_times_hold_equal_cumulative_scores_for_review(final):
+    from competition.results import build_preview
+
+    rows = played(final, count=25)
+    for row in rows:
+        if row["verdict"] == "CORRECT":
+            row["verdict"] = "WRONG"
+            row["adjudication_reference"] = "synthetic-review-no-credit"
+    intake(final, rows)
+    preview = build_preview(final[0], timezone.now())
+    assert len(preview["cutoff_tie"]) == 2 and all(
+        entry["rank"] == 1 for entry in preview["entries"]
+    )

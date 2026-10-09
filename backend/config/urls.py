@@ -28,6 +28,7 @@ urlpatterns = [
     path("api/staff/buzzer/rounds", buzzer_views.rounds),
     path("api/staff/rounds/<int:round_id>/buzzer", buzzer_views.desk),
     path("api/staff/rounds/<int:round_id>/buzzer/control", buzzer_views.control),
+    path("api/staff/rounds/<int:round_id>/buzzer/answer", buzzer_views.answer),
     path("api/rounds/<int:round_id>/coding/submission", coding_views.submission),
     path("api/rounds/<int:round_id>/coding/tasks/<int:task_id>/response", coding_views.response),
     path("api/rounds/<int:round_id>/coding/finalize", coding_views.final),

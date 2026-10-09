@@ -14,6 +14,7 @@ export type PortalRound = { id: number; number: number; title: string; state: st
 const polling = { retry: false, refetchInterval: pollInterval, refetchIntervalInBackground: false, refetchOnWindowFocus: 'always' as const }
 const ruleNames: Record<string, string> = { allowed_tools: 'Allowed tools', movement_policy: 'Team movement', appeal_minutes: 'Appeal window', ranking_policy: 'Ranking', qualification_tie_policy: 'Qualification ties', paper_attempt_policy: 'Paper answers', points_per_mission: 'Points per mission', free_wrong_attempts: 'Wrong answers before cooldown', cooldown_seconds: 'Cooldown steps', team_answer_limit: 'Answers per shared window', team_answer_window_ms: 'Shared answer window' }
 function ruleValue(key: string, value: unknown) {
+  if (key === 'final_scoring' && value && typeof value === 'object') return 'Five questions per stage. Two marks per correct answer; zero for wrong/unanswered. Round 5 totals 50 marks. Final scores carry over from Rounds 1–4. One overall winner; equal totals use last-correct completion time.'
   if (key === 'team_answer_window_ms' && typeof value === 'number') return `${value / 1000} seconds`
   if (key === 'appeal_minutes') return `${value} minutes`
   if (key === 'cooldown_seconds' && Array.isArray(value)) return value.map(item => `${item}s`).join(', ')

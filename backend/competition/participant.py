@@ -49,7 +49,7 @@ def public_rules(round):
     if round.state == Round.State.DRAFT or not round.rules_snapshot:
         return None
     rules = round.rules_snapshot["rules"]
-    return {
+    public = {
         key: rules[key]
         for key in (
             "allowed_tools",
@@ -70,6 +70,27 @@ def public_rules(round):
         )
         if key in rules
     }
+    if (
+        round.number == 5
+        and isinstance(rules.get("score_schema"), dict)
+        and rules["score_schema"].get("version") == "round5-v1"
+    ):
+        public["final_scoring"] = {
+            key: value
+            for key, value in rules["score_schema"].items()
+            if key
+            in [
+                "questions_per_stage",
+                "points_per_correct",
+                "wrong_points",
+                "max_score",
+                "winner_count",
+                "carry_over",
+                "tie_break",
+                "answer_passing",
+            ]
+        }
+    return public
 
 
 def participant_rounds(team):

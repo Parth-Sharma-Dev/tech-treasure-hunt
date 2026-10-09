@@ -50,3 +50,11 @@ def desk(request, round_id):
 @api_errors
 def control(request, round_id):
     return JsonResponse(buzzer.control_window(round_id, request.user, json_body(request)))
+
+
+@require_POST
+@api_errors
+def answer(request, round_id):
+    from .buzzer_answers import record_answer
+
+    return JsonResponse(record_answer(round_id, request.user, json_body(request)))

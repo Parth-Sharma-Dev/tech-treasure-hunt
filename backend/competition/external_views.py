@@ -31,7 +31,12 @@ def desk(request, round_id):
     from .external_scores import AuditEventRejected
 
     for batch in batches:
-        batch["rejected"] = AuditEventRejected(ImportBatch(pk=batch["id"]))
+        if round.number == 5:
+            from .buzzer_scores import rejected
+
+            batch["rejected"] = rejected(ImportBatch(pk=batch["id"]))
+        else:
+            batch["rejected"] = AuditEventRejected(ImportBatch(pk=batch["id"]))
     proposals = list(
         ExternalVoidProposal.objects.filter(round=round)
         .order_by("-pk")
@@ -41,9 +46,15 @@ def desk(request, round_id):
         proposal["reviewed"] = AuditEvent.objects.filter(
             action="external_question_void", after__response__reviewed_proposal_id=proposal["id"]
         ).exists()
+    context = {}
+    if round.number == 5 and round.delivery_mode == "BUZZER":
+        from .buzzer_scores import source_context
+
+        context = source_context(round)
     return JsonResponse(
         {
             "actor_id": request.user.pk,
+            **context,
             "can_prepare": has_role(request.user, "control_round", "adjudicate"),
             "can_review": has_role(request.user, "verify_evidence"),
             "round": {

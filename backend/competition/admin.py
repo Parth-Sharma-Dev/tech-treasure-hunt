@@ -156,7 +156,13 @@ class BuzzerQuestionAdmin(ReadOnlyAdmin):
                 )
 
 
-@admin.register(models.BuzzerWindow, models.BuzzerClosure, models.BuzzerPress)
+@admin.register(
+    models.BuzzerWindow,
+    models.BuzzerClosure,
+    models.BuzzerPress,
+    models.BuzzerAnswerEvidence,
+    models.BuzzerScoreRevision,
+)
 class BuzzerEvidenceAdmin(ReadOnlyAdmin):
     view_permissions = ("control_round", "verify_evidence", "adjudicate")
 

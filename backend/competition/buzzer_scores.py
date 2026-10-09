@@ -349,9 +349,7 @@ def validate_rows(round, rows):
     scored_questions = [item["question_id"] for item in projected.values() if not item["void"]]
     if len(set(scored_questions)) != len(scored_questions):
         errors.append(
-            {
-                "message": "Void superseded windows through review; never count a question twice."
-            }
+            {"message": "Void superseded windows through review; never count a question twice."}
         )
     return sorted(preview, key=lambda item: item["window_id"]), errors
 
@@ -362,6 +360,43 @@ def rejected(batch):
         after__response__batch_id=batch.pk,
         after__response__rejected=True,
     ).exists()
+
+
+def source_context(round):
+    codes, _, _, gaps = carry_over(round)
+    draft = []
+    for window in (
+        BuzzerWindow.objects.filter(round=round).select_related("question").order_by("pk")
+    ):
+        entries, _ = queue(window)
+        notes = {
+            item.team.code: item
+            for item in BuzzerAnswerEvidence.objects.filter(window=window).select_related("team")
+        }
+        for code in codes:
+            own = next((item for item in entries if item["team_code"] == code), None)
+            note = notes.get(code)
+            order = note.priority_evidence.get("order", []) if note else []
+            tied = len({item["received_at"] for item in entries}) != len(entries)
+            draft.append(
+                {
+                    "window_id": str(window.pk),
+                    "team_code": code,
+                    "press_id": own["id"] if own else "",
+                    "answer_evidence_id": str(note.pk) if note else "",
+                    "verdict": note.verdict if note else "",
+                    "answer": note.answer if note else "",
+                    "reveal_step": "0",
+                    "buzzer_tie_order": "|".join(order) if tied and order else "",
+                    "adjudication_reference": note.priority_evidence.get(
+                        "adjudication_reference", ""
+                    )
+                    if note
+                    else "",
+                    "source_reference": note.source_reference if note else "",
+                }
+            )
+    return {"draft_source_rows": draft, "carry_over_gaps": gaps}
 
 
 @transaction.atomic

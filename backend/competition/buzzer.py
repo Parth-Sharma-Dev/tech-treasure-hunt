@@ -7,7 +7,15 @@ from django.db import IntegrityError, connection, transaction
 from .api import ApiProblem
 from .buzzer_content import questions_snapshot
 from .clock import clock_payload, database_now
-from .models import BuzzerClosure, BuzzerPress, BuzzerWindow, Round, Team, TeamSession
+from .models import (
+    BuzzerAnswerEvidence,
+    BuzzerClosure,
+    BuzzerPress,
+    BuzzerWindow,
+    Round,
+    Team,
+    TeamSession,
+)
 from .participant import round_eligible
 from .portal import eligibility_reason
 from .results import (
@@ -324,6 +332,24 @@ def staff_desk(round_id, actor):
         .order_by("-version")[:100]
     )
     return {
+        "actor_id": actor.pk,
+        "can_record_answers": has_role(actor, "control_round", "adjudicate"),
+        "answers": list(
+            BuzzerAnswerEvidence.objects.filter(window=window)
+            .order_by("pk")
+            .values(
+                "id",
+                "team__code",
+                "press_id",
+                "verdict",
+                "answer",
+                "source_reference",
+                "completed_at",
+                "priority_evidence",
+            )
+        )
+        if window
+        else [],
         "round_id": round.pk,
         "title": round.title,
         "state": clock_payload(round, now)["state"],
