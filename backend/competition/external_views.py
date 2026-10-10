@@ -47,6 +47,8 @@ def desk(request, round_id):
             action="external_question_void", after__response__reviewed_proposal_id=proposal["id"]
         ).exists()
     context = {}
+    from .green_cards import is_green_cards
+
     if round.number == 5 and round.delivery_mode == "BUZZER":
         from .buzzer_scores import source_context
 
@@ -63,7 +65,9 @@ def desk(request, round_id):
                 "state": round.state,
                 "title": round.title,
                 "schema": round.rules_snapshot.get("rules", round.rules).get("score_schema", {}),
-                "headers": HEADERS.get(round.number, []),
+                "headers": ["team_name"]
+                if is_green_cards(round)
+                else HEADERS.get(round.number, []),
             },
             "batches": batches,
             "void_proposals": proposals,

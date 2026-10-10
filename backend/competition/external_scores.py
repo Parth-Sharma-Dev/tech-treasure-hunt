@@ -10,7 +10,7 @@ from django.db import transaction
 from .api import ApiProblem
 from .buzzer_scores import HEADERS as BUZZER_HEADERS
 from .clock import database_now
-from .models import ImportBatch, Round, ScoreRevision, Team
+from .models import GreenCardRevision, ImportBatch, Round, ScoreRevision, Team
 from .participant import round_eligible
 from .results import (
     audit_replay,
@@ -61,6 +61,25 @@ def schema_errors(round, rules=None):
     )
     rules = rules if rules is not None else round.rules
     schema = rules.get("score_schema", {})
+    from .green_cards import SCHEMA, is_green_cards
+
+    green = is_green_cards(round, rules)
+    if green:
+        errors = []
+        if schema != SCHEMA or rules.get("ranking_policy") != "green_card_qualification":
+            errors.append(
+                "Configure the qualification-only Green Card schema; no score carry-over."
+            )
+        if not round.is_demo and round.advancement_count != 5:
+            errors.append("Round 4 admits at most five Green Card teams.")
+        panels = rules.get("faculty_panels", [])
+        if panels:
+            from .faculty import panel_errors
+
+            errors += panel_errors(round, panels, frozen=frozen)
+        if not round.is_demo and budget != 3_600_000:
+            errors.append("Real Round 4 requires its one-hour interview budget.")
+        return errors
     expected = f"round{round.number}-v1"
     errors = []
     if not isinstance(schema, dict) or schema.get("version") != expected:
@@ -128,6 +147,14 @@ def require_external(round):
 
 
 def current_scores(round):
+    from .green_cards import is_green_cards
+    from .models import GreenCardRevision
+
+    if is_green_cards(round):
+        return {
+            item.team_id: item
+            for item in GreenCardRevision.objects.filter(round=round).order_by("pk")
+        }
     return {item.team_id: item for item in ScoreRevision.objects.filter(round=round).order_by("pk")}
 
 
@@ -177,6 +204,9 @@ def intake_digest(round):
             ),
             "teams": list(Team.objects.filter(is_demo=round.is_demo).order_by("pk").values()),
             "scores": list(ScoreRevision.objects.filter(round=round).order_by("pk").values()),
+            "green_cards": list(
+                GreenCardRevision.objects.filter(round=round).order_by("pk").values()
+            ),
             "voids": sorted(voided_questions(round)),
             "eligible": [
                 team.pk
@@ -188,22 +218,24 @@ def intake_digest(round):
 
 
 def parse_rows(round, data):
+    from .green_cards import is_green_cards
+
+    green = is_green_cards(round)
+    headers = ["team_name"] if green else HEADERS[round.number]
     if "csv" in data:
         content = data["csv"]
         if not isinstance(content, str) or len(content.encode("utf-8")) > 1_000_000:
             raise ApiProblem("invalid_input", "Supply UTF-8 CSV of at most 1 MB.")
         try:
             reader = csv.DictReader(io.StringIO(content.lstrip("\ufeff")), strict=True)
-            if reader.fieldnames != HEADERS[round.number]:
-                raise ApiProblem(
-                    "invalid_headers", "Required columns: " + ",".join(HEADERS[round.number])
-                )
+            if reader.fieldnames != headers:
+                raise ApiProblem("invalid_headers", "Required columns: " + ",".join(headers))
             rows = list(reader)
         except csv.Error:
             raise ApiProblem("invalid_csv", "The CSV is malformed.") from None
     else:
         rows = data.get("rows")
-    if not isinstance(rows, list) or not 1 <= len(rows) <= 2000:
+    if not isinstance(rows, list) or not (0 if green else 1) <= len(rows) <= 2000:
         raise ApiProblem("invalid_input", "Supply 1–2000 source rows.")
     if any(
         not isinstance(row, dict) or any(not isinstance(key, str) for key in row) for row in rows
@@ -213,6 +245,10 @@ def parse_rows(round, data):
 
 
 def validate_rows(round, rows, enforce_eligibility=True):
+    from .green_cards import is_green_cards, validate_names
+
+    if is_green_cards(round):
+        return validate_names(round, rows, enforce_eligibility)
     maximum = Decimal(round.rules_snapshot["rules"]["score_schema"]["max_score"])
     teams = {item.code: item for item in Team.objects.filter(is_demo=round.is_demo)}
     groups, errors, seen = {}, [], set()
@@ -347,6 +383,13 @@ def validate_import(round_id, actor, data):
         raise ApiProblem("invalid_transition", "End the round before recording scores.", 409)
     if data.get("schema_version") != round.rules_snapshot["rules"]["score_schema"]["version"]:
         raise ApiProblem("invalid_schema", "Supply the frozen score schema version.")
+    from .green_cards import is_green_cards
+
+    if is_green_cards(round) and data.get("complete_list_confirmed") is not True:
+        raise ApiProblem(
+            "evidence_required",
+            "Confirm the recipient list is complete; unlisted teams get no card.",
+        )
     rows = parse_rows(round, data)
     file_digest = digest({"rows": rows, "schema": data["schema_version"], "reason": reason})
     batch = ImportBatch.objects.filter(round=round, file_digest=file_digest).first()
@@ -435,18 +478,27 @@ def commit_import(round_id, actor, data):
         teams = {item.code: item for item in Team.objects.filter(is_demo=round.is_demo)}
         for row in preview:
             team = teams[row["team_code"]]
-            revision = ScoreRevision(
+            from .green_cards import is_green_cards
+
+            common = dict(
                 round=round,
                 team=team,
-                score=Decimal(row["score"]),
-                max_score=Decimal(row["max_score"]),
-                tie_metrics=row["tie_metrics"],
                 source_reference=row["source_reference"],
                 import_batch=batch,
                 reason=batch.reason,
                 maker=batch.maker,
                 verifier=actor,
                 supersedes=previous.get(team.pk),
+            )
+            revision = (
+                GreenCardRevision(received=row["tie_metrics"]["green_card"], **common)
+                if is_green_cards(round)
+                else ScoreRevision(
+                    score=Decimal(row["score"]),
+                    max_score=Decimal(row["max_score"]),
+                    tie_metrics=row["tie_metrics"],
+                    **common,
+                )
             )
             revision.full_clean()
             revision.save()

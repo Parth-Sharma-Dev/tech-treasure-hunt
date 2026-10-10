@@ -515,6 +515,12 @@ def final_qualifiers(round, preview, data):
             eligible[position] = code
     elif order or refs or data.get("tie_reason"):
         raise ApiProblem("invalid_tie", "No cutoff tie requires a reserve-clue decision.")
+    if preview.get("ranking_kind") == "GREEN_CARDS":
+        return [
+            entry["team_code"]
+            for entry in preview["entries"]
+            if entry["eligible"] and entry.get("green_card") is True
+        ]
     return eligible[: preview["cut_count"]]
 
 

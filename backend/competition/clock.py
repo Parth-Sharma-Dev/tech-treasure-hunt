@@ -145,12 +145,17 @@ def control_round(round_id, actor, data):
                 409,
             )
         if round.number == 4:
+            from .green_cards import is_green_cards
+
             assigned = {
                 slot["team_code"]
                 for panel in round.rules_snapshot.get("rules", {}).get("faculty_panels", [])
                 for slot in panel["slots"]
             }
-            if not {team.code for team in eligible_teams} <= assigned:
+            if not {team.code for team in eligible_teams} <= assigned and not (
+                is_green_cards(round)
+                and not round.rules_snapshot.get("rules", {}).get("faculty_panels")
+            ):
                 raise ApiProblem(
                     "assignment_pending", "Every eligible team needs a frozen interview slot.", 409
                 )

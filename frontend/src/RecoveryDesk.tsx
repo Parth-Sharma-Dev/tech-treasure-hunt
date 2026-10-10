@@ -10,7 +10,7 @@ const roundExports: Record<number, [string, string][]> = {
   1: [['submissiondecision', 'decision'], ['paperslip', 'paper slip']],
   2: [['importbatch', 'original score batch'], ['scorerevision', 'reviewed score'], ['externalquestionvoid', 'question void']],
   3: [['codingtask', 'private task'], ['codingrevision', 'saved source'], ['codingsubmission', 'final submission'], ['codingjudgmentproposal', 'judging proposal'], ['codingjudgment', 'reviewed judgment'], ['codingworkstation', 'workstation']],
-  4: [['importbatch', 'original faculty score batch'], ['scorerevision', 'reviewed score']],
+  4: [['importbatch', 'original faculty score batch'], ['greencardrevision', 'reviewed Green Card'], ['scorerevision', 'reviewed score']],
   5: [['buzzerquestion', 'private final question'], ['buzzerwindow', 'buzzer window'], ['buzzerclosure', 'window closure'], ['buzzerpress', 'original press'], ['buzzeranswerevidence', 'host completion'], ['importbatch', 'original final score batch'], ['buzzerscorerevision', 'reviewed question ledger'], ['resultsnapshot', 'winner publication']],
 }
 

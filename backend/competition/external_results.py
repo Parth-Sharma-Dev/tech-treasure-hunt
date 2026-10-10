@@ -19,6 +19,10 @@ from .rules import snapshot_digest
 
 def build_preview(round, now):
     rules = round.rules_snapshot.get("rules", {})
+    from .green_cards import is_green_cards
+    from .models import GreenCardRevision
+
+    green = is_green_cards(round, rules)
     errors = schema_errors(round, rules)
     gaps = []
     phases = list(RoundPhase.objects.filter(round=round).order_by("started_at", "pk"))
@@ -80,6 +84,7 @@ def build_preview(round, now):
         averages = {}
         criterion_sums = {}
         finish = None
+        received = False
         score = revision.score if revision else Decimal(0)
         if revision:
             batch = revision.import_batch
@@ -121,6 +126,8 @@ def build_preview(round, now):
                 if type(finish) is not int or not 0 <= finish <= round.active_budget_ms:
                     gaps.append("Round 2 official finish evidence is missing or invalid.")
                     finish = None
+            elif green:
+                received = revision.received
             else:
                 averages = revision.tie_metrics.get("averages", {})
                 criterion_sums = revision.tie_metrics.get("criterion_sums", {})
@@ -143,12 +150,16 @@ def build_preview(round, now):
                     averages = {}
                     criterion_sums = {}
         metric = (
-            (-score, finish if finish is not None else 10**15)
-            if round.number == 2
+            (-int(received),)
+            if green
             else (
-                -score,
-                -Decimal(criterion_sums.get("technical", "0")),
-                -Decimal(criterion_sums.get("problem_solving", "0")),
+                (-score, finish if finish is not None else 10**15)
+                if round.number == 2
+                else (
+                    -score,
+                    -Decimal(criterion_sums.get("technical", "0")),
+                    -Decimal(criterion_sums.get("problem_solving", "0")),
+                )
             )
         )
         metrics[team.code] = metric
@@ -163,6 +174,7 @@ def build_preview(round, now):
                 "tie_time_ms": finish,
                 **({"official_finish_active_ms": finish} if round.number == 2 else {}),
                 "criterion_averages": averages if round.number == 4 else None,
+                **({"green_card": received} if green else {}),
                 "rank": None,
             }
         )
@@ -172,6 +184,8 @@ def build_preview(round, now):
     eligible = [item for item in entries if item["eligible"]]
     last, rank = None, 0
     for position, entry in enumerate(eligible, 1):
+        if green:
+            continue
         metric = metrics[entry["team_code"]]
         if metric != last:
             rank = position
@@ -179,6 +193,9 @@ def build_preview(round, now):
     cut, tied = round.rules_snapshot.get("advancement_count"), []
     if type(cut) is not int or cut <= 0:
         errors.append("Set a positive approved advancement count.")
+    elif green:
+        if sum(entry["green_card"] for entry in eligible) > cut:
+            errors.append("Green Card recipients exceed the approved advancement count.")
     elif len(eligible) < cut and rules.get("short_roster_policy") != "advance_all_eligible":
         errors.append("Approve a short-roster policy before advancing fewer teams than the cut.")
     elif (
@@ -229,7 +246,12 @@ def build_preview(round, now):
     evidence = {
         "rules": round.rules_digest,
         "teams": list(Team.objects.filter(is_demo=round.is_demo).order_by("pk").values()),
-        "scores": list(ScoreRevision.objects.filter(round=round).order_by("pk").values()),
+        "scores": list(
+            (GreenCardRevision if green else ScoreRevision)
+            .objects.filter(round=round)
+            .order_by("pk")
+            .values()
+        ),
         "batches": list(ImportBatch.objects.filter(round=round).order_by("pk").values()),
         "phases": list(RoundPhase.objects.filter(round=round).order_by("pk").values()),
         "incidents": list(Incident.objects.filter(round=round).order_by("pk").values()),
@@ -263,5 +285,9 @@ def build_preview(round, now):
         if latest and latest.appeal_deadline
         else None,
         "server_time": now.isoformat(),
-        "ranking_kind": "FACULTY" if round.number == 4 else "EXTERNAL_FINISH",
+        "ranking_kind": "GREEN_CARDS"
+        if green
+        else "FACULTY"
+        if round.number == 4
+        else "EXTERNAL_FINISH",
     }

@@ -930,6 +930,47 @@ class ScoreRevision(ImmutableEvidence):
                 raise ValidationError("A revision must supersede the same team and round.")
 
 
+class GreenCardRevision(ImmutableEvidence):
+    round = models.ForeignKey(Round, on_delete=models.PROTECT)
+    team = models.ForeignKey(Team, on_delete=models.PROTECT)
+    received = models.BooleanField()
+    import_batch = models.ForeignKey(ImportBatch, on_delete=models.PROTECT)
+    source_reference = models.CharField(max_length=200)
+    reason = models.TextField()
+    maker = staff_reference()
+    verifier = staff_reference()
+    supersedes = models.OneToOneField("self", on_delete=models.PROTECT, null=True, blank=True)
+
+    @property
+    def score(self):
+        return 0
+
+    @property
+    def max_score(self):
+        return 0
+
+    @property
+    def tie_metrics(self):
+        return {"green_card": self.received}
+
+    def clean(self):
+        if self.import_batch_id and self.import_batch.round_id != self.round_id:
+            raise ValidationError("Green Card batch belongs to a different round.")
+        if self.round_id and self.round.number != 4:
+            raise ValidationError("Green Cards are Round 4 evidence.")
+        if self.supersedes_id and (
+            self.supersedes.team_id != self.team_id or self.supersedes.round_id != self.round_id
+        ):
+            raise ValidationError("Supersede only the same team's Green Card record.")
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=~Q(maker=F("verifier")), name="green_card_two_reviewers"
+            )
+        ]
+
+
 class ResultProposal(ImmutableEvidence):
     round = models.ForeignKey(Round, on_delete=models.PROTECT)
     maker = staff_reference()

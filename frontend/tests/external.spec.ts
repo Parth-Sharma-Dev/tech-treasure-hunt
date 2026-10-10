@@ -5,6 +5,21 @@ const headers = ['team_code','correct_question_ids','official_finish_active_ms',
 const desk = { actor_id: 1, can_prepare: true, can_review: true, round: { id: 2, number: 2, title: 'Synthetic quiz', state: 'ENDED', headers, schema: { version: 'round2-v1', question_ids: ['Q01','Q02'] } }, batches: [] as unknown[], void_proposals: [] }
 const roster = { actor_id: 1, can_prepare: true, can_review: true, headers: ['code','name','leader_name','member_count','roster_reference','status'], teams: [], proposals: [] }
 
+test('Round 4 takes only recipient names and requires complete-list confirmation', async ({ page }) => {
+  await page.route('**/api/staff/results', route => route.fulfill({ json: { rounds: [{ id: 2, number: 4, title: 'Green Cards', attempt_no: 1 }] } }))
+  await page.route('**/api/staff/rounds/2/imports', route => route.fulfill({ json: { ...desk, round: { ...desk.round, number: 4, headers: ['team_name'], schema: { version: 'round4-green-card-v2' } } } }))
+  let body: unknown
+  await page.route('**/api/staff/rounds/2/imports/validate', async route => { body = route.request().postDataJSON(); await route.fulfill({ json: { batch_id: 1, preview: [], errors: [] } }) })
+  await page.goto('/staff/scores')
+  await page.getByLabel('Private intake or correction reason').fill('Reviewed professor card list')
+  await page.getByLabel('Green Card recipient team names (one per line)').fill('Alpha\nTEAM-B')
+  await expect(page.getByRole('button', { name: 'Dry-run Green Cards' })).toBeDisabled()
+  await expect(page.getByLabel('CSV source')).toHaveCount(0)
+  await page.getByRole('checkbox', { name: 'This is the complete Green Card list; all unlisted teams did not receive a card.' }).check()
+  await page.getByRole('button', { name: 'Dry-run Green Cards' }).click()
+  await expect.poll(() => body).toMatchObject({ schema_version: 'round4-green-card-v2', complete_list_confirmed: true, rows: [{ team_name: 'Alpha' }, { team_name: 'TEAM-B' }] })
+})
+
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/health', route => route.fulfill({ json: { status: 'ok' } }))
   await page.route('**/api/auth/csrf', route => route.fulfill({ json: { csrf_token: 'synthetic' } }))

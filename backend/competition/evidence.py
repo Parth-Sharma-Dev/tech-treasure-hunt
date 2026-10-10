@@ -132,6 +132,7 @@ def round_queries(round, extended=True):
             m.CodingSubmission,
             m.ImportBatch,
             m.ScoreRevision,
+            m.GreenCardRevision,
             m.ExternalVoidProposal,
         ]:
             queries.append(model.objects.filter(round=round))
