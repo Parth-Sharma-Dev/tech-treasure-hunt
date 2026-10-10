@@ -1,6 +1,6 @@
 # Round 1: local operation and recovery
 
-Updated 9 October 2026. Use synthetic teams and clues for rehearsals. This describes implemented Round 1 functionality; production provisioning, actual roster/content verification and physical event drills are separate release work. [M10 recovery](EVIDENCE_RECOVERY.md) extends signed checkpoints and independent reconciliation to Rounds 2–4 while retaining this paper workflow.
+Updated 10 October 2026. Current codes use six ASCII letters/digits, case-insensitively. Frozen legacy attempts retain four-digit behavior; see [current rule changes](RULE_UPDATES_20261010.md). Use synthetic teams and clues for rehearsals. This describes implemented Round 1 functionality; production provisioning, actual roster/content verification and physical event drills are separate release work. [M10 recovery](EVIDENCE_RECOVERY.md) extends signed checkpoints and independent reconciliation to Rounds 2–4 while retaining this paper workflow.
 
 ## Entry points and roles
 
@@ -17,12 +17,12 @@ The database round ID in URLs differs from the round number and attempt number. 
 
 ## Run the normal flow
 
-1. Prepare all draft missions/settings, including four-digit answers and the approved mission count, duration, capacity, owners, advancement count and policies.
+1. Prepare all draft missions/settings, including six-character answers and the approved mission count, duration, capacity, owners, advancement count and policies.
 2. A different verifier verifies competitive missions and approves the draft rules.
 3. The controller uses **Validate and mark approved rounds READY** in the Rounds admin list.
 4. On `/staff/rounds`, **Round action → Open lobby** appears only for a READY online round. Supply a reason and click **Apply: Open lobby**.
 5. In LOBBY, select **Start round** and apply it with a new reason. The shared active clock starts once for all teams.
-6. Teams sign in, click **Open Round 1**, and use a mission QR link or the **Mission fallback code** input. They explicitly open the mission, then submit its four ASCII digits. Preserve leading zeros.
+6. Teams sign in, click **Open Round 1**, and use a mission QR link or the **Mission fallback code** input. They explicitly open the mission, then submit its six ASCII letters or digits. Preserve leading zeros.
 7. Pause/resume excludes frozen time from the clock, cooldown and answer quota. End closes the attempt permanently through ordinary controls. A FROZEN round can be ended directly.
 8. After ENDED, select the attempt on `/staff/results`. Propose provisional results with a public summary. A different reviewer checks evidence and publishes them.
 9. Resolve material incidents and wait the full appeal interval. Supply reserve-clue order/evidence for a cutoff tie. Independently propose/approve final results.

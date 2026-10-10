@@ -1,12 +1,12 @@
 # M11: manual Round 1–5 acceptance walkthrough
 
-Updated 9 October 2026 for M1–M10 and M12–M14. This is a runnable operator checklist, not a completed test record. M11 stays **pending** until you perform the journey and record its results. Use the private `.local/ADMIN_AND_ROUND_OPERATIONS_GUIDE.md` for startup, accounts and detailed admin instructions. Keep passwords and private source evidence out of this document.
+Updated 10 October 2026 for the [revised rules](RULE_UPDATES_20261010.md). This is a runnable operator checklist, not a completed test record. M11 stays **pending** until you perform the journey and record its results. Use the private `.local/ADMIN_AND_ROUND_OPERATIONS_GUIDE.md` for startup, accounts and detailed admin instructions. Keep passwords and private source evidence out of this document.
 
 ## 1. Choose the test environment and record the run
 
 Use fictional **demo** teams/content for development acceptance. Completing this does not certify actual event content, venue/network capacity or physical rehearsal. For physical acceptance, repeat with the approved actual inputs and devices using [Round 5 rehearsal](ROUND5_REHEARSAL.md).
 
-The source currently has Round 1 READY, Rounds 2–5 DRAFT and two demo teams. Its existing cuts can leave only one finalist. For the two-phone walkthrough below, both teams must qualify through Rounds 1–4. A READY attempt cannot be edited: create a new demo Round 1 DRAFT with a higher attempt number, new missions and advancement count **2**. Use the existing two approved demo teams; changing the latest attempt changes progression gates. Do not create new attempts during the journey after qualification has been published.
+The [prepared professor run](PROFESSOR_DEMO.md) uses **R1 attempt 3 and R2–5 attempt 2**, all DRAFT, with both existing demo teams eligible to be considered for advancement. Use these prepared attempts without creating another one. Both teams must actually qualify through R1–3 and appear in R4's complete Green Card list to reach the two-phone final. For a later separate run, preserve released evidence and prepare new DRAFT attempts again. Do not create new predecessors midway through a published journey.
 
 Use the latest demo DRAFT Rounds 2–5 if still unused; otherwise create new DRAFT attempts and prepare their content separately. For a new attempt, copy the required configuration/owners/policies into its editable DRAFT fields and create new attached content; do not copy IDs, clocks, state or approval/digest fields. Preserve old records. `seed_demo` is not a reset or clone command. Creating extra team identities in a cohort already released is blocked; if you need a third team to test exclusion after elimination, prepare a fresh isolated demo dataset and roster **before** any round is released.
 
@@ -55,11 +55,11 @@ For the small demo, configure **advancement count 2 for Rounds 1–4**, no advan
 
 | Round | Required preparation for this walkthrough |
 |---|---|
-| 1 | New ONLINE_HUNT demo attempt; two competitive missions, optional separate practice, four-digit keys, owners/locations, capacity for the roster, expected mission count 2 and independent verification. See [R1](ROUND1_OPERATIONS.md). |
-| 2 | EXTERNAL; `round2-v1`, canonical Q01–Q30 and maximum 30, score/finish ranking and approved reserve policy. Keep the demo budget at 45 minutes or explicitly approve a suitable shorter demo budget before READY. See [R2/R4](EXTERNAL_ROUND_OPERATIONS.md). |
+| 1 | New ONLINE_HUNT demo attempt; two competitive missions, optional separate practice, six-character alphanumeric keys, owners/locations, capacity for the roster, expected mission count 2 and independent verification. See [R1](ROUND1_OPERATIONS.md). |
+| 2 | EXTERNAL; new Wayground schema/mapping awaits the actual Excel report; do not certify the old manual CSV as the new import. Keep the demo budget at 45 minutes or explicitly approve a suitable shorter demo budget before READY. See [R2/R4](EXTERNAL_ROUND_OPERATIONS.md). |
 | 3 | CODING; category maxima 15/25/20/30/10, exact private lab rubrics, actual test lab Python/C versions, workstation/submission policies and independent task verification. See [R3](ROUND3_OPERATIONS.md). |
-| 4 | EXTERNAL; `round4-v1`, maximum 100/half_up_3; three independently published synthetic faculty for one demo panel, two distinct team slots. Set panels after R3 final qualification and before rule approval/READY. Real play requires its full two-panel allocation. |
-| 5 | BUZZER; 25 independently verified synthetic questions (five/stage), private answers/presentation/reveal references, exact `round5-v1` contract, `cumulative_score_then_last_correct`, approved buzzer policies and a sufficient active budget (for example, explicitly approve 30 demo minutes rather than retaining the five-minute placeholder). See [buzzer](ROUND5_OPERATIONS.md) and [scoring](ROUND5_SCORING.md). |
+| 4 | EXTERNAL; `round4-green-card-v2`, zero points, recipient names only; three independently published synthetic faculty for one demo panel, two distinct team slots. Set panels after R3 final qualification and before rule approval/READY. Real play requires its full two-panel allocation. |
+| 5 | BUZZER; 25 independently verified synthetic questions (five/stage), private answers/presentation/reveal references, exact `round5-v2` 30-mark contract, `cumulative_score_then_last_correct`, approved buzzer policies and a sufficient active budget (for example, explicitly approve 30 demo minutes rather than retaining the five-minute placeholder). See [buzzer](ROUND5_OPERATIONS.md) and [scoring](ROUND5_SCORING.md). |
 
 Seed commands may prepare missing demo drafts, but never approve content or create qualification. Existing content is preserved. Review their prerequisites in the linked round guides rather than assuming rerunning them repairs edited settings. Replace the unverified Round 5 placeholder content with a usable synthetic pack before verification. Do not publish placeholder consent or claim actual faculty verification for a synthetic panel.
 
@@ -79,30 +79,19 @@ Before finalizing each predecessor, try to open/start the next round as staff an
 
 ## 4. Round 1 — missions, receipts and first qualification
 
-1. As maker, configure two new synthetic missions with known four-digit answers, for example `1024` and `0042`; independently verify both and approve rules. Set the mission count to 2, then mark READY.
+1. As maker, configure two new synthetic missions with known six-character codes, for example `AB1024` and `CD0042`; independently verify both and approve rules. Set the mission count to 2, then mark READY.
 2. Team signs in, opens practice and verifies a correct practice answer changes no competitive score. Publish the rehearsal information separately if it is meant to be visible.
 3. Controller opens the lobby, then starts Round 1. Record the common clock and control version.
-4. Team A explicitly opens and correctly solves both competitive missions. Team B explicitly opens and solves only the first. Test QR/mission-link access and fallback-code access; preserve the leading zeros in `0042`.
+4. Team A explicitly opens and correctly solves both competitive missions. Team B explicitly opens and solves only the first. Test QR/mission-link access and fallback-code access; preserve the leading zeros in `CD0042`.
 5. Save the accepted receipt(s). Reload a solved mission and verify score stays unchanged. An uncertain response must recover the original request/receipt; do not substitute a new action UUID.
 6. Pause, verify new scored activity is blocked and the active clock is frozen; resume and confirm frozen time is excluded. End and confirm late/new answers cannot score.
 7. Run the publication gate. **Expected:** A=2/2, B=1/2; both qualify under the configured demo cut 2. Provisional alone did not unlock Round 2. Record final R1 entries and qualifiers.
 
 Put wrong-answer cooldown/quota escalation, alternate answers/voids and irreversible paper fallback in **separate** branches/attempts using [R1 operations](ROUND1_OPERATIONS.md). Those checks can change the baseline scores or permanently disable online play; do not activate paper fallback midway through this baseline journey.
 
-## 5. Round 2 — offline quiz and reviewed source scores
+## 5. Round 2 — Wayground export
 
-1. After R1 FINAL, verify each qualifying team can access the Round 2 lobby/information. In READY/LOBBY, inspect its collected R1 keywords. Start Round 2; keywords should disappear on that page during LIVE.
-2. Conduct the synthetic quiz offline. Retain actual synthetic sheets and observed volunteer hand-in timing. Award A Q01/Q02 and B Q01 for this baseline, with all other questions wrong/unanswered.
-3. End the round. In `/staff/scores`, select R2 and dry-run CSV/manual rows using the exact schema below. Substitute recorded integer active finish milliseconds and private references; symbolic values below are not uploadable CSV values.
-
-```csv
-team_code,correct_question_ids,official_finish_active_ms,source_reference
-DEMO-01,Q01|Q02,<A observed active milliseconds>,<A private sheet reference>
-DEMO-02,Q01,<B observed active milliseconds>,<B private sheet reference>
-```
-
-4. **Expected:** dry-run shows 2 and 1 points; it creates no effective/public credit yet. Maker cannot self-commit. Different verifier checks originals/key/times, supplies a reason and commits once. A retry of the same request cannot add marks twice.
-5. Run the publication gate. **Expected:** A=2/30, B=1/30 and both qualify for R3. Record final R2 entries. Native quiz answering is offline; the participant website does not collect these quiz answers.
+The exact new importer is pending the actual Excel report. Supply that file/path before claiming this step is accepted. Its real worksheet/headers, score metric/maximum, roster identification and timing units must be confirmed. Preserve the original file. Once implemented, test file preview, exact team matching, validation, independent commit, provisional publication, appeals and final R2→R3 qualification. Use actual exported values; do not reinterpret accuracy/game points or invent hand-in timing. The former correct-question-ID CSV is a historical format, not a substitute for this acceptance step.
 
 ## 6. Round 3 — lab binding, durable saves, locked work and judging
 
@@ -113,30 +102,24 @@ DEMO-02,Q01,<B observed active milliseconds>,<B private sheet reference>
 5. On `/staff/coding`, maker inspects exact frozen source/rubric, records lab verdicts for every saved bundle and retained supervisor/time references, then proposes judgments. Different verifier approves. No saved/credited task or completion time may be invented during judging.
 6. Run the publication gate. **Expected:** A=100/100, B=0/100; both qualify under cut 2. Public results include aggregate marks/correct-task count/final time, not private source or hidden tests. Record final R3 entries.
 
-## 7. Round 4 — published faculty, frozen allocation and Green Cards
+## 7. Round 4 — professor Green Cards
 
-1. Prepare three clearly synthetic demo faculty profiles in the same demo cohort, with `visible=true` and synthetic consent references. Publish as the independent verifier after reviewing those rehearsal records; this does not attest to any actual faculty consent. Record numeric IDs. Missing portrait should show accessible initials. An unapproved profile/draft edit must not become a public release automatically.
-2. While R4 is still DRAFT, configure one demo panel with those three IDs and one timezone-aware nonoverlapping ten-minute slot per qualifying team. Substitute actual numeric IDs/team codes and rehearsal dates. Approve rules only after publication/allocation is complete; then mark READY.
-3. Team sees its own panel/slot and approved faculty directory. Start and conduct the offline synthetic interviews; retain three original criterion sheets per team.
-4. End. Enter A's four criteria as **8,8,8,8 for each of its three faculty**, and B's as **6,6,6,6 for each of its three faculty**. Use the exact R4 header below, six rows total, with actual IDs/private references.
-
-```csv
-team_code,faculty_id,technical,problem_solving,communication,coordination,source_reference
-```
-
-5. **Expected:** dry-run produces A=80 and B=60. Missing faculty rows, wrong panel IDs or marks outside 0–10 block the batch. Different verifier checks originals and commits; repeated action does not sum duplicate marks.
-6. Run the publication gate. **Expected:** A=80/100, B=60/100, both receive demo Green Cards and native R5 eligibility. Merely displaying a card before FINAL does not permit buzzing. Record final R4 entries and qualifiers.
+1. Keep actual/published faculty and optional assignment information separate from card decisions. The demo's synthetic faculty and panel can still be shown, with missing portraits using initials. Prepare new `round4-green-card-v2` rules, independently approve and mark READY.
+2. Start the round and record the synthetic professor's card decisions. For both teams to reach the final, the demo list contains both DEMO-01 and DEMO-02. Preserve that complete source list.
+3. End. In `/staff/scores`, enter only those team names/codes, confirm the complete-list checkbox and dry-run. Missing list confirmation, unknown/ambiguous/duplicate or unqualified names must not commit.
+4. Different verifier checks the originals and commits. Expected: both have Green Cards, no numerical score/ranking and zero carried points. Unlisted entrants must not receive cards automatically. A corrected complete list replaces effective decisions while retaining prior records.
+5. Run the publication gate. Only eligible listed recipients get FINAL qualification; do not fill remaining slots from unlisted teams. Provisional or a displayed card alone does not authorize a buzz. Record final R4 entries and qualifiers.
 
 ## 8. Round 5 — 25 offline questions, native buzzes and one winner
 
-1. Confirm all four prior final snapshots are present, reviewed and free of material blockers. Expected carried totals for this baseline: **A=184**, **B=62**. Keep both phones signed in as their respective qualified teams.
+1. Confirm all four prior final snapshots are present, reviewed and free of material blockers. Carried totals are final R1+R2+R3 points; R4 contributes zero. Use the actual R2 export metric. If synthetic R2 scores are 2 and 1, the arithmetic example is A=104/B=2; that example is not evidence of a Wayground import. Keep both phones signed in as their respective qualified teams.
 2. Controller opens the lobby/starts, selects the correct frozen question in `/staff/buzzer`, supplies a reason and opens a fresh window. Present its matching synthetic content offline. Use [the host run sheet](ROUND5_REHEARSAL.md) for all five stages.
 3. Both teams press close together. Controller closes the window and confirms the persisted queue **before** calling a team. Expected order follows precise database admission times; no client-clock/network-latency compensation. Do not assume A physically tapped first or force its priority.
 4. For one selected question, have the actual first buzzing team answer wrong, then call the next buzzing team for a correct answer. Record each native host verdict immediately with exact press/answer/reference; observe that an unbuzzed team cannot take the answering opportunity. If the chosen order makes B the correct team, this can be the baseline's one B-credit question.
-5. Complete **all 25 questions**, five/stage. For the predictable baseline, arrange 24 correct answers credited to A and one to B, with no voids. If observed outcomes differ, retain them and recalculate the expected totals instead of editing evidence to fit the example. Stage 5 expands offline; record reveal steps, which do not change two marks per correct answer.
+5. Complete **all 25 questions**, five/stage. For the predictable baseline, arrange 24 correct answers credited to A and one to B, with no voids. If observed outcomes differ, retain them and recalculate the expected totals instead of editing evidence to fit the example. Stage 4 expands offline; reveal steps do not change its one mark. Stage 5 is word decoding and awards two per correct answer.
 6. Exercise double tap, unknown response/reload receipt recovery, pause and a fresh window. Expected: one effective team position, original UUID/window recovery, old requests do not migrate into another question, and no acceptance while paused/closed. If a retry creates an extra played window, every window needs reviewed coverage and older duplicate question windows need reviewed voiding to prevent double credit; keep this out of the no-void baseline or record the changed expected maximum.
 7. End. On `/staff/scores`, select R5 and **Load native host records as source drafts**. Complete every finalist/window row with explicit CORRECT/WRONG/NO_ANSWER/NO_BUZZ/NOT_CALLED or reviewed global VOID, native IDs, answer, reveal step and private references. Do not paste aggregate points or client timestamps.
-8. Dry-run, check 25-question/every-window coverage and original completion/priority evidence; different verifier commits. Expected baseline R5 credit: **A=48, B=2**, maximum 50. Carried plus R5 totals: **A=232, B=64**, with each stage no more than 10.
+8. Dry-run, check 25-question/every-window coverage and original completion/priority evidence; different verifier commits. If B gets the first stage-1 question and A the other 24, expected R5 credit is A=29/B=1, maximum 30. Add actual R1–3 carried totals; stage maxima are 5/5/5/5/10. An encoding question credited to B instead is worth two, so recalculate from actual evidence.
 9. Run the publication gate. Provisional shows totals without an award. After appeals and independent FINAL approval, **expected:** only A is **The Winner of Tech Treasure Hunt**, exactly one `winner_codes` entry, empty `qualifier_codes` and no Round 6. Record final snapshot and signed v3 checkpoint.
 10. Separately exercise equal cumulative scores with different original last-correct host completion times: earlier completion wins. Exact/missing-time ties remain held for the frozen adjudication policy; press/import/review time cannot replace completion time. Use a separate prepared branch/attempt; ordinary imports cannot replace this finalized award.
 

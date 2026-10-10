@@ -4,6 +4,8 @@ Updated 9 October 2026. M10 extends the existing Round 1 recovery and paper tool
 
 M14 extends signed recovery to Round 5's native windows, presses, host completion evidence, question ledgers and awards. Round 5 uses a v3 checkpoint with signed carry-over dependencies; Rounds 1–4 retain v2. Recovery preserves original completion times, keeps old windows closed and revokes cohort access. See the [host and rehearsal run sheet](ROUND5_REHEARSAL.md).
 
+The 10 October extension also inventories/reconciles immutable `GreenCardRevision` recipient/nonrecipient records and original name lists. Current R5 v2 recovers stage weights 1/1/1/1/2 and zero carried R4 points; legacy frozen v1 contracts retain their original behavior. See [current rule updates](RULE_UPDATES_20261010.md).
+
 ## Capture and retain
 
 Download a signed round checkpoint after ENDED, PROVISIONAL or FINALIZED. A v2 checkpoint includes:

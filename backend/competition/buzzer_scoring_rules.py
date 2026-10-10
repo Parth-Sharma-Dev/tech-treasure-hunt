@@ -1,4 +1,4 @@
-"""The organizer's fixed 25-question, two-mark cumulative final contract."""
+"""Versioned 25-question contracts, including the current thirty-mark weighted final."""
 
 LEGACY_CONTRACT = {
     "version": "round5-v1",

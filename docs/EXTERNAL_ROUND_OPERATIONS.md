@@ -1,3 +1,25 @@
+# Round 2 Wayground and Round 4 Green Card operations
+
+Updated 10 October 2026. [Current rules](RULE_UPDATES_20261010.md) supersede earlier manual quiz/faculty-mark assumptions for new attempts. Historical schemas and evidence remain supported.
+
+## Round 2 — actual Wayground report pending
+
+The organizer will supply the exported Excel workbook. Exact worksheet/column mapping, numerical metric, maximum, team matching and any genuine timing evidence require that file. It has not arrived yet; the old correct-question-ID CSV is legacy support, not the promised new Wayground format. Do not infer quiz marks from game points/accuracy interchangeably, fabricate finish times or claim an Excel import passed. The fresh R2 draft remains on the legacy schema until the report is inspected and the replacement format implemented/reviewed.
+
+## Round 4 — names only, no numerical marks
+
+Before READY, configure `ranking_policy = green_card_qualification` and `score_schema = {"version":"round4-green-card-v2","max_score":"0","qualification_only":true,"carry_over_points":0}`. Real advancement is capped at five, demo at the configured count. Approved faculty information and optional interview allocations remain separate from scoring; the new intake does not require criterion marks or faculty IDs.
+
+After ENDED, select the exact attempt on `/staff/scores`. Enter a private intake reason and Green Card recipient **team names/codes, one per line**. Confirm the list is complete; every unlisted prior finalist is recorded as no card. Dry-run checks unknown/ambiguous/duplicate/inactive/unqualified names and too many recipients. A different verifier reviews the complete original list and commits it. Corrections append replacement card evidence for all entrants rather than adding credit.
+
+Publish PROVISIONAL, finish appeals/material review, then independently publish FINAL. The final qualifiers are exactly the eligible card recipients, with no automatic filling of unused slots. Public results show received/not received and final qualification, without scores or rankings. All carried R4 points are zero. Signed exports/recovery include `greencardrevision` and original import batches.
+
+Use `/staff/roster` for independently reviewed roster/status changes and credentials. Identities remain frozen after cohort release; withdrawal/disqualification revoke access and open dependent qualification-impact review where required. See [recovery](EVIDENCE_RECOVERY.md) and [M11 walkthrough](M11_ACCEPTANCE_TESTING.md).
+
+## Historical schemas — reference only
+
+<details><summary>Earlier Round 2 manual quiz and Round 4 weighted faculty operation</summary>
+
 # Round 2 and Round 4 operations
 
 M9 supports paper-quiz/faculty scores and roster administration. M12/M13 add [Round 5 buzzer and reviewed final scoring](ROUND5_SCORING.md). `/staff/scores` supports its separate native-evidence-linked `round5-v1` ledger; the legacy unlinked external service remains Round 2/4 only. Signed native recovery remains M14.
@@ -103,3 +125,5 @@ Unknown write outcomes on score/roster desks retain their UUID/body across reloa
 Synthetic tests cover source validation, atomic/idempotent commit, independence, revisions, global voids, reserve ties, qualification, consent/draft redaction, faculty averaging, roster review and session invalidation. An isolated actual Django/PostgreSQL browser journey exercises score intake, independent commit/publication, participant results, roster creation/review and credentials. See [test evidence](TEST_EVIDENCE.md).
 
 Actual paper/key, applications, faculty details, panel slots, venues and private content remain organizer inputs. M10 recovery covers Rounds 1–4; M12/M13 buzzer and final scoring are complete locally. M14 adds signed native recovery and M11 covers the complete event journey/load/outage rehearsal. See [milestone status](DEVELOPMENT_STATUS.md). No production deployment or physical-event verification is implied.
+
+</details>

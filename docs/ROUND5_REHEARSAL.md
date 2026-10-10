@@ -12,7 +12,7 @@ M14 local procedure, 9 October 2026. Physical rehearsal is **pending**. Fill the
 | Independent verifier | PLACEHOLDER — different authorized staff required | Source/coverage review, publication and recovery permission |
 | Technical/incident lead | PLACEHOLDER — organizer assignment pending | Backup custody, separate recovery database and outage disposition |
 
-Prepare 25 independently verified questions, five per stage: AI image recognition, keyword answer, word decoding, image abnormality and progressive partial-image guessing. Match private presentation files to frozen public IDs/version references; record each reveal step in the host sheet. Every correct answer earns two marks regardless of stage/reveal; wrong/unanswered earns zero. Use actual approved accessibility, response-time, tie and appeal procedures. Confirm final reviewed Round 1–4 results and Round 4 finalists before release.
+Prepare 25 independently verified questions, five per stage: AI image recognition, keyword answer, image abnormality, progressive partial-image guessing and word decoding. Match private presentation files to frozen public IDs/version references; record each reveal step in the host sheet. Each correct answer earns one mark in stages 1–4 and two in stage 5; reveal timing does not change marks; wrong/unanswered earns zero. Use actual approved accessibility, response-time, tie and appeal procedures. Confirm final reviewed Round 1–4 results and Round 4 finalists before release.
 
 Each team uses its authorized phone/session. Test the large buzzer, acknowledgment and reload recovery on actual devices at the venue. All teams use the announced network conditions. Server admission time decides priority; device tap clocks and network latency are not compensated. Record device/browser/network details and accessibility issues without collecting passwords or cookies.
 
@@ -40,12 +40,12 @@ For database loss, preserve the source and restore a signed database backup into
 | Two or more simultaneous phones | Closed queue preserves database-time priority; confirm precision and host call |
 | Double tap, lost response and reload | Same receipt/window recovered, one effective team position and no duplicate credit |
 | Wrong answer then next buzzing team | Native host evidence follows queue; no unbuzzed team receives marks |
-| All five stages and progressive reveals | Frozen presentation versions match IDs; five questions/stage; reveal does not change two marks |
+| All five stages and progressive reveals | Frozen presentation versions match IDs; five questions/stage; reveal does not change the stage’s point weight |
 | Pause, stale tab and fresh window | Old window rejects new press; unresolved cached request cannot migrate to a new question |
 | Application restart | Original receipts survive; operator explicitly inspects/closes interrupted live window |
 | Older database plus signed checkpoint | Exact native evidence and historical winner recovered, all sessions revoked and windows closed |
 | Missing prior results or conflicting completion | Recovery stays blocked with a material incident; no guessed scores/timestamps |
 | Withdrawn/disqualified finalist | Restriction survives restore; historical award is retained for review without promotion |
-| Scoring, appeal and award | Carry-over plus up to 50 Round 5 marks, original tie time, exactly one reviewed event winner |
+| Scoring, appeal and award | Carry-over plus up to 30 Round 5 marks; R4 contributes zero, original tie time, exactly one reviewed event winner |
 
 A rehearsal passes only when the actual evidence references, maker and independent verifier are recorded, all coverage/accessibility issues have an explicit disposition and no material gap remains. Local synthetic/browser results support development; they do not certify venue phones, load or a physical event rehearsal. Broader full-event acceptance remains M11.

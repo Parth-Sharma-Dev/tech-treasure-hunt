@@ -1,21 +1,21 @@
 # Round 5 scoring and the event winner
 
-The organizer supplied these rules during M13: five questions in each of the five stages, two marks per correct answer, zero for wrong/unanswered, no negative scoring, passing to teams that buzzed, carry-over scores and one winner. Answers and judging remain offline; source review and publication take place on the website.
+The organizer revised the rules on 10 October: stages 1–4 earn one mark/question, stage 5 word encoding earns two, five questions/stage, zero penalties and one overall winner. Round 4 is qualification-only; only final R1–3 points carry. Answers and judging remain offline; source review and publication take place on the website.
 
 ## Confirmed contract
 
 | Item | Rule |
 |---|---|
 | Question count | 5 per stage × 5 stages = 25 |
-| Marks | Correct = 2; wrong/unanswered = 0; no penalties |
-| Stage total | 10 |
-| Round 5 total | 50 before independently reviewed global question voids |
+| Marks | Stages 1–4 correct = 1; stage 5 correct = 2; otherwise 0; no penalties |
+| Stage total | 5 for stages 1–4; 10 for stage 5 |
+| Round 5 total | 30 before independently reviewed global question voids |
 | Answer passing | Only to teams with retained native buzzes, in server-recorded order, after earlier teams are wrong/unanswered |
-| Carry-over | Sum each finalist's latest published final scores from Rounds 1–4, with no normalization or weights |
+| Carry-over | Sum each finalist's final R1–3 points; R4 contributes zero and supplies only Green Card qualification |
 | Winner | One team: **The Winner of Tech Treasure Hunt** |
 | Ranking | Cumulative score, then earlier host-confirmed completion of the last credited correct Round 5 answer |
 
-All four earlier rounds must have final, reviewed results in the same cohort. Missing scores are coverage gaps, never implicit zeros. A material incident or changed prior qualification/results blocks or stales dependent review.
+All four earlier rounds must have final, reviewed results in the same cohort. Missing R1–3 points are coverage gaps, never implicit zeros; R4 must establish the complete reviewed Green Card qualification and contributes exactly zero. A material incident or changed prior qualification/results blocks or stales dependent review.
 
 The completion timestamp is the server time when the host records the observed offline answer, before contended scoring locks. It is distinct from the team's buzzer timestamp and from the later reviewer/import time. Host records must be made immediately after the response, before opening the next question. Client/imported completion times are not accepted.
 
@@ -29,21 +29,21 @@ Use **BUZZER** delivery and retain the existing owner/content/clock controls. Re
 {
   "ranking_policy": "cumulative_score_then_last_correct",
   "score_schema": {
-    "version": "round5-v1",
+    "version": "round5-v2",
     "questions_per_stage": 5,
-    "points_per_correct": 2,
+    "points_per_stage": {"1":1,"2":1,"3":1,"4":1,"5":2},
     "wrong_points": 0,
     "unanswered_points": 0,
-    "max_score": 50,
+    "max_score": 30,
     "answer_passing": "buzzer_queue",
     "winner_count": 1,
-    "carry_over": "sum_final_rounds_1_to_4",
+    "carry_over": "sum_final_rounds_1_to_3",
     "tie_break": "last_correct_completion"
   }
 }
 ```
 
-The schema must match these supplied rules; arbitrary marks, negative penalties or reveal-dependent scoring are rejected. Progressive image guesses still earn two marks at any reveal step. Reveal steps can be retained as source evidence but do not alter credit.
+The schema must match these supplied rules; arbitrary marks, negative penalties or reveal-dependent scoring are rejected. Progressive image guessing is stage 4 and earns one mark at any reveal step. Word encoding is stage 5 and earns two. Reveal steps can be retained as source evidence but do not alter credit.
 
 Rules/content remain frozen after READY. An already released M12 buzzer-only attempt with five demo questions cannot acquire a different scoring contract in place; use a new reviewed attempt.
 
@@ -82,7 +82,7 @@ Use **Load native host records as source drafts** to populate known native IDs a
 - `NOT_CALLED`: a receipt exists but the team was not given an answer opportunity.
 - `VOID`: cancel the question window for **all** finalists with retained adjudication evidence; original buzzes/answers remain intact. The effective maximum is reduced equally when no valid window remains for that question.
 
-Blank native IDs are appropriate only where no corresponding record exists. `reveal_step` is 0–100 in stage 5 and zero elsewhere. `buzzer_tie_order` uses `|`-separated team codes; all rows preserve the same adjudicated order. Private references are bounded to 200 characters and original answers to 2,000 characters. CSV input is limited to 1 MB and source batches to 2,000 rows.
+Blank native IDs are appropriate only where no corresponding record exists. `reveal_step` is 0–100 in stage 4 and zero elsewhere under v2; legacy v1 retains stage 5 reveals. `buzzer_tie_order` uses `|`-separated team codes; all rows preserve the same adjudicated order. Private references are bounded to 200 characters and original answers to 2,000 characters. CSV input is limited to 1 MB and source batches to 2,000 rows.
 
 Dry-run does not award points. A different authorized verifier checks every native receipt, original response, completion time, source reference and carry-over basis, then commits the complete batch atomically. Invalid, stale, duplicate or incomplete sources cannot partly change scores. Replay uses the original action UUID.
 

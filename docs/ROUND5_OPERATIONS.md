@@ -19,7 +19,7 @@ Implemented locally in M12–M14 on 9 October 2026. All five stages use the same
 | `buzzer_early_policy` | `reject_closed_window` |
 | `offline_rules_reference` | Actual approved host/rules reference; synthetic/PENDING values are local demo placeholders only |
 
-Closed/early presses are rejected. Exact equal recorded buzz times are held for reviewed priority; team code never breaks them. The supplied scoring rules award two per correct answer, zero otherwise, allow queue-based passing and carry prior scores into one event award. Reveal steps do not change marks.
+Closed/early presses are rejected. Exact equal recorded buzz times are held for reviewed priority; team code never breaks them. Current rules award one per correct answer in stages 1–4 and two in stage 5 word encoding (30 total), zero otherwise, allow queue-based passing and carry final R1–3 points into one event award; R4 Green Cards contribute zero. Reveal steps do not change marks.
 
 For local unsigned preparation:
 
