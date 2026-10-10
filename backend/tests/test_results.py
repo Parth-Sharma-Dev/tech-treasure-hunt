@@ -65,7 +65,11 @@ def ended_hunt(settings):
         is_demo=True,
         delivery_mode="ONLINE_HUNT",
         rules_version="v1",
-        rules={**demo_rules(1), "answer_format": "four_ascii_digits"},
+        rules={
+            **demo_rules(1),
+            "answer_format": "four_ascii_digits",
+            "expected_mission_count": 2,  # Historical two-mission results fixture.
+        },
         owners=owners,
         advancement_count=1,
         active_budget_ms=60_000,
