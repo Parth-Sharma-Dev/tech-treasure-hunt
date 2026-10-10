@@ -13,7 +13,7 @@ Download a signed round checkpoint after ENDED, PROVISIONAL or FINALIZED. A v2 c
 - Round configuration, frozen rules/panels/slots, clock intervals, incidents, results and relevant audit events.
 - Round 1 decisions, receipts, corrections, completions and reconciled paper slips.
 - Round 3 private task/rubric versions, every acknowledged source revision, final/cutoff/no-submission records, workstation evidence, judgment proposals and reviewed verdicts.
-- Round 2/4 original import batches, appended score revisions and reviewed Round 2 question voids.
+- Round 2/4 original import batches, appended score revisions and legacy Round 2 question voids. Wayground v2 additionally retains original Excel bytes/checksum, parsed participant values and explicit mapping/exclusion evidence.
 - The cohort's faculty drafts/approved snapshots, roster proposals/review audits and team identity/status inventory.
 - Session identities and timestamps, with no session cookies or password hashes.
 
@@ -21,7 +21,7 @@ A Round 5 v3 checkpoint additionally retains private frozen question/reveal refe
 
 Checkpoints are signed, **not encrypted**. They contain private tests, sources, original faculty marks and personal information. Retain them privately with authorized reviewers and keep signing secrets separately. Participant endpoints do not expose this evidence.
 
-Per-type JSON or CSV exports contain at most 200 records by default, at most 500. JSON pages contain signed manifests and `next_cursor`; follow the cursor until null. CSV cells are spreadsheet-safe and response headers contain the signed inventory digest and next cursor. Restart pagination when evidence changes. Pages support investigation; upload a complete signed checkpoint for reconciliation.
+Per-type JSON or CSV exports contain at most 200 records by default, at most 500. Wayground workbook pages are capped at two records to respect byte limits. JSON pages contain signed manifests and `next_cursor`; follow the cursor until null. CSV cells are spreadsheet-safe and response headers contain the signed inventory digest and next cursor. Restart pagination when evidence changes. Pages support investigation; upload a complete signed checkpoint for reconciliation.
 
 Browser checkpoints retain the existing 10,000-record/8 MB signed-content limits. Local capture preserves existing files:
 

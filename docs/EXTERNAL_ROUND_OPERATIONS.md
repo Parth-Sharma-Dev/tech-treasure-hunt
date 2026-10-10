@@ -2,9 +2,18 @@
 
 Updated 10 October 2026. [Current rules](RULE_UPDATES_20261010.md) supersede earlier manual quiz/faculty-mark assumptions for new attempts. Historical schemas and evidence remain supported.
 
-## Round 2 — actual Wayground report pending
+## Round 2 — Wayground Excel
 
-The organizer will supply the exported Excel workbook. Exact worksheet/column mapping, numerical metric, maximum, team matching and any genuine timing evidence require that file. It has not arrived yet; the old correct-question-ID CSV is legacy support, not the promised new Wayground format. Do not infer quiz marks from game points/accuracy interchangeably, fabricate finish times or claim an Excel import passed. The fresh R2 draft remains on the legacy schema until the report is inspected and the replacement format implemented/reviewed.
+Before READY configure `score_schema` using `competition.wayground.schema(question_count)`, `ranking_policy = "wayground_score_then_answer_time"`, the approved advancement cut and qualification tie policy. Current version is `round2-wayground-v2`; the supplied demo has eight questions. Real-event settings retain the approved 30-question, 45-minute, 15-qualifier contract unless the rules are formally changed.
+
+1. After ENDED select the exact attempt in `/staff/scores` and enter a private intake reason.
+2. Upload the original `.xlsx` using **Read Wayground workbook**. Review `Participant Data` against the workbook: `Score` gives raw points; `Total Time Taken` is summed answering duration. Numeric Excel day fractions are converted to milliseconds. Neither Accuracy nor Correct determines points; Started At is not a completion timestamp.
+3. Map each player to exactly one eligible team. For an unrelated player choose exclusion and give a reason. Every export row needs a disposition; duplicate/unknown/unqualified teams block intake. An eligible team absent from the export remains a coverage gap rather than receiving an invented score.
+4. Dry-run, inspect every raw score, duration, mapping and exclusion. A different authorized verifier reviews the original private-download file and commits the batch. All score revisions reference the retained immutable workbook and checksum; browser-supplied marks are never trusted.
+5. Propose and independently publish PROVISIONAL, resolve appeals, wait for the configured window, then propose/independently publish FINAL. Higher raw points rank first; equal points use lower answering duration. Exact duration ties at the cut require the approved tie resolution. Only final qualifiers unlock R3.
+6. To correct a report, upload its genuine replacement and append an independently reviewed replacement batch. Historical bytes/mappings remain retained. Raw game points do not support the legacy per-question void operation.
+
+The workbook contains no authoritative maximum game score. The database storage bound is not a quiz maximum and is hidden from participant score displays, including cumulative R5 totals. Workbooks are private; staff downloads require authorization. Formula cells, unfinished grading and inconsistent question counts are rejected. Signed evidence export/recovery includes original bytes, participant values, mappings and exclusions.
 
 ## Round 4 — names only, no numerical marks
 

@@ -2,7 +2,7 @@
 
 Updated 9 October 2026 after M14. Round 5 now has native buzzer/host evidence, reviewed cumulative scoring, one event winner and signed native recovery. Actual event inputs, physical rehearsal and production release remain separate.
 
-Updated again 10 October for [organizer rule changes](RULE_UPDATES_20261010.md): six-character R1 codes, qualification-only R4 Green Card lists, and reordered/weighted 30-mark R5 (`round5-v2`). These are implemented for new attempts and the unused professor drafts; old frozen evidence remains unchanged. **Round 2's Wayground Excel replacement is pending the actual workbook/path.** M11 acceptance must repeat the affected checks; its full five-round journey remains pending.
+Updated again 10 October for [organizer rule changes](RULE_UPDATES_20261010.md): six-character R1 codes, qualification-only R4 Green Card lists, and reordered/weighted 30-mark R5 (`round5-v2`). These are implemented for new attempts and the unused professor drafts; old frozen evidence remains unchanged. **Round 2 now implements `round2-wayground-v2`: retained original Excel, raw Score, explicit team mapping/exclusions and lower Total Time Taken for tied scores.** M11 acceptance must repeat the affected checks; its full five-round journey remains pending.
 
 | Milestone | Status | Scope |
 |---|---|---|

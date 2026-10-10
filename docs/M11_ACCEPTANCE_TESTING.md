@@ -56,7 +56,7 @@ For the small demo, configure **advancement count 2 for Rounds 1–4**, no advan
 | Round | Required preparation for this walkthrough |
 |---|---|
 | 1 | New ONLINE_HUNT demo attempt; two competitive missions, optional separate practice, six-character alphanumeric keys, owners/locations, capacity for the roster, expected mission count 2 and independent verification. See [R1](ROUND1_OPERATIONS.md). |
-| 2 | EXTERNAL; new Wayground schema/mapping awaits the actual Excel report; do not certify the old manual CSV as the new import. Keep the demo budget at 45 minutes or explicitly approve a suitable shorter demo budget before READY. See [R2/R4](EXTERNAL_ROUND_OPERATIONS.md). |
+| 2 | EXTERNAL; `round2-wayground-v2`, eight questions for the supplied demo workbook, raw Score and exported answering-duration ties. The prepared professor draft has a 60-minute demo budget; real rules remain separately approved. See [R2/R4](EXTERNAL_ROUND_OPERATIONS.md). |
 | 3 | CODING; category maxima 15/25/20/30/10, exact private lab rubrics, actual test lab Python/C versions, workstation/submission policies and independent task verification. See [R3](ROUND3_OPERATIONS.md). |
 | 4 | EXTERNAL; `round4-green-card-v2`, zero points, recipient names only; three independently published synthetic faculty for one demo panel, two distinct team slots. Set panels after R3 final qualification and before rule approval/READY. Real play requires its full two-panel allocation. |
 | 5 | BUZZER; 25 independently verified synthetic questions (five/stage), private answers/presentation/reveal references, exact `round5-v2` 30-mark contract, `cumulative_score_then_last_correct`, approved buzzer policies and a sufficient active budget (for example, explicitly approve 30 demo minutes rather than retaining the five-minute placeholder). See [buzzer](ROUND5_OPERATIONS.md) and [scoring](ROUND5_SCORING.md). |
@@ -91,7 +91,12 @@ Put wrong-answer cooldown/quota escalation, alternate answers/voids and irrevers
 
 ## 5. Round 2 — Wayground export
 
-The exact new importer is pending the actual Excel report. Supply that file/path before claiming this step is accepted. Its real worksheet/headers, score metric/maximum, roster identification and timing units must be confirmed. Preserve the original file. Once implemented, test file preview, exact team matching, validation, independent commit, provisional publication, appeals and final R2→R3 qualification. Use actual exported values; do not reinterpret accuracy/game points or invent hand-in timing. The former correct-question-ID CSV is a historical format, not a substitute for this acceptance step.
+1. Confirm the R1 final gate: before final publication R2 eligibility is held; afterward both qualifying demo teams can enter. Confirm keywords are visible in LOBBY and hidden after LIVE.
+2. Run the quiz externally, then END the website attempt. Select it in Scores and upload the supplied original Excel workbook from the private manifest. **Expected:** three players; scores 7000/5390/3180, durations 24/25/33 seconds, eight questions. Keep the original file unchanged.
+3. Map the first player to DEMO-01 (A), second to DEMO-02 (B), and explicitly exclude the third with a demo reason. Do not invent a third qualifying team. Verify each mapping against the original before dry-run. **Expected:** A=7000, B=5390, no Accuracy/Correct conversion or hand-in timestamp.
+4. Check negative branches: an unmapped player, duplicate team or exclusion without a reason blocks dry-run. A maker cannot independently commit their own batch. Repeating the acknowledged upload preserves the same checksum/report evidence.
+5. A different verifier checks the original download and calculated preview, then commits. Publish PROVISIONAL independently, verify team-visible raw points/answering durations, resolve appeals and publish FINAL independently after the window. **Expected:** A ranks above B; both qualify under demo cut two; only final publication releases R3. Test equal raw scores with lower answering duration in an isolated fixture rather than changing the supplied original report.
+
 
 ## 6. Round 3 — lab binding, durable saves, locked work and judging
 
@@ -112,7 +117,7 @@ The exact new importer is pending the actual Excel report. Supply that file/path
 
 ## 8. Round 5 — 25 offline questions, native buzzes and one winner
 
-1. Confirm all four prior final snapshots are present, reviewed and free of material blockers. Carried totals are final R1+R2+R3 points; R4 contributes zero. Use the actual R2 export metric. If synthetic R2 scores are 2 and 1, the arithmetic example is A=104/B=2; that example is not evidence of a Wayground import. Keep both phones signed in as their respective qualified teams.
+1. Confirm all four prior final snapshots are present, reviewed and free of material blockers. Carried totals are final R1+R2+R3 points; R4 contributes zero. Use the actual R2 export metric. With supplied R2 scores 7000/5390, R1 2/1 and R3 100/0, expected carried totals are A=7102/B=5391. Recalculate if your reviewed R3 verdicts differ. Keep both phones signed in as their respective qualified teams.
 2. Controller opens the lobby/starts, selects the correct frozen question in `/staff/buzzer`, supplies a reason and opens a fresh window. Present its matching synthetic content offline. Use [the host run sheet](ROUND5_REHEARSAL.md) for all five stages.
 3. Both teams press close together. Controller closes the window and confirms the persisted queue **before** calling a team. Expected order follows precise database admission times; no client-clock/network-latency compensation. Do not assume A physically tapped first or force its priority.
 4. For one selected question, have the actual first buzzing team answer wrong, then call the next buzzing team for a correct answer. Record each native host verdict immediately with exact press/answer/reference; observe that an unbuzzed team cannot take the answering opportunity. If the chosen order makes B the correct team, this can be the baseline's one B-credit question.
