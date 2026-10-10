@@ -166,6 +166,10 @@ def open_window(fixture, question=0):
 
 
 def client_for(fixture, index=0):
+    # Reuse each fixture team's single browser across host/permission checks.
+    team = fixture[2][index]
+    if hasattr(team, "browser_client"):
+        return team.browser_client
     client = Client(enforce_csrf_checks=True)
     assert (
         post(
@@ -175,6 +179,7 @@ def client_for(fixture, index=0):
         ).status_code
         == 200
     )
+    team.browser_client = client
     return client
 
 

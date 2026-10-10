@@ -279,8 +279,16 @@ def test_cutoff_freezes_last_saved_work_and_preserves_no_submission_outcome(codi
 
 def test_a_second_browser_cannot_read_or_save_assigned_work(coding):
     round = start(coding)
-    assigned_client(coding)
+    original = assigned_client(coding)
     second = Client(enforce_csrf_checks=True)
+    assert (
+        post(
+            second, "/api/auth/login", {"team_code": coding[2][0].code, "password": "test-only"}
+        ).status_code
+        == 409
+    )
+    assert second.get(f"/api/rounds/{round.pk}/coding/submission").status_code == 401
+    assert post(original, "/api/auth/logout", {}).status_code == 200
     assert (
         post(
             second, "/api/auth/login", {"team_code": coding[2][0].code, "password": "test-only"}
