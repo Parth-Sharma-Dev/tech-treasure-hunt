@@ -38,6 +38,13 @@ class ReadOnlyAdmin(admin.ModelAdmin):
         return False
 
 
+@admin.register(models.EventContentSource)
+class EventContentSourceAdmin(ReadOnlyAdmin):
+    view_permissions = ("prepare_content", "verify_evidence")
+    list_display = ("round", "kind", "filename", "sha256", "recorded_at")
+    exclude = ("original_bytes",)
+
+
 @admin.register(models.Round)
 class RoundAdmin(ReadOnlyAdmin):
     view_permissions = ("prepare_content", "control_round", "verify_evidence", "publish_results")

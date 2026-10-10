@@ -139,6 +139,25 @@ class Round(models.Model):
             return super().save(*args, **kwargs)
 
 
+class EventContentSource(ImmutableEvidence):
+    """Private organizer originals and parsed content; never participant payloads."""
+
+    round = models.ForeignKey(Round, on_delete=models.PROTECT)
+    kind = models.CharField(max_length=24)
+    filename = models.CharField(max_length=200)
+    sha256 = models.CharField(max_length=64)
+    original_bytes = models.BinaryField()
+    content = models.JSONField(default=dict)
+    prepared_by = staff_reference()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["round", "kind", "sha256"], name="event_content_source_unique"
+            )
+        ]
+
+
 class RoundPhase(ImmutableEvidence):
     round = models.ForeignKey(Round, on_delete=models.PROTECT)
     phase_type = models.CharField(max_length=8, choices=[("LIVE", "Live"), ("FROZEN", "Frozen")])
