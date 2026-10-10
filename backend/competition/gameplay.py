@@ -10,10 +10,19 @@ from django.db import connection, transaction
 from django.utils.crypto import salted_hmac
 from django.views.decorators.debug import sensitive_variables
 
-from .answers import answer_digest
+from .answers import answer_digest, code_digest, independent_codes
 from .api import ApiProblem
 from .clock import active_elapsed, clock_payload, database_now
-from .models import AttemptState, Completion, Mission, Round, SubmissionDecision, Team, Visit
+from .models import (
+    AttemptState,
+    Completion,
+    HuntCode,
+    Mission,
+    Round,
+    SubmissionDecision,
+    Team,
+    Visit,
+)
 from .participant import round_eligible
 from .sessions import require_team
 
@@ -48,6 +57,8 @@ def mission_payload(mission, team, round, now):
 
     opened = Visit.objects.filter(team=team, mission=mission).exists()
     completion = Completion.objects.filter(team=team, mission=mission).first()
+    pool = independent_codes(round)
+    claims = Completion.objects.filter(team=team, hunt_code__round=round).count() if pool else 0
     attempt = AttemptState.objects.filter(team=team, mission=mission).first()
     visible = opened and round.state not in {
         Round.State.DRAFT,
@@ -64,9 +75,12 @@ def mission_payload(mission, team, round, now):
         "opened": opened,
         "hint": mission.hint if visible else None,
         "symbol": mission.symbol if visible else None,
-        "completed": completion is not None,
+        "completed": completion is not None and not pool,
+        "code_mode": "independent_pool" if pool else "mission_bound",
+        "successful_claims": claims,
+        "max_code_claims": 3 if pool else None,
         "voided": mission.is_void,
-        "keyword": mission.keyword if completion else None,
+        "keyword": mission.keyword if completion and not pool else None,
         "wrong_count": attempt.evaluated_wrong_count if attempt else 0,
         "cooldown_remaining_ms": max(
             0, attempt.cooldown_until_active_ms - active_elapsed(round, now)
@@ -181,6 +195,13 @@ def submit_answer(request, token, key_value, data):
     mission.refresh_from_db()
     if original := replay(team, round.pk, key, fingerprint):
         return original
+    pool = independent_codes(round)
+    hunt_code = (
+        HuntCode.objects.select_for_update().filter(round=round, code__iexact=answer).first()
+        if pool
+        else None
+    )
+    # Team lock caps concurrent claims; code lock serializes competing teams.
     now = database_now()
     elapsed = active_elapsed(round, now)
     outcome, cooldown_remaining = None, 0
@@ -198,8 +219,16 @@ def submit_answer(request, token, key_value, data):
         outcome = "mission_unavailable"
     elif not Visit.objects.filter(team=team, mission=mission).exists():
         outcome = "not_opened"
-    elif Completion.objects.filter(team=team, mission=mission).exists():
+    elif not pool and Completion.objects.filter(team=team, mission=mission).exists():
         outcome = "already_completed"
+    elif pool and hunt_code and Completion.objects.filter(hunt_code=hunt_code).exists():
+        outcome = (
+            "already_claimed_by_you"
+            if Completion.objects.filter(hunt_code=hunt_code, team=team).exists()
+            else "code_already_claimed"
+        )
+    elif pool and Completion.objects.filter(team=team, hunt_code__round=round).count() >= 3:
+        outcome = "claim_limit_reached"
     attempt = None
     answer_hmac, answer_version = "", ""
     if outcome is None:
@@ -219,7 +248,11 @@ def submit_answer(request, token, key_value, data):
             outcome = "throttled"
         else:
             outcome = "incorrect"
-            for verifier in mission.answer_verifiers:
+            if pool:
+                answer_hmac, answer_version = code_digest(round.pk, answer), "hunt-pool-v1"
+                if hunt_code:
+                    outcome = "accepted"
+            for verifier in [] if pool else mission.answer_verifiers:
                 digest = answer_digest(mission.pk, verifier["version"], answer)
                 if not answer_hmac:
                     answer_hmac, answer_version = digest, verifier["version"]
@@ -246,10 +279,19 @@ def submit_answer(request, token, key_value, data):
         "admitted_at": now.isoformat(),
         "active_elapsed_ms": elapsed,
         "points_awarded": 1 if outcome == "accepted" else 0,
-        "keyword": mission.keyword if outcome in {"accepted", "already_completed"} else None,
+        "keyword": (
+            hunt_code.keyword
+            if pool and hunt_code and outcome in {"accepted", "already_claimed_by_you"}
+            else mission.keyword
+            if not pool and outcome in {"accepted", "already_completed"}
+            else None
+        ),
         "cooldown_remaining_ms": cooldown_remaining,
         "wrong_count": attempt.evaluated_wrong_count if attempt else 0,
     }
+    if pool:
+        response["code_mode"] = "independent_pool"
+        response["claim_id"] = hunt_code.pk if hunt_code and outcome == "accepted" else None
     if outcome == "accepted":
         response["receipt"] = Signer(salt="competition.accepted-receipt.v1").sign_object(
             {
@@ -279,6 +321,7 @@ def submit_answer(request, token, key_value, data):
         Completion.objects.create(
             team=team,
             mission=mission,
+            hunt_code=hunt_code if pool else None,
             source_decision=decision,
             effective_at=now,
             effective_active_ms=elapsed,
@@ -287,16 +330,22 @@ def submit_answer(request, token, key_value, data):
 
 
 def own_progress(team, round):
+    pool = independent_codes(round)
     completions = Completion.objects.filter(team=team, mission__round=round).select_related(
-        "mission"
+        "mission", "hunt_code"
     )
     return {
-        "score": sum(not item.mission.is_void for item in completions),
+        "code_mode": "independent_pool" if pool else "mission_bound",
+        "max_score": 3 if pool else None,
+        "score": sum(
+            bool(item.hunt_code_id) if pool else not item.mission.is_void for item in completions
+        ),
         "completions": [
             {
                 "mission_id": item.mission.public_id,
-                "keyword": item.mission.keyword,
-                "voided": item.mission.is_void,
+                "claim_id": item.hunt_code_id,
+                "keyword": item.hunt_code.keyword if item.hunt_code_id else item.mission.keyword,
+                "voided": False if item.hunt_code_id else item.mission.is_void,
             }
             for item in completions
         ],

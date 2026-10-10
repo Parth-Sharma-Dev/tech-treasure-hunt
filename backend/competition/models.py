@@ -854,6 +854,7 @@ class MissionResolution(ImmutableEvidence):
 class Completion(models.Model):
     team = models.ForeignKey(Team, on_delete=models.PROTECT)
     mission = models.ForeignKey(Mission, on_delete=models.PROTECT)
+    hunt_code = models.OneToOneField(HuntCode, on_delete=models.PROTECT, null=True, blank=True)
     source_decision = models.ForeignKey(
         SubmissionDecision, on_delete=models.PROTECT, null=True, blank=True
     )
@@ -866,7 +867,11 @@ class Completion(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["team", "mission"], name="completion_unique"),
+            models.UniqueConstraint(
+                fields=["team", "mission"],
+                condition=Q(hunt_code__isnull=True),
+                name="completion_legacy_unique",
+            ),
             models.CheckConstraint(
                 condition=(
                     Q(source_decision__isnull=False, source_resolution__isnull=True)
@@ -877,6 +882,15 @@ class Completion(models.Model):
         ]
 
     def clean(self):
+        if self.hunt_code_id:
+            if self.hunt_code.round_id != self.mission.round_id or not self.source_decision_id:
+                raise ValidationError("Code claims require a matching round and accepted decision.")
+            from .answers import code_digest
+
+            if self.source_decision.answer_hmac != code_digest(
+                self.hunt_code.round_id, self.hunt_code.code
+            ):
+                raise ValidationError("Code claim does not match its original code evidence.")
         if self.source_decision_id:
             source = self.source_decision
             if source.team_id != self.team_id or source.mission_id != self.mission_id:

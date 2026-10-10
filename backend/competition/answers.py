@@ -7,6 +7,11 @@ from django.core.exceptions import ImproperlyConfigured, ValidationError
 
 NEW_FORMAT = "six_ascii_alphanumeric"
 LEGACY_FORMAT = "four_ascii_digits"
+POOL_FORMAT = "six_printable_ascii"
+
+
+def independent_codes(round):
+    return round.rules_snapshot.get("rules", round.rules).get("code_mode") == "independent_pool"
 
 
 def answer_format(round):
@@ -14,6 +19,12 @@ def answer_format(round):
 
 
 def normalize_answer(answer, format=None):
+    if format == POOL_FORMAT:
+        if not isinstance(answer, str) or re.fullmatch(r"[!-~]{6}", answer) is None:
+            raise ValidationError(
+                "Enter exactly six characters, including the printed punctuation."
+            )
+        return answer.upper()
     pattern = (
         r"[0-9]{4}"
         if format == LEGACY_FORMAT
@@ -43,3 +54,14 @@ def answer_digest(mission_id, version, answer):
         raise ImproperlyConfigured("ANSWER_HMAC_KEY must be configured.")
     payload = f"mission:{mission_id}:version:{version}:answer:{answer}".encode()
     return hmac.new(settings.ANSWER_HMAC_KEY.encode(), payload, hashlib.sha256).hexdigest()
+
+
+def code_digest(round_id, answer):
+    answer = normalize_answer(answer, POOL_FORMAT)
+    if not settings.ANSWER_HMAC_KEY:
+        raise ImproperlyConfigured("ANSWER_HMAC_KEY must be configured.")
+    return hmac.new(
+        settings.ANSWER_HMAC_KEY.encode(),
+        f"hunt-pool:{round_id}:code:{answer}".encode(),
+        hashlib.sha256,
+    ).hexdigest()
