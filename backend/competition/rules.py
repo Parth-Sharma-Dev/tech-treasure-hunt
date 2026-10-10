@@ -119,7 +119,7 @@ def readiness_errors(round):
     if round.number == 1:
         expected = {
             "points_per_mission": 1,
-            "max_team_sessions": 4,
+            "max_team_sessions": 1,
             "free_wrong_attempts": 5,
             "cooldown_seconds": [30, 60, 120, 240, 300],
             "team_answer_limit": 10,

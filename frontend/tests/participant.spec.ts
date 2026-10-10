@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { portalRound } from './portal-fixtures'
 
-const identity = { team: { code: 'DEMO-01', name: 'Demo explorers', member_count: 4, status: 'ACTIVE', is_demo: true }, session: { active_count: 1, max_active: 4 }, rounds: [{ id: 1, number: 1, title: 'Treasure hunt', state: 'DRAFT', eligible: true, rules: null, clock: { state: 'DRAFT' } }] }
+const identity = { team: { code: 'DEMO-01', name: 'Demo explorers', member_count: 4, status: 'ACTIVE', is_demo: true }, session: { active_count: 1, max_active: 1 }, rounds: [{ id: 1, number: 1, title: 'Treasure hunt', state: 'DRAFT', eligible: true, rules: null, clock: { state: 'DRAFT' } }] }
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/health', route => route.fulfill({ json: { status: 'ok' } }))
@@ -40,12 +40,12 @@ test('signs in and preserves leading zeros in isolated practice', async ({ page 
 })
 
 test('shows session capacity errors without leaving sign in', async ({ page }) => {
-  await page.route('**/api/auth/login', route => route.fulfill({ status: 409, json: { error: { message: 'Four browser sessions are already active. Contact an organizer.' } } }))
+  await page.route('**/api/auth/login', route => route.fulfill({ status: 409, json: { error: { message: 'Your team is already signed in on one browser. Contact an organizer.' } } }))
   await page.goto('/login')
   await page.getByLabel('Team code').fill('DEMO-01')
   await page.getByLabel('Password').fill('test-password')
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
-  await expect(page.getByRole('alert')).toContainText('Four browser sessions')
+  await expect(page.getByRole('alert')).toContainText('already signed in on one browser')
   await expect(page).toHaveURL(/\/login$/)
 })
 

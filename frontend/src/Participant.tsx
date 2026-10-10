@@ -23,7 +23,7 @@ export function Login() {
   })
   return <section className="participant-page narrow">
     <p className="eyebrow">YOUR TEAM’S NEXT MOVE</p><h1>Team sign in</h1>
-    <p className="muted">Use the credentials supplied by your organizers. Up to four browsers can join your team.</p>
+    <p className="muted">Use the credentials supplied by your organizers. Each team can sign in on one browser at a time. Sign out before switching browsers.</p>
     <form className="panel form-stack" onSubmit={event => { event.preventDefault(); login.mutate() }}>
       <label>Team code<input autoComplete="username" maxLength={24} required value={code} onChange={e => setCode(e.target.value)} /></label>
       <label>Password<input type="password" autoComplete="current-password" maxLength={256} required value={password} onChange={e => setPassword(e.target.value)} /></label>

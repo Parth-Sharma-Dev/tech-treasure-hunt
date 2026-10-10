@@ -14,7 +14,7 @@ from .api import ApiProblem
 from .models import AuditEvent, Team, TeamLoginWindow, TeamSession
 from .rules import require_staff_permission
 
-MAX_TEAM_SESSIONS = 4
+MAX_TEAM_SESSIONS = 1
 LOGIN_FAILURE_LIMIT = 5
 LOGIN_WINDOW_SECONDS = 60
 
@@ -85,7 +85,8 @@ def login_team(request, code, password):
     if active_sessions(team, now).count() >= MAX_TEAM_SESSIONS:
         return ApiProblem(
             "session_limit",
-            "Four browsers are already signed in. Ask event staff to remove a stale session.",
+            "Your team is already signed in on one browser. "
+            "Sign out there or ask event staff to remove a stale session.",
             409,
         )
     # Never revive the key of a revoked session, including on a same-account re-login.

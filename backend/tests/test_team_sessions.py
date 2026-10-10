@@ -6,6 +6,7 @@ from threading import Barrier
 import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
+from django.core.management import call_command
 from django.db import connections
 from django.test import Client, override_settings
 from django.utils import timezone
@@ -95,7 +96,7 @@ def test_results_return_destination_is_local_and_retained():
 
 
 @pytest.mark.django_db(transaction=True)
-def test_concurrent_logins_allocate_at_most_four_sessions(team):
+def test_concurrent_logins_allocate_at_most_one_session(team):
     barrier = Barrier(6)
 
     def attempt():
@@ -108,14 +109,13 @@ def test_concurrent_logins_allocate_at_most_four_sessions(team):
 
     with ThreadPoolExecutor(max_workers=6) as pool:
         outcomes = list(pool.map(lambda _: attempt(), range(6)))
-    assert outcomes.count(200) == 4
-    assert outcomes.count(409) == 2
-    assert TeamSession.objects.filter(team=team, revoked_at=None).count() == 4
+    assert outcomes.count(200) == 1
+    assert outcomes.count(409) == 5
+    assert TeamSession.objects.filter(team=team, revoked_at=None).count() == 1
 
 
 def test_expired_sessions_do_not_reserve_slots(team):
-    for _ in range(4):
-        assert sign_in(Client(enforce_csrf_checks=True)).status_code == 200
+    assert sign_in(Client(enforce_csrf_checks=True)).status_code == 200
     TeamSession.objects.filter(team=team).update(expires_at=timezone.now() - timedelta(seconds=1))
     client = Client(enforce_csrf_checks=True)
     assert sign_in(client).status_code == 200
@@ -135,10 +135,10 @@ def test_session_version_and_team_status_are_checked_on_every_request(team):
     assert client.get("/api/practice").status_code == 403
 
 
-def test_staff_revocation_is_audited_idempotent_and_does_not_revoke_teammates(team):
+def test_staff_revocation_is_audited_idempotent_and_releases_the_single_slot(team):
     clients = [Client(enforce_csrf_checks=True), Client(enforce_csrf_checks=True)]
-    for client in clients:
-        sign_in(client)
+    assert sign_in(clients[0]).status_code == 200
+    assert sign_in(clients[1]).status_code == 409
     target = TeamSession.objects.get(session_key=clients[0].cookies["sessionid"].value)
     staff = get_user_model().objects.create_user(username="support", is_staff=True)
     staff.user_permissions.add(
@@ -153,10 +153,36 @@ def test_staff_revocation_is_audited_idempotent_and_does_not_revoke_teammates(te
     assert csrf_post(operator, path, data).json()["revoked_at"] == response.json()["revoked_at"]
     assert AuditEvent.objects.filter(action="revoke_team_session").count() == 1
     assert clients[0].get("/api/me").status_code == 401
-    assert clients[1].get("/api/me").status_code == 200
+    assert clients[1].get("/api/me").status_code == 401
     assert csrf_post(operator, path, {**data, "reason": "Changed payload"}).status_code == 409
     assert sign_in(clients[0]).status_code == 200
     assert clients[0].cookies["sessionid"].value != target.session_key
+
+
+def test_sign_out_releases_slot_and_other_browser_cannot_displace_team(team):
+    first, second = Client(enforce_csrf_checks=True), Client(enforce_csrf_checks=True)
+    assert sign_in(first).status_code == 200
+    assert first.get("/api/me").json()["session"]["max_active"] == 1
+    assert sign_in(second).json()["error"]["code"] == "session_limit"
+    assert first.get("/api/me").status_code == 200
+    assert csrf_post(first, "/api/auth/logout", {}).status_code == 200
+    assert sign_in(second).status_code == 200
+
+
+def test_policy_transition_revokes_only_older_legacy_sessions_and_is_repeatable(team):
+    staff = get_user_model().objects.create_superuser(username="controller", password=None)
+    from unittest.mock import patch
+
+    clients = [Client(enforce_csrf_checks=True), Client(enforce_csrf_checks=True)]
+    with patch("competition.sessions.MAX_TEAM_SESSIONS", 4):
+        for client in clients:
+            assert sign_in(client).status_code == 200
+    call_command("enforce_single_team_session", actor=staff.username)
+    assert clients[0].get("/api/me").status_code == 401
+    assert clients[1].get("/api/me").status_code == 200
+    assert AuditEvent.objects.filter(action="revoke_team_session").count() == 1
+    call_command("enforce_single_team_session", actor=staff.username)
+    assert AuditEvent.objects.filter(action="revoke_team_session").count() == 1
 
 
 def test_participant_cannot_revoke_any_session_or_enter_admin(team):

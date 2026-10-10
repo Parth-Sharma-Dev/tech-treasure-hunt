@@ -20,7 +20,7 @@ def demo_rules(number):
         rules.update(
             {
                 "points_per_mission": 1,
-                "max_team_sessions": 4,
+                "max_team_sessions": 1,
                 "answer_format": "six_ascii_alphanumeric",
                 "free_wrong_attempts": 5,
                 "cooldown_seconds": [30, 60, 120, 240, 300],
@@ -28,7 +28,7 @@ def demo_rules(number):
                 "team_answer_window_ms": 60_000,
                 "cutoff_policy": "database_admission_no_grace",
                 "registration_cap": 2,
-                "peak_browser_count": 8,
+                "peak_browser_count": 2,
                 "expected_mission_count": 2,
             }
         )

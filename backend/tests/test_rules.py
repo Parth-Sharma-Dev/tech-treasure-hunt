@@ -40,7 +40,7 @@ def configured_hunt():
         "delivery_instructions": "test-only",
         "ranking_policy": "score_then_last_active_completion",
         "points_per_mission": 1,
-        "max_team_sessions": 4,
+        "max_team_sessions": 1,
         "answer_format": "four_ascii_digits",
         "free_wrong_attempts": 5,
         "cooldown_seconds": [30, 60, 120, 240, 300],
