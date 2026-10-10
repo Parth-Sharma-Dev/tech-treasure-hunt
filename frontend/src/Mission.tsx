@@ -6,6 +6,7 @@ import { RoundClock, pollInterval, stateLabels, type Clock } from './RoundClock'
 
 type MissionData = {
   answer_format?: string
+  code_mode?: string; successful_claims?: number; max_code_claims?: number
   team_code: string; token: string; mission_id: string; round_id: number; clock: Clock
   opened: boolean; hint: string | null; symbol: string | null; completed: boolean; voided: boolean
   keyword: string | null; wrong_count: number; cooldown_remaining_ms: number
@@ -13,6 +14,9 @@ type MissionData = {
 type Decision = { outcome: string; decision_id: string; keyword: string | null; points_awarded: number; receipt?: string; cooldown_remaining_ms: number }
 type Pending = { key: string; answer: string }
 const outcomes: Record<string, string> = {
+  already_claimed_by_you: 'Your team has already claimed this code. No extra point was added.',
+  code_already_claimed: 'Another team has already claimed this code. Try a different code.',
+  claim_limit_reached: 'Your team has claimed all three codes. No further code can score.',
   accepted: 'Correct! One point recorded.', incorrect: 'Incorrect answer. This attempt has been recorded.',
   already_completed: 'Your team has already completed this mission. No extra point was added.',
   paused: 'The round is paused. This attempt did not score.', late: 'This attempt reached the database after the deadline and did not score.',
@@ -33,14 +37,16 @@ export function FallbackAccess() {
 }
 
 export function TeamProgress({ roundId }: { roundId: number }) {
-  const progress = useQuery({ queryKey: ['progress', roundId], queryFn: ({ signal }) => getJson<{ score: number; completions: { mission_id: string; keyword: string; voided: boolean }[] }>(`/api/rounds/${roundId}/state`, signal), retry: false, refetchInterval: pollInterval, refetchIntervalInBackground: false, refetchOnWindowFocus: 'always' })
+  const progress = useQuery({ queryKey: ['progress', roundId], queryFn: ({ signal }) => getJson<{ score: number; code_mode?: string; max_score?: number; completions: { mission_id: string; claim_id?: number; keyword: string; voided: boolean }[] }>(`/api/rounds/${roundId}/state`, signal), retry: false, refetchInterval: pollInterval, refetchIntervalInBackground: false, refetchOnWindowFocus: 'always' })
   return <section className="panel"><h2>Your team’s progress</h2>
-    {progress.isPending ? <p>Loading current score…</p> : progress.isError ? <p role="alert">Current score unavailable. {progress.error.message}</p> : <><p className="score-line">Current score: <strong>{progress.data.score}</strong></p><ul>{progress.data.completions.map(item => <li key={item.mission_id}>{item.mission_id}: {item.keyword}{item.voided ? ' · voided, no current credit' : ''}</li>)}</ul></>}
+    {progress.isPending ? <p>Loading current score…</p> : progress.isError ? <p role="alert">Current score unavailable. {progress.error.message}</p> : <><p className="score-line">Current score: <strong>{progress.data.score}{progress.data.code_mode === 'independent_pool' ? ' / 3' : ''}</strong></p><ul>{progress.data.completions.map((item, index) => <li key={item.claim_id ?? item.mission_id}>{progress.data.code_mode === 'independent_pool' ? `Code claim ${index + 1}` : item.mission_id}: {item.keyword}{item.voided ? ' · voided, no current credit' : ''}</li>)}</ul></>}
     <a href="/api/me/receipts" download="treasure-hunt-receipts.json">Save accepted receipts</a>
   </section>
 }
 
 function Attempt({ mission }: { mission: MissionData }) {
+  const pool = mission.code_mode === 'independent_pool'
+  const limitReached = pool && (mission.successful_claims ?? 0) >= 3
   const code = answerCode(mission.answer_format)
   const client = useQueryClient()
   const storageKey = `tth:attempt:${mission.team_code}:${mission.token}`
@@ -68,14 +74,16 @@ function Attempt({ mission }: { mission: MissionData }) {
     sessionStorage.setItem(storageKey, JSON.stringify(request)); setPending(request)
     mutation.mutate({ request, recover })
   }
-  const available = mission.clock.state === 'LIVE' && mission.clock.play_mode === 'ONLINE' && !mission.completed && !mission.voided && mission.cooldown_remaining_ms === 0
+  const available = mission.clock.state === 'LIVE' && mission.clock.play_mode === 'ONLINE' && !mission.completed && !mission.voided && !limitReached && mission.cooldown_remaining_ms === 0
   return <section className="panel"><h2>Your answer</h2>
+    {pool && <p>Submit a code found at any location. Letter case does not matter; punctuation must match. Each team can claim three codes, and each code can be claimed by only one team.</p>}
+    {limitReached && <p>Your team has claimed all three codes.</p>}
     {mission.completed && <p>Your team completed this mission. Keyword: <strong>{mission.keyword}</strong>{mission.voided ? ' · mission voided, no current credit' : ''}</p>}
     {mission.cooldown_remaining_ms > 0 && <p>Cooldown: {Math.ceil(mission.cooldown_remaining_ms / 1000)} active seconds remaining at the last server check. Pauses do not consume it.</p>}
-    {pending ? <p>Outcome unconfirmed. Check the saved attempt before sending another answer.</p> : !available && !mission.completed && <p>Answers are available during live online play after any cooldown ends.</p>}
-    {(available || pending) && <form className="form-stack" onSubmit={event => { event.preventDefault(); submit() }}><label>{mission.answer_format === 'six_ascii_alphanumeric' ? code.label : 'Four-digit mission answer'}<input required pattern={code.pattern} minLength={code.length} maxLength={code.length} inputMode={code.inputMode} autoComplete="off" disabled={!!pending || mutation.isPending} value={pending?.answer ?? answer} onChange={event => { setAnswer(event.target.value); mutation.reset() }} /></label><button disabled={mutation.isPending}>{mutation.isPending ? 'Confirming…' : pending ? 'Check saved attempt' : 'Submit mission answer'}</button></form>}
+    {pending ? <p>Outcome unconfirmed. Check the saved attempt before sending another answer.</p> : !available && !mission.completed && !limitReached && <p>Answers are available during live online play after any cooldown ends.</p>}
+    {(available || pending) && <form className="form-stack" onSubmit={event => { event.preventDefault(); submit() }}><label>{code.length === 6 ? code.label : 'Four-digit mission answer'}<input required pattern={code.pattern} minLength={code.length} maxLength={code.length} inputMode={code.inputMode} autoComplete="off" disabled={!!pending || mutation.isPending} value={pending?.answer ?? answer} onChange={event => { setAnswer(event.target.value); mutation.reset() }} /></label><button disabled={mutation.isPending}>{mutation.isPending ? 'Confirming…' : pending ? 'Check saved attempt' : pool ? 'Claim code' : 'Submit mission answer'}</button></form>}
     {mutation.isError && <p role="alert" className="error">{mutation.error.message} Your attempt ID is preserved for recovery.</p>}
-    {mutation.isSuccess && <div role="status"><p>{outcomes[mutation.data.outcome] ?? mutation.data.outcome}</p>{mutation.data.keyword && <p>Earned keyword: {mutation.data.keyword}</p>}</div>}
+    {mutation.isSuccess && <div role="status"><p>{pool && mutation.data.outcome === 'accepted' ? 'Code claimed. One point recorded.' : pool && mutation.data.outcome === 'incorrect' ? 'Invalid code. Check all six characters and punctuation.' : outcomes[mutation.data.outcome] ?? mutation.data.outcome}</p>{mutation.data.keyword && <p>Earned keyword: {mutation.data.keyword}</p>}</div>}
   </section>
 }
 

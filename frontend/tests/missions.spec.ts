@@ -6,6 +6,34 @@ const clock = { round_id: 1, state: 'LIVE', play_mode: 'ONLINE', control_version
 const mission = { team_code: 'TEST-01', token, mission_id: 'TEST-M1', round_id: 1, clock, opened: false, hint: null as string | null, symbol: '✦', completed: false, voided: false, keyword: null as string | null, wrong_count: 0, cooldown_remaining_ms: 0 }
 const decision = { outcome: 'accepted', decision_id: 'test-decision', keyword: 'START', points_awarded: 1, receipt: 'signed-test-receipt', cooldown_remaining_ms: 0 }
 
+test('independent punctuation codes share one clue and stop after three claims', async ({ page }) => {
+  let claims = 0
+  const codes = ['!ab3@x', 'X,y;Z!', 'T3$xx?']
+  await page.route(`**/api/missions/${token}`, route => route.fulfill({ json: {
+    ...mission, opened: true, hint: 'Find the next location.', code_mode: 'independent_pool',
+    answer_format: 'six_printable_ascii', successful_claims: claims, max_code_claims: 3,
+  } }))
+  await page.route('**/api/rounds/1/state', route => route.fulfill({ json: {
+    code_mode: 'independent_pool', score: claims, max_score: 3,
+    completions: codes.slice(0, claims).map((_, index) => ({ mission_id: 'TEST-M1', claim_id: index + 1, keyword: `WORD${index}`, voided: false })),
+  } }))
+  await page.route(`**/api/missions/${token}/submit`, async route => {
+    expect(route.request().postDataJSON()).toEqual({ answer: codes[claims] })
+    claims++
+    await route.fulfill({ json: { ...decision, keyword: `WORD${claims - 1}`, claim_id: claims } })
+  })
+  await page.goto(url)
+  for (let index = 0; index < 3; index++) {
+    await page.getByLabel('Six-character answer code').fill(codes[index])
+    await page.getByRole('button', { name: 'Claim code', exact: true }).click()
+    await expect(page.getByText(`Code claim ${index + 1}: WORD${index}`, { exact: true })).toBeVisible()
+  }
+  await expect(page.getByRole('button', { name: 'Claim code', exact: true })).toHaveCount(0)
+  await expect(page.getByText('Your team has claimed all three codes.', { exact: true })).toBeVisible()
+  await expect(page.getByText('Current score: 3 / 3')).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
+})
+
 test('six-character mission accepts letters and preserves leading zeros', async ({ page }) => {
   await page.route(`**/api/missions/${token}`, route => route.fulfill({ json: { ...mission, opened: true, answer_format: 'six_ascii_alphanumeric', hint: 'Enter AB0042.' } }))
   await page.route(`**/api/missions/${token}/submit`, async route => {
