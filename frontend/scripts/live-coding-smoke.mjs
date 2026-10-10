@@ -89,7 +89,11 @@ try {
   await review.goto(`${origin}/staff/results?round=${round}`);
   await review.getByLabel('Public review summary',{ exact:true }).fill('Independent coding publication review');
   await review.getByRole('checkbox',{ name:'I independently checked the standings, roster, cut and supporting evidence.' }).check();
+  const approvedResponse=review.waitForResponse(response=>response.url().endsWith('/publish') && response.request().method()==='POST');
   await review.getByRole('button',{ name:`Approve and publish proposal ${publication}` }).click();
+  const approved=await approvedResponse;
+  expect(approved.ok()).toBeTruthy();
+  expect((await approved.json()).status).toBe('PROVISIONAL');
   await page.goto(`${origin}/rounds/${round}/results`);
   await expect(page.getByRole('heading',{ name:'Provisional results · revision 1' })).toBeVisible();
   await expect(page.getByRole('columnheader',{ name:'Fully correct tasks' })).toBeVisible();
