@@ -146,6 +146,8 @@ def readiness_errors(round):
             "paper_attempt_policy": "one_per_team_mission_per_60_active_seconds",
         }
         if pool:
+            expected.pop("points_per_mission")
+            expected.pop("paper_attempt_policy")
             expected.update(
                 {"max_code_claims": 3, "points_per_code": 1, "answer_format": POOL_FORMAT}
             )

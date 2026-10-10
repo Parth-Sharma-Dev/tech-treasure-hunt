@@ -56,6 +56,8 @@ def ended_pool(settings):
         for role in ["technical_lead", "content_lead", "operations_lead", "adjudicator"]
     }
     owners["verifier"] = reviewer.pk
+    rules.pop("points_per_mission")
+    rules["paper_attempt_policy"] = "pause_and_preserve_evidence"
     round = Round.objects.create(
         number=1,
         title="Independent hunt",
