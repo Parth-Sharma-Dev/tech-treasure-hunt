@@ -139,6 +139,7 @@ def staff_preview(request, round_id):
         {
             "request_id": request.request_id,
             **preview,
+            "answer_format": round.rules_snapshot.get("rules", round.rules).get("answer_format"),
             "actor_id": request.user.pk,
             "can_propose": has_role(request.user, "control_round", "adjudicate"),
             "can_approve": has_role(request.user, "publish_results")

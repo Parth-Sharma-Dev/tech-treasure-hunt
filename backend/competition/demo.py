@@ -21,7 +21,7 @@ def demo_rules(number):
             {
                 "points_per_mission": 1,
                 "max_team_sessions": 4,
-                "answer_format": "four_ascii_digits",
+                "answer_format": "six_ascii_alphanumeric",
                 "free_wrong_attempts": 5,
                 "cooldown_seconds": [30, 60, 120, 240, 300],
                 "team_answer_limit": 10,

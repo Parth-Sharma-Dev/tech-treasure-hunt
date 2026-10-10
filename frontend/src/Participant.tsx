@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { answerCode } from './AnswerCode'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError, getJson, postJson } from './api'
 import { pollInterval, type Clock } from './RoundClock'
@@ -34,14 +35,15 @@ export function Login() {
 
 function Practice() {
   const [answer, setAnswer] = useState('')
-  const clue = useQuery({ queryKey: ['practice'], queryFn: ({ signal }) => getJson<{ hint: string; symbol: string }>('/api/practice', signal), retry: false })
+  const clue = useQuery({ queryKey: ['practice'], queryFn: ({ signal }) => getJson<{ hint: string; symbol: string; answer_format?: string }>('/api/practice', signal), retry: false })
+  const code = answerCode(clue.data?.answer_format)
   const submit = useMutation({ mutationFn: () => postJson<{ outcome: string; keyword: string | null }>('/api/practice/submit', { answer }) })
   return <section className="panel"><p className="eyebrow">TRY THE FLOW</p><h2>Practice clue</h2>
     <p className="muted">Practice awards no points and does not count toward the competition.</p>
     {clue.isPending ? <p>Loading practice…</p> : clue.isError ? <p role="alert">{message(clue.error)}</p> : <>
       <p>{clue.data.symbol} {clue.data.hint}</p>
       <form className="form-stack" onSubmit={event => { event.preventDefault(); submit.mutate() }}>
-        <label>Four-digit answer<input inputMode="numeric" pattern="[0-9]{4}" minLength={4} maxLength={4} required value={answer} onChange={e => { setAnswer(e.target.value); submit.reset() }} autoComplete="off" /></label>
+        <label>{code.label}<input inputMode={code.inputMode} pattern={code.pattern} minLength={code.length} maxLength={code.length} required value={answer} onChange={e => { setAnswer(e.target.value); submit.reset() }} autoComplete="off" /></label>
         <button disabled={submit.isPending}>{submit.isPending ? 'Checking…' : 'Check practice answer'}</button>
       </form>
       {submit.isError && <p role="alert" className="error">{message(submit.error)}</p>}

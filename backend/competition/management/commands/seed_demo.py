@@ -111,22 +111,22 @@ class Command(BaseCommand):
             for public_id, hint, answer, keyword, practice in (
                 (
                     "PRACTICE",
-                    "Practice only: enter the four characters 0427.",
-                    "0427",
+                    "Practice only: enter the six-character code AB0427.",
+                    "AB0427",
                     "PRACTICE",
                     True,
                 ),
                 (
                     "DEMO-M01",
-                    "Synthetic clue: two to the power of ten, as four digits.",
-                    "1024",
+                    "Synthetic clue: prefix the four-digit value of 2 ** 10 with AB.",
+                    "AB1024",
                     "LOOP",
                     False,
                 ),
                 (
                     "DEMO-M02",
-                    "Synthetic clue: write forty-two using four digits.",
-                    "0042",
+                    "Synthetic clue: prefix four-digit forty-two with CD.",
+                    "CD0042",
                     "STACK",
                     False,
                 ),

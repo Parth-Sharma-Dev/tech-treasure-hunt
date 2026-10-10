@@ -1,6 +1,5 @@
 """One-way paper activation and independently checked numbered slips."""
 
-import re
 from datetime import timedelta
 
 from django.db import transaction
@@ -99,10 +98,10 @@ def propose_paper(round_id, actor, data):
         )
     elif kind == "SLIP":
         answer = data.get("answer")
-        if data.get("blocked") is not True and (
-            not isinstance(answer, str) or re.fullmatch(r"[0-9]{4}", answer) is None
-        ):
-            raise ApiProblem("invalid_format", "Supply four ASCII digits for the recorded answer.")
+        if data.get("blocked") is not True:
+            from .answers import validate_answer
+
+            answer = validate_answer(round, answer)
         mission = (
             Mission.objects.filter(
                 pk=data.get("mission_id"), round=round, is_practice=False

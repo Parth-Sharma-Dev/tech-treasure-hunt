@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError, getJson, postJson } from './api'
+import { answerCode } from './AnswerCode'
 import { RoundClock, pollInterval, stateLabels, type Clock } from './RoundClock'
 
 type MissionData = {
+  answer_format?: string
   team_code: string; token: string; mission_id: string; round_id: number; clock: Clock
   opened: boolean; hint: string | null; symbol: string | null; completed: boolean; voided: boolean
   keyword: string | null; wrong_count: number; cooldown_remaining_ms: number
@@ -24,7 +26,7 @@ const outcomes: Record<string, string> = {
 export function FallbackAccess() {
   const [code, setCode] = useState('')
   const open = useMutation({ mutationFn: () => postJson<{ token: string }>('/api/missions/open', { fallback_code: code }), onSuccess: data => location.assign(`/missions/${data.token}`) })
-  return <section className="panel"><h2>Have a fallback code?</h2><p className="muted">Use the separate code printed beside a mission QR. It is different from the four-digit answer.</p>
+  return <section className="panel"><h2>Have a fallback code?</h2><p className="muted">Use the separate access code printed beside a mission QR. It is different from the answer code.</p>
     <form className="form-stack" onSubmit={event => { event.preventDefault(); open.mutate() }}><label>Mission fallback code<input maxLength={12} required autoComplete="off" value={code} onChange={event => setCode(event.target.value)} /></label><button disabled={open.isPending}>{open.isPending ? 'Opening…' : 'Open by fallback code'}</button></form>
     {open.isError && <p role="alert" className="error">{open.error.message}</p>}
   </section>
@@ -39,6 +41,7 @@ export function TeamProgress({ roundId }: { roundId: number }) {
 }
 
 function Attempt({ mission }: { mission: MissionData }) {
+  const code = answerCode(mission.answer_format)
   const client = useQueryClient()
   const storageKey = `tth:attempt:${mission.team_code}:${mission.token}`
   const [pending, setPending] = useState<Pending | null>(() => {
@@ -70,7 +73,7 @@ function Attempt({ mission }: { mission: MissionData }) {
     {mission.completed && <p>Your team completed this mission. Keyword: <strong>{mission.keyword}</strong>{mission.voided ? ' · mission voided, no current credit' : ''}</p>}
     {mission.cooldown_remaining_ms > 0 && <p>Cooldown: {Math.ceil(mission.cooldown_remaining_ms / 1000)} active seconds remaining at the last server check. Pauses do not consume it.</p>}
     {pending ? <p>Outcome unconfirmed. Check the saved attempt before sending another answer.</p> : !available && !mission.completed && <p>Answers are available during live online play after any cooldown ends.</p>}
-    {(available || pending) && <form className="form-stack" onSubmit={event => { event.preventDefault(); submit() }}><label>Four-digit mission answer<input required pattern="[0-9]{4}" minLength={4} maxLength={4} inputMode="numeric" autoComplete="off" disabled={!!pending || mutation.isPending} value={pending?.answer ?? answer} onChange={event => { setAnswer(event.target.value); mutation.reset() }} /></label><button disabled={mutation.isPending}>{mutation.isPending ? 'Confirming…' : pending ? 'Check saved attempt' : 'Submit mission answer'}</button></form>}
+    {(available || pending) && <form className="form-stack" onSubmit={event => { event.preventDefault(); submit() }}><label>{mission.answer_format === 'six_ascii_alphanumeric' ? code.label : 'Four-digit mission answer'}<input required pattern={code.pattern} minLength={code.length} maxLength={code.length} inputMode={code.inputMode} autoComplete="off" disabled={!!pending || mutation.isPending} value={pending?.answer ?? answer} onChange={event => { setAnswer(event.target.value); mutation.reset() }} /></label><button disabled={mutation.isPending}>{mutation.isPending ? 'Confirming…' : pending ? 'Check saved attempt' : 'Submit mission answer'}</button></form>}
     {mutation.isError && <p role="alert" className="error">{mutation.error.message} Your attempt ID is preserved for recovery.</p>}
     {mutation.isSuccess && <div role="status"><p>{outcomes[mutation.data.outcome] ?? mutation.data.outcome}</p>{mutation.data.keyword && <p>Earned keyword: {mutation.data.keyword}</p>}</div>}
   </section>

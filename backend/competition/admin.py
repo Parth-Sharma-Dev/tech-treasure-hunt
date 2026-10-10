@@ -302,11 +302,14 @@ class FacultyProfileAdmin(InformationAdmin):
 
 class MissionForm(forms.ModelForm):
     answer = forms.RegexField(
-        regex=r"\A[0-9]{4}\Z",
+        regex=r"\A(?:[A-Za-z0-9]{6}|[0-9]{4})\Z",
         required=False,
         strip=False,
         widget=forms.PasswordInput(render_value=False),
-        help_text="Four ASCII digits. Leave blank to preserve an existing answer verifier.",
+        help_text=(
+            "Six ASCII letters/digits for new rules; case-insensitive. "
+            "Legacy rules retain four digits. Leave blank to preserve the key."
+        ),
     )
 
     class Meta:
@@ -316,7 +319,16 @@ class MissionForm(forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
         if not self.instance.pk and not cleaned.get("answer"):
-            self.add_error("answer", "A new mission needs a four-digit answer.")
+            self.add_error("answer", "A new mission needs an answer code.")
+        if cleaned.get("answer") and cleaned.get("round"):
+            from .answers import answer_format, normalize_answer
+
+            try:
+                cleaned["answer"] = normalize_answer(
+                    cleaned["answer"], answer_format(cleaned["round"])
+                )
+            except ValidationError as error:
+                self.add_error("answer", error)
         return cleaned
 
 

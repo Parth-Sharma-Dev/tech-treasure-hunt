@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { answerCode } from './AnswerCode'
 
 type Proposal = { id: number; kind: string; maker_id: number; reason: string; payload: Record<string, unknown>; stale: boolean; reviewed: boolean }
 export type PaperData = {
+  answer_format?: string
   play_mode: string
   paper_window: { official_start: string; official_end: string; assigned_desks: Record<string, string> } | null
   paper_proposals: Proposal[]
@@ -42,7 +44,7 @@ export function PaperDesk({ preview, disabled, send }: Props) {
       <label>Paper mission<select value={selectedMission} onChange={event => setMission(event.target.value)}>{missions.map(item => <option key={item.id} value={item.id}>{item.public_id}</option>)}</select></label>
       <label>Numbered slip<input required maxLength={64} value={number} onChange={event => setNumber(event.target.value)} /></label>
       <label>Official slip time<input required type="datetime-local" step="1" value={when} onChange={event => setWhen(event.target.value)} /></label>
-      <label>Recorded four-digit answer<input required={!blocked} type="password" inputMode="numeric" pattern="[0-9]{4}" value={answer} onChange={event => setAnswer(event.target.value)} /></label>
+      <label>{preview.answer_format === 'six_ascii_alphanumeric' ? 'Recorded six-character answer' : 'Recorded four-digit answer'}<input required={!blocked} type="password" inputMode={answerCode(preview.answer_format).inputMode} pattern={answerCode(preview.answer_format).pattern} value={answer} onChange={event => setAnswer(event.target.value)} /></label>
       <label className="check-row"><input type="checkbox" checked={blocked} onChange={event => setBlocked(event.target.checked)} />This slip was blocked without evaluation.</label>
       <label>Slip reconciliation reason<textarea required maxLength={2000} value={reason} onChange={event => setReason(event.target.value)} /></label>
       <label>Original slip evidence references<textarea required value={refs} onChange={event => setRefs(event.target.value)} /></label><button>Propose slip reconciliation</button></fieldset>

@@ -2,7 +2,6 @@
 
 import hmac
 import json
-import re
 import uuid
 
 from django.conf import settings
@@ -45,6 +44,8 @@ def write_team(request):
 
 
 def mission_payload(mission, team, round, now):
+    from .answers import answer_format
+
     opened = Visit.objects.filter(team=team, mission=mission).exists()
     completion = Completion.objects.filter(team=team, mission=mission).first()
     attempt = AttemptState.objects.filter(team=team, mission=mission).first()
@@ -58,6 +59,7 @@ def mission_payload(mission, team, round, now):
         "token": mission.token,
         "mission_id": mission.public_id,
         "round_id": round.pk,
+        "answer_format": answer_format(round),
         "clock": clock_payload(round, now),
         "opened": opened,
         "hint": mission.hint if visible else None,
@@ -164,12 +166,11 @@ def attempt_uuid(value):
 def submit_answer(request, token, key_value, data):
     key = attempt_uuid(key_value)
     answer = data.get("answer")
-    if not isinstance(answer, str) or re.fullmatch(r"[0-9]{4}", answer) is None:
-        raise ApiProblem(
-            "invalid_format", "Enter exactly four ASCII digits, including leading zeros."
-        )
     team = require_team(request, allow_inactive=True, touch=False)
     mission = find_mission(token=token)
+    from .answers import validate_answer
+
+    answer = validate_answer(mission.round, answer)
     if mission.round.is_demo != team.is_demo:
         raise ApiProblem("not_found", "Mission not found.", 404)
     fingerprint = request_fingerprint(mission, answer)

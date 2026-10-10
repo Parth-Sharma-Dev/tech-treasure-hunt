@@ -106,11 +106,14 @@ def portal_overview(request, round_id):
 @require_GET
 @api_errors
 def practice(request):
+    from .answers import answer_format
+
     mission = practice_mission(require_team(request))
     return JsonResponse(
         {
             "request_id": request.request_id,
             "hint": mission.hint,
+            "answer_format": answer_format(mission.round),
             "symbol": mission.symbol,
             "practice_only": True,
         }

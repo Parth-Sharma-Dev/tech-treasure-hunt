@@ -1,7 +1,6 @@
 """Two-person Round 1 corrections without rewriting original decisions or receipts."""
 
 import hmac
-import re
 from datetime import timedelta
 
 from django.db import transaction
@@ -97,8 +96,9 @@ def propose_correction(round_id, actor, data):
         raise ApiProblem("invalid_request", "Supply a participant-facing correction summary.")
     if kind == "ALTERNATE":
         answer = data.get("answer")
-        if not isinstance(answer, str) or re.fullmatch(r"[0-9]{4}", answer) is None:
-            raise ApiProblem("invalid_format", "Supply exactly four ASCII digits.")
+        from .answers import validate_answer
+
+        answer = validate_answer(round, answer)
         versions = {item["version"] for item in mission.answer_verifiers}
         versions.update(
             SubmissionDecision.objects.filter(mission=mission, outcome="incorrect").values_list(

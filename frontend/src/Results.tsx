@@ -6,6 +6,7 @@ import { PaperDesk, type PaperData } from './PaperDesk'
 import { RecoveryDesk, type RecoveryData } from './RecoveryDesk'
 import { StaffNavigation } from './StaffAction'
 import { serverTime } from './Buzzer'
+import { answerCode } from './AnswerCode'
 
 type Entry = { team_code: string; team_name: string; team_status: string; eligible: boolean; score: number; max_score: number; tie_time_ms: number | null; rank: number | null; stage_scores?: Record<string,number>; round5_score?: number; carry_over_score?: number; last_correct_at?: string | null; fully_correct_tasks?: number; final_submission_at?: string | null; official_finish_active_ms?: number | null; criterion_averages?: Record<string,string> | null }
 type Snapshot = { id: number; revision: number; status: string; entries: Entry[]; qualifier_codes: string[]; cut_count: number; published_at: string; appeal_deadline: string | null; supersedes: number | null; metadata: { publication_reason: string; tie_reason: string; open_material_incidents: number; ranking_kind?: string; winner_codes?: string[]; winner_title?: string } }
@@ -132,7 +133,7 @@ function CorrectionDesk({ preview, action }: { preview: CorrectionPreview; actio
     {preview.can_correct && !['DRAFT', 'READY', 'LOBBY'].includes(preview.state) && missions.length > 0 && <form className="form-stack" onSubmit={event => { event.preventDefault(); action.send('resolutions', { action: 'propose', correction_type: kind, mission_id: selected, expected_version: preview.control_version, reason, public_summary: summary, evidence_refs: refs.split('\n').map(value => value.trim()).filter(Boolean), ...(kind === 'ALTERNATE' ? { answer } : {}) }); setAnswer('') }}>
       <fieldset disabled={action.disabled}><label>Mission to correct<select value={selected} onChange={event => setMission(event.target.value)}>{missions.map(item => <option key={item.id} value={item.id}>{item.public_id}</option>)}</select></label>
       <label>Correction type<select value={kind} onChange={event => setKind(event.target.value)}><option value="ALTERNATE">Accept an alternate answer</option><option value="VOID">Void this mission</option></select></label>
-      {kind === 'ALTERNATE' && <label>Alternate four-digit answer<input type="password" inputMode="numeric" pattern="[0-9]{4}" required value={answer} onChange={event => setAnswer(event.target.value)} /></label>}
+      {kind === 'ALTERNATE' && <label>{preview.answer_format === 'six_ascii_alphanumeric' ? 'Alternate six-character answer' : 'Alternate four-digit answer'}<input type="password" inputMode={answerCode(preview.answer_format).inputMode} pattern={answerCode(preview.answer_format).pattern} required value={answer} onChange={event => setAnswer(event.target.value)} /></label>}
       <label>Private correction reason<textarea required maxLength={2000} value={reason} onChange={event => setReason(event.target.value)} /></label>
       <label>Public correction summary<textarea required maxLength={2000} value={summary} onChange={event => setSummary(event.target.value)} /></label>
       <label>Private correction evidence (one reference per line)<textarea required value={refs} onChange={event => setRefs(event.target.value)} /></label>

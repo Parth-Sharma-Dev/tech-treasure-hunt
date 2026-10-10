@@ -6,6 +6,21 @@ const clock = { round_id: 1, state: 'LIVE', play_mode: 'ONLINE', control_version
 const mission = { team_code: 'TEST-01', token, mission_id: 'TEST-M1', round_id: 1, clock, opened: false, hint: null as string | null, symbol: '✦', completed: false, voided: false, keyword: null as string | null, wrong_count: 0, cooldown_remaining_ms: 0 }
 const decision = { outcome: 'accepted', decision_id: 'test-decision', keyword: 'START', points_awarded: 1, receipt: 'signed-test-receipt', cooldown_remaining_ms: 0 }
 
+test('six-character mission accepts letters and preserves leading zeros', async ({ page }) => {
+  await page.route(`**/api/missions/${token}`, route => route.fulfill({ json: { ...mission, opened: true, answer_format: 'six_ascii_alphanumeric', hint: 'Enter AB0042.' } }))
+  await page.route(`**/api/missions/${token}/submit`, async route => {
+    expect(route.request().postDataJSON()).toEqual({ answer: 'ab0042' })
+    await route.fulfill({ json: decision })
+  })
+  await page.goto(url)
+  const code = page.getByLabel('Six-character answer code')
+  await expect(code).toHaveAttribute('maxlength', '6')
+  await expect(code).toHaveAttribute('inputmode', 'text')
+  await code.fill('ab0042')
+  await page.getByRole('button', { name: 'Submit mission answer' }).click()
+  await expect(page.getByText('Correct! One point recorded.')).toBeVisible()
+})
+
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/health', route => route.fulfill({ json: { status: 'ok' } }))
   await page.route('**/api/auth/csrf', route => route.fulfill({ json: { csrf_token: 'test-token' } }))

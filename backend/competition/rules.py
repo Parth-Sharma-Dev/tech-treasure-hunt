@@ -120,7 +120,6 @@ def readiness_errors(round):
         expected = {
             "points_per_mission": 1,
             "max_team_sessions": 4,
-            "answer_format": "four_ascii_digits",
             "free_wrong_attempts": 5,
             "cooldown_seconds": [30, 60, 120, 240, 300],
             "team_answer_limit": 10,
@@ -132,6 +131,8 @@ def readiness_errors(round):
         for key, value in expected.items():
             if type(round.rules.get(key)) is not type(value) or round.rules.get(key) != value:
                 errors.append(f"Configure the supported Round 1 policy for {key}.")
+        if round.rules.get("answer_format") not in ["four_ascii_digits", "six_ascii_alphanumeric"]:
+            errors.append("Configure six_ascii_alphanumeric answer codes.")
         cap = round.rules.get("registration_cap")
         browsers = round.rules.get("peak_browser_count")
         if type(cap) is not int or cap <= 0 or type(browsers) is not int or browsers <= 0:

@@ -126,14 +126,9 @@ def practice_mission(team):
 
 def practice_answer(team, answer):
     mission = practice_mission(team)
-    if (
-        not isinstance(answer, str)
-        or len(answer) != 4
-        or any(char not in "0123456789" for char in answer)
-    ):
-        raise ApiProblem(
-            "invalid_format", "Enter exactly four digits, including any leading zeros."
-        )
+    from .answers import validate_answer
+
+    answer = validate_answer(mission.round, answer)
     accepted = any(
         hmac.compare_digest(
             answer_digest(mission.pk, verifier["version"], answer), verifier["digest"]
