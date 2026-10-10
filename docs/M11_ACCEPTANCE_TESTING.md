@@ -55,7 +55,7 @@ For the small demo, configure **advancement count 2 for Rounds 1–4**, no advan
 
 | Round | Required preparation for this walkthrough |
 |---|---|
-| 1 | New ONLINE_HUNT demo attempt; two competitive missions, optional separate practice, six-character alphanumeric keys, owners/locations, capacity for the roster, expected mission count 2 and independent verification. See [R1](ROUND1_OPERATIONS.md). |
+| 1 | New ONLINE_HUNT demo attempt; three competitive missions, optional separate practice, six-character alphanumeric keys, owners/locations, capacity for the roster, expected mission count 3 and independent verification. See [R1](ROUND1_OPERATIONS.md). |
 | 2 | EXTERNAL; `round2-wayground-v2`, eight questions for the supplied demo workbook, raw Score and exported answering-duration ties. The prepared professor draft has a 60-minute demo budget; real rules remain separately approved. See [R2/R4](EXTERNAL_ROUND_OPERATIONS.md). |
 | 3 | CODING; category maxima 15/25/20/30/10, exact private lab rubrics, actual test lab Python/C versions, workstation/submission policies and independent task verification. See [R3](ROUND3_OPERATIONS.md). |
 | 4 | EXTERNAL; `round4-green-card-v2`, zero points, recipient names only; three independently published synthetic faculty for one demo panel, two distinct team slots. Set panels after R3 final qualification and before rule approval/READY. Real play requires its full two-panel allocation. |
@@ -79,13 +79,13 @@ Before finalizing each predecessor, try to open/start the next round as staff an
 
 ## 4. Round 1 — missions, receipts and first qualification
 
-1. As maker, configure two new synthetic missions with known six-character codes, for example `AB1024` and `CD0042`; independently verify both and approve rules. Set the mission count to 2, then mark READY.
+1. As maker, configure three new synthetic missions with known six-character codes, for example `AB1024`, `CD0042` and `EF0064`; independently verify all three and approve rules. Set the mission count to 3 and `max_team_sessions` to 1, then mark READY.
 2. Team signs in, opens practice and verifies a correct practice answer changes no competitive score. Publish the rehearsal information separately if it is meant to be visible.
 3. Controller opens the lobby, then starts Round 1. Record the common clock and control version.
-4. Team A explicitly opens and correctly solves both competitive missions. Team B explicitly opens and solves only the first. Test QR/mission-link access and fallback-code access; preserve the leading zeros in `CD0042`.
+4. Team A explicitly opens and correctly solves all three competitive missions. Team B explicitly opens and solves only the first. Test QR/mission-link access and fallback-code access; preserve the leading zeros in `CD0042` and `EF0064`.
 5. Save the accepted receipt(s). Reload a solved mission and verify score stays unchanged. An uncertain response must recover the original request/receipt; do not substitute a new action UUID.
 6. Pause, verify new scored activity is blocked and the active clock is frozen; resume and confirm frozen time is excluded. End and confirm late/new answers cannot score.
-7. Run the publication gate. **Expected:** A=2/2, B=1/2; both qualify under the configured demo cut 2. Provisional alone did not unlock Round 2. Record final R1 entries and qualifiers.
+7. Run the publication gate. **Expected:** A=3/3, B=1/3; both qualify under the configured demo cut 2. Provisional alone did not unlock Round 2. Record final R1 entries and qualifiers.
 
 Put wrong-answer cooldown/quota escalation, alternate answers/voids and irreversible paper fallback in **separate** branches/attempts using [R1 operations](ROUND1_OPERATIONS.md). Those checks can change the baseline scores or permanently disable online play; do not activate paper fallback midway through this baseline journey.
 
@@ -117,7 +117,7 @@ Put wrong-answer cooldown/quota escalation, alternate answers/voids and irrevers
 
 ## 8. Round 5 — 25 offline questions, native buzzes and one winner
 
-1. Confirm all four prior final snapshots are present, reviewed and free of material blockers. Carried totals are final R1+R2+R3 points; R4 contributes zero. Use the actual R2 export metric. With supplied R2 scores 7000/5390, R1 2/1 and R3 100/0, expected carried totals are A=7102/B=5391. Recalculate if your reviewed R3 verdicts differ. Keep both phones signed in as their respective qualified teams.
+1. Confirm all four prior final snapshots are present, reviewed and free of material blockers. Carried totals are final R1+R2+R3 points; R4 contributes zero. Use the actual R2 export metric. With supplied R2 scores 7000/5390, R1 3/1 and R3 100/0, expected carried totals are A=7103/B=5391. Recalculate if your reviewed R3 verdicts differ. Keep both phones signed in as their respective qualified teams.
 2. Controller opens the lobby/starts, selects the correct frozen question in `/staff/buzzer`, supplies a reason and opens a fresh window. Present its matching synthetic content offline. Use [the host run sheet](ROUND5_REHEARSAL.md) for all five stages.
 3. Both teams press close together. Controller closes the window and confirms the persisted queue **before** calling a team. Expected order follows precise database admission times; no client-clock/network-latency compensation. Do not assume A physically tapped first or force its priority.
 4. For one selected question, have the actual first buzzing team answer wrong, then call the next buzzing team for a correct answer. Record each native host verdict immediately with exact press/answer/reference; observe that an unbuzzed team cannot take the answering opportunity. If the chosen order makes B the correct team, this can be the baseline's one B-credit question.
@@ -162,3 +162,5 @@ Use [R1 paper/correction branches](ROUND1_OPERATIONS.md), [coding judgment/cutof
 | Load/devices/accessibility | Pending | Pending | Pending | Pending |
 
 For failures, record the triggering action, expected versus observed behavior, exact attempt/version, timestamp and retained evidence/incident reference. Fix and rerun the affected check plus its dependent progression. Do not label unperformed checks PASS. Overall M11 status: **PENDING**. Physical rehearsal/production release: **PENDING** until their separate evidence and approvals exist. Update [development status](DEVELOPMENT_STATUS.md) and [test evidence](TEST_EVIDENCE.md) only after the recorded acceptance is reviewed.
+
+Single-browser acceptance: a second browser for the same team must receive a session-limit error; refreshing/re-signing in the original browser must keep its single slot. Sign out there, then verify the second browser can sign in. Two different teams retain separate sessions.

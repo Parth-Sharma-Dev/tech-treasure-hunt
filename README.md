@@ -102,7 +102,7 @@ With the environment configured and migrations applied:
 .venv/Scripts/python backend/manage.py seed_demo
 ```
 
-This creates two fictional teams, five draft rounds, two synthetic competitive missions, an isolated practice mission, and separate content/verification staff accounts. Random credentials are saved to the ignored `.local/demo-credentials.json` file. Repeating the command preserves existing passwords and content. Demo seeding requires development mode and refuses a database containing non-demo teams or rounds.
+This creates two fictional teams, five draft rounds, three synthetic competitive missions, an isolated practice mission, and separate content/verification staff accounts. Random credentials are saved to the ignored `.local/demo-credentials.json` file. Repeating the command preserves existing passwords and content. Demo seeding requires development mode and refuses a database containing non-demo teams or rounds.
 
 Open `/login` and sign in with a demo team code and its generated password. The lobby shows your team's browser-session count, round preparation status and a practice clue. Practice answers preserve leading zeros and award no competition points. Signing out revokes only the current browser session. Demo competitive missions remain locked until staff independently verify them, approve the rules, mark the round READY and start it through the controls screen.
 
@@ -150,7 +150,7 @@ Browser tests cover desktop/mobile layouts and connected/unavailable states with
 | `POST /api/practice/submit` | Evaluates the practice answer in its round’s configured format without scoring or competitive evidence. |
 | `POST /api/staff/teams/{team}/sessions/{session}/revoke` | Audited staff removal using `action_id` and `reason`; requires round-control permission. |
 
-Team login permits four active browser sessions, allocated under a PostgreSQL team lock. Five incorrect passwords within a 60-second login window temporarily block further login attempts for that team; this is separate from gameplay limits. Browser sessions expire after 12 hours. Staff can inspect and revoke stale browsers through Django admin without seeing their session keys. Revocation leaves other teammates signed in, and session-version changes invalidate old access. Team credentials cannot enter staff administration.
+Team login permits one active browser session per team, allocated under a PostgreSQL team lock. Five incorrect passwords within a 60-second login window temporarily block further login attempts for that team; this is separate from gameplay limits. Browser sessions expire after 12 hours. Staff can inspect and revoke stale browsers through Django admin without seeing their session keys. Sign out before switching browsers; staff revocation frees the single slot, and session-version changes invalidate old access. Team credentials cannot enter staff administration.
 
 Authenticated API writes need an `X-CSRFToken` header obtained from `/api/auth/csrf`; login rotates that token and includes the current `csrf_token` in its response. Team identity is always derived from the authenticated session, never a supplied team ID. Later-round access requires qualification in the preceding round's final published snapshot.
 

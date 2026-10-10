@@ -1,5 +1,7 @@
 # Fresh professor demonstration — prepared 10 October 2026
 
+The organizer reports this demonstration completed independently. Its two-mission R1 records are historical. Future runs use three missions and one browser per team; see [current rules](RULE_UPDATES_20261010.md). The IDs/setup below describe the retained earlier run.
+
 Updated for [10 October rule changes](RULE_UPDATES_20261010.md). Round 2 Excel intake is implemented and the supplied eight-question workbook is available through the private run manifest. Tonight’s attempts and evidence are preserved. A new **demo-only** journey is prepared with copied content, new mission tokens, no copied scores/qualification and no fabricated content approval. Use the private `.local/professor-demo-run.json` for this run's IDs and `.local/PROFESSOR_DEMO_HOST_PACK.md` for the 25 synthetic host cards/answers.
 
 | Round | New attempt | Database ID | Delivery | Maximum active time | Advance |

@@ -4,7 +4,7 @@ These organizer changes supersede the earlier four-digit codes, faculty criterio
 
 | Round | Current behavior |
 |---|---|
-| 1 | Answer codes are exactly six ASCII letters or digits, case-insensitive; leading zeros are preserved. QR/fallback access codes remain separate from answers. |
+| 1 | New Round 1 runs use three missions/answer codes per team, worth one point each (three total). Codes are exactly six ASCII letters or digits, case-insensitive; leading zeros are preserved. QR/fallback access codes remain separate from answers. |
 | 2 | Import the actual Wayground Excel export. Raw `Score` supplies points; lower `Total Time Taken` breaks score ties. Explicitly map each player to a qualified team or exclude with a reason. Original workbooks are retained. Existing `round2-v1` intake remains legacy support. |
 | 3 | Supervised Python/C saves, locked/cutoff work and independently reviewed lab judgment remain unchanged. |
 | 4 | Enter only names/codes of Green Card recipient teams. Review the complete list independently. Those teams qualify; unlisted teams receive no card. No faculty criterion marks, numerical ranking or carried points. |
@@ -43,3 +43,9 @@ The supplied workbook has `Participant Data` columns `Player Name`, `Score`, `To
 Use the score desk after ENDED: upload `.xlsx`, map every exported player to a previously qualified team or explicitly exclude with a reason, dry-run, then have a different verifier commit. Do not create teams from player names. Retained original bytes/checksum and signed recovery bind the calculation to its source. Reject formulas, unfinished grading, inconsistent question counts, missing/duplicate mappings and injected marks. Correct an export through a replacement reviewed batch; the legacy question-void operation does not apply to raw platform points. See [operations](EXTERNAL_ROUND_OPERATIONS.md).
 
 The [M11 acceptance walkthrough](M11_ACCEPTANCE_TESTING.md) and [professor restart guide](PROFESSOR_DEMO.md) follow these changes. M11 and actual device/content rehearsal remain pending.
+
+## After the professor demo — three missions and one browser
+
+The organizer reports completing the professor demo independently; detailed acceptance/rehearsal sign-off still needs a recorded run. New R1 demo seeds prepare three competitive missions (`AB1024`, `CD0042`, `EF0064`) and a separate zero-point practice clue. Configure `expected_mission_count = 3` for the new round, independently verify all three and approve before READY. Released attempts keep their original two-mission evidence; do not edit their frozen mission count or scores.
+
+Each team now has one active browser session across all rounds. Repeated sign-in in that browser reuses the session; a second browser is blocked without displacing the first. Sign out or ask a controller to revoke a stale session before switching. Multiple tabs in the same browser profile share that one session. For an existing installation run `enforce_single_team_session --actor <AUTHORIZED_CONTROLLER>` to keep each team's most recently used browser and audit revocation of extras. For new R1 drafts set `max_team_sessions = 1` and plan browser capacity for one browser per team. Existing frozen rule snapshots remain historical.

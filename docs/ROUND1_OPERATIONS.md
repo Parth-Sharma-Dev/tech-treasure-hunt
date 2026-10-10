@@ -1,6 +1,6 @@
 # Round 1: local operation and recovery
 
-Updated 10 October 2026. Current codes use six ASCII letters/digits, case-insensitively. Frozen legacy attempts retain four-digit behavior; see [current rule changes](RULE_UPDATES_20261010.md). Use synthetic teams and clues for rehearsals. This describes implemented Round 1 functionality; production provisioning, actual roster/content verification and physical event drills are separate release work. [M10 recovery](EVIDENCE_RECOVERY.md) extends signed checkpoints and independent reconciliation to Rounds 2–4 while retaining this paper workflow.
+Updated 10 October 2026. New runs have three mission codes per team (one point each), using six ASCII letters/digits, case-insensitively. Teams use one active browser session; sign out before switching browsers. Frozen legacy attempts retain four-digit behavior; see [current rule changes](RULE_UPDATES_20261010.md). Use synthetic teams and clues for rehearsals. This describes implemented Round 1 functionality; production provisioning, actual roster/content verification and physical event drills are separate release work. [M10 recovery](EVIDENCE_RECOVERY.md) extends signed checkpoints and independent reconciliation to Rounds 2–4 while retaining this paper workflow.
 
 ## Entry points and roles
 
