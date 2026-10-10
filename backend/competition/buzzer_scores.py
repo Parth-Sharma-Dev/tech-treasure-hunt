@@ -9,7 +9,7 @@ from .api import ApiProblem
 from .buzzer import admission_fence, native_round, queue
 from .buzzer_answers import priority_order
 from .buzzer_content import questions_snapshot
-from .buzzer_scoring_rules import schema_errors
+from .buzzer_scoring_rules import contract_for, points_for_stage, reveal_stage, schema_errors
 from .clock import database_now
 from .models import (
     AuditEvent,
@@ -64,6 +64,7 @@ def require_schema(round):
 def carry_over(round):
     teams = {item.code: item for item in Team.objects.filter(is_demo=round.is_demo)}
     basis, errors = {}, []
+    kinds = {}
     for number in range(1, 5):
         prior = (
             Round.objects.filter(number=number, is_demo=round.is_demo)
@@ -85,6 +86,7 @@ def carry_over(round):
             "qualifiers": snapshot.qualifier_codes,
             "entries": snapshot.ranked_entries,
         }
+        kinds[number] = snapshot.metadata.get("ranking_kind")
     codes = basis.get(4, {}).get("qualifiers", [])
     totals = {}
     for code in codes:
@@ -101,6 +103,17 @@ def carry_over(round):
                     or code not in item["qualifiers"]
                 ):
                     raise ValueError()
+                if number == 4 and (
+                    contract_for(round)["version"] == "round5-v2" or kinds.get(4) == "GREEN_CARDS"
+                ):
+                    if kinds.get(4) == "GREEN_CARDS" and (
+                        matches[0].get("green_card") is not True
+                        or matches[0].get("score") != 0
+                        or matches[0].get("max_score") != 0
+                    ):
+                        raise ValueError()
+                    parts[str(number)], maxima[str(number)] = "0", "0"
+                    continue
                 points, maximum = (
                     Decimal(str(matches[0]["score"])),
                     Decimal(str(matches[0]["max_score"])),
@@ -209,11 +222,12 @@ def validate_rows(round, rows):
             if (
                 not re.fullmatch(r"[0-9]{1,3}", reveal)
                 or int(reveal) > 100
-                or window.question.stage != 5
+                or window.question.stage != reveal_stage(round)
                 and int(reveal)
             ):
                 raise ValueError(
-                    "Reveal steps are 0–100 in stage 5 only; they never change the two marks."
+                    "Reveal steps belong only to the progressive image stage; "
+                    "they do not change marks."
                 )
             entries, _ = queue(window)
             own = next((item for item in entries if item["team_code"] == code), None)
@@ -273,7 +287,9 @@ def validate_rows(round, rows):
                 "window_id": window_id,
                 "answer_evidence_id": note_id,
                 "reveal_step": int(reveal),
-                "points": 2 if row["verdict"] == "CORRECT" else 0,
+                "points": points_for_stage(round, window.question.stage)
+                if row["verdict"] == "CORRECT"
+                else 0,
                 "completed_at": note.completed_at.isoformat(timespec="microseconds")
                 if note
                 else None,
@@ -414,12 +430,13 @@ def validate_import(round_id, actor, data):
     require_schema(round)
     if round.state not in ["ENDED", "PROVISIONAL"]:
         raise ApiProblem("invalid_transition", "End Round 5 before reviewing score sources.", 409)
-    if data.get("schema_version") != "round5-v1":
-        raise ApiProblem("invalid_schema", "Use round5-v1 source rows.")
+    schema_version = contract_for(round)["version"]
+    if data.get("schema_version") != schema_version:
+        raise ApiProblem("invalid_schema", f"Use the frozen {schema_version} source contract.")
     from .external_scores import parse_rows
 
     rows = parse_rows(round, data)
-    stamp = digest({"rows": rows, "schema": "round5-v1", "reason": reason})
+    stamp = digest({"rows": rows, "schema": schema_version, "reason": reason})
     batch = ImportBatch.objects.filter(round=round, file_digest=stamp).first()
     if batch is None:
         preview, errors = validate_rows(round, rows)
@@ -427,7 +444,7 @@ def validate_import(round_id, actor, data):
             round=round,
             maker=actor,
             reason=reason,
-            schema_version="round5-v1",
+            schema_version=schema_version,
             file_digest=stamp,
             source_rows=rows,
             preview=preview,

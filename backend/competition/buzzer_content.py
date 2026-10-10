@@ -5,7 +5,7 @@ import re
 
 from .models import BuzzerQuestion
 
-STAGES = [
+LEGACY_STAGES = [
     {
         "number": 1,
         "title": "AI image recognition",
@@ -28,6 +28,19 @@ STAGES = [
         "description": "Guess the image as the visible area expands.",
     },
 ]
+
+STAGES = [
+    dict(stage, number=number)
+    for number, stage in enumerate(
+        [LEGACY_STAGES[0], LEGACY_STAGES[1], LEGACY_STAGES[3], LEGACY_STAGES[4], LEGACY_STAGES[2]],
+        1,
+    )
+]
+
+
+def stages_for(round):
+    version = round.rules_snapshot.get("rules", round.rules).get("score_schema", {}).get("version")
+    return STAGES if version == "round5-v2" else LEGACY_STAGES
 
 
 def question_errors(question):
@@ -119,7 +132,7 @@ def readiness_errors(round):
         errors.append("Round 5 is the final; leave advancement count empty.")
     if not round.is_demo or (
         isinstance(round.rules.get("score_schema"), dict)
-        and round.rules["score_schema"].get("version") == "round5-v1"
+        and round.rules["score_schema"].get("version") in ["round5-v1", "round5-v2"]
     ):
         from .buzzer_scoring_rules import schema_errors
 

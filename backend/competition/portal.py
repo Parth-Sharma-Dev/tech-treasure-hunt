@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 
 from .api import ApiProblem
-from .buzzer_content import STAGES
+from .buzzer_content import stages_for
 from .clock import clock_payload, database_now
 from .models import (
     AuditEvent,
@@ -153,7 +153,7 @@ def overview(team, round, now=None, session=None):
         "information": information,
         **participant_faculty(team, round, eligible, state),
         "announcements": announcements(team, round.pk),
-        "buzzer_stages": STAGES if round.number == 5 else [],
+        "buzzer_stages": stages_for(round) if round.number == 5 else [],
         "capabilities": {
             "view_information": True,
             "buzzer_supported": round.number == 5 and round.delivery_mode == "BUZZER",

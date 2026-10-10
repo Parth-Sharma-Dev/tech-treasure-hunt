@@ -12,6 +12,7 @@ from .buzzer_scores import (
     source_digest,
     validate_rows,
 )
+from .buzzer_scoring_rules import points_for_stage
 from .clock import milliseconds
 from .models import BuzzerClosure, BuzzerWindow, ImportBatch, Incident, RoundPhase, Team
 from .participant import round_eligible
@@ -87,9 +88,11 @@ def build_preview(round, now):
                 "A ledger lacks consistent independently committed original batch evidence."
             )
     available_questions = {
-        item.payload["question_id"] for item in ledgers.values() if not item.payload["void"]
+        item.payload["question_id"]: item.payload["stage"]
+        for item in ledgers.values()
+        if not item.payload["void"]
     }
-    maximum5 = 2 * len(available_questions)
+    maximum5 = sum(points_for_stage(round, stage) for stage in available_questions.values())
     if ledgers and maximum5 == 0:
         gaps.append("All questions are void; event adjudication is required before awards.")
     entries = []

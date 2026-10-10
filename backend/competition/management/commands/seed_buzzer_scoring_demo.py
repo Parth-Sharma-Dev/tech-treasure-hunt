@@ -11,7 +11,7 @@ from competition.rules import require_staff_permission
 
 
 class Command(BaseCommand):
-    help = "Prepare 25 unverified demo question slots and the confirmed final scoring contract."
+    help = "Prepare 25 unverified demo question slots and the current 30-mark final contract."
 
     def add_arguments(self, parser):
         parser.add_argument("--actor", default="DEMO-content")
@@ -90,6 +90,7 @@ class Command(BaseCommand):
                 reason="Organizer scoring; no content approval or final results fabricated.",
             )
         self.stdout.write(
-            f"Prepared {len(created)} placeholders; 25-question/50-mark contract configured. "
+            f"Prepared {len(created)} placeholders; 25-question/30-mark contract configured. "
+            "Current contract: 30 marks; stage 5 word encoding earns 2/question. "
             "Actual content and prior final results remain required."
         )

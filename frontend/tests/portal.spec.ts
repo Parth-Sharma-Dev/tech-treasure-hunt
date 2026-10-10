@@ -5,6 +5,16 @@ const clock = { state: 'READY', play_mode: 'ONLINE', remaining_ms: 60000, server
 const rounds = [1,2,3,4,5].map(number => portalRound({ id: number, number, title: `Synthetic round ${number}`, state: 'READY', eligible: number === 1, clock }))
 const info = { summary: 'Approved public overview', venue: 'Synthetic lab', scheduled_start: '2026-10-13T06:30:00Z', scheduled_end: '2026-10-13T07:15:00Z', contacts: [{ name: 'Approved organizer', role: 'Help desk', location: 'Lab entrance', channel: 'Speak at the desk' }] }
 
+test('current final explains thirty marks and word encoding as the last stage', async ({ page }) => {
+  const stages = ['AI image recognition','Answer from keywords','Image abnormalities','Progressive image guessing','Word encoding'].map((title, index) => ({ number: index+1, title, description: 'Offline fixture' }))
+  await page.route('**/api/rounds/5/overview', route => route.fulfill({ json: { ...rounds[4], rules: { final_scoring: { points_per_stage: { '1':1,'2':1,'3':1,'4':1,'5':2 }, max_score: 30 } }, buzzer_stages: stages } }))
+  await page.goto('/rounds/5')
+  await page.getByText('Approved rules', { exact: true }).click()
+  await expect(page.getByText('Round 5 totals 30 marks', { exact: false })).toBeVisible()
+  await expect(page.getByText('Round 4 Green Cards grant qualification only', { exact: false })).toBeVisible()
+  await expect(page.locator('ol li strong')).toHaveText(stages.map(stage => stage.title))
+})
+
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/health', route => route.fulfill({ json: { status: 'ok' } }))
   await page.route('**/api/me', route => route.fulfill({ json: { team: { code: 'TEAM-A', name: 'Synthetic team', member_count: 3, status: 'ACTIVE', is_demo: true }, session: { active_count: 1, max_active: 4 }, rounds } }))

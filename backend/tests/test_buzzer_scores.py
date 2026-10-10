@@ -10,7 +10,8 @@ from test_buzzer import buzzer as _buzzer
 from competition.api import ApiProblem
 from competition.buzzer import control_window
 from competition.buzzer_answers import record_answer
-from competition.buzzer_scoring_rules import CONTRACT, schema_errors
+from competition.buzzer_scoring_rules import LEGACY_CONTRACT as CONTRACT
+from competition.buzzer_scoring_rules import schema_errors
 from competition.models import (
     BuzzerAnswerEvidence,
     BuzzerQuestion,

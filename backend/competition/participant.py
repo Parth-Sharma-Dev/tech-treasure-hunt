@@ -73,7 +73,7 @@ def public_rules(round):
     if (
         round.number == 5
         and isinstance(rules.get("score_schema"), dict)
-        and rules["score_schema"].get("version") == "round5-v1"
+        and rules["score_schema"].get("version") in ["round5-v1", "round5-v2"]
     ):
         public["final_scoring"] = {
             key: value
@@ -82,6 +82,7 @@ def public_rules(round):
             in [
                 "questions_per_stage",
                 "points_per_correct",
+                "points_per_stage",
                 "wrong_points",
                 "max_score",
                 "winner_count",
