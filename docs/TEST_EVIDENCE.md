@@ -1,5 +1,17 @@
 # Local acceptance evidence
 
+10 October independent Round 1 code-pool validation: **272 backend tests passed,
+8 optional checks skipped; 134 desktop/mobile Chromium checks passed**. Final
+checkpoint/portal, readiness and mission-message changes passed focused reruns of
+22, 20 and 12 checks respectively. Build, Ruff, Django checks and migration drift
+passed. Concurrent teams cannot claim one code twice; concurrent requests cannot
+exceed three successful claims for a team. Tests cover punctuation/case handling,
+multiple claims on one mission, code keywords, original completion-time ranking,
+independent provisional/final publication and signed restoration of pool ownership.
+Old mission checkpoints remain compatible. Real Round 1 ID 13 stays DRAFT with
+168 codes, 25 locations and zero claims; physical rehearsal and release inputs remain.
+See [current event preparation](ACTUAL_EVENT_PREPARATION.md).
+
 Recorded 7 October 2026. Scope: implemented Round 1 behavior using synthetic fixtures. Later-round competition, production hosting, real mission routes, actual rosters and physical device/paper drills are not certified here.
 
 M7 participant portal validation was added on 8 October; the original Round 1 evidence below is retained as a dated record.

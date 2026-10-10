@@ -17,6 +17,18 @@ The database round ID in URLs differs from the round number and attempt number. 
 
 ## Run the normal flow
 
+For the actual independent-code event, follow
+[actual event preparation](ACTUAL_EVENT_PREPARATION.md#implemented-independent-code-gameplay).
+Codes and keywords belong to the pool, not missions. Any opened mission page accepts
+any unclaimed pool code; a team can claim three codes total. Preserve punctuation;
+letter case is ignored. Code ownership is exclusive between teams. Results are out
+of three and tied scores use original last-claim active time. The older mission-based
+correction/paper procedures below apply to historical mission-bound attempts only.
+The real event draft remains blocked until missing content and event configuration
+are independently checked and released.
+
+The flow below describes retained mission-bound attempts:
+
 1. Prepare all draft missions/settings, including six-character answers and the approved mission count, duration, capacity, owners, advancement count and policies.
 2. A different verifier verifies competitive missions and approves the draft rules.
 3. The controller uses **Validate and mark approved rounds READY** in the Rounds admin list.

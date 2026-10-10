@@ -26,12 +26,10 @@ the independent collectible answer codes. Image/symbol missions remain to be sup
 The organizer clarified a new Round 1 contract: codes are independent of missions;
 any mission page supplies a code input; a team can successfully claim at most three
 codes; a code successfully claimed by one team cannot be claimed by another; each
-code yields a keyword for Round 2; ties use earlier completion. **The existing
-mission-bound scoring implementation does not implement this independent code
-pool.** Its gameplay, concurrency, score/keyword, correction and recovery behavior
-must be updated and validated before these real missions are released. Code/keyword
-pairs are now stored in the independent pool described below. Requested behavior
-is retained privately with the riddle source.
+code yields a keyword for Round 2; ties use earlier completion. This behavior is now
+implemented for the independent-code rules; old frozen attempts retain their
+mission-bound rules. Code/keyword pairs are stored in the independent pool described
+below. Real missions remain drafts pending complete content and event configuration.
 
 Round 2 remains an external quiz with Wayground raw Score and exported answering
 duration for ties. The DOCX's "1 point each" note is retained as source text and does
@@ -90,9 +88,56 @@ locations, retained 13 riddles, empty placeholder clues and repeat-import stabil
 were verified in the application database. Ten focused inventory/import/portal
 tests passed; Ruff, Django checks and migration drift checks passed.
 
-This completes content ingestion for the supplied material. **Participant gameplay
-still uses the old mission-bound validator/scorer.** Punctuation submission support,
-the independent claim transaction, exclusive claims across teams, the three-success
-limit, code-based keyword delivery, standings and signed evidence/recovery must be
-implemented and tested before live rehearsal. No code claim or competitive score
-was created by importing the inventory.
+This completed content ingestion for the supplied material. The subsequent gameplay
+implementation below now connects the pool to participant submissions. No code claim
+or competitive score was created by importing or configuring the actual inventory.
+
+## Implemented independent-code gameplay
+
+Round 1 ID 13 now has draft `independent-code-pool-v1` rules: `independent_pool`,
+six printable ASCII characters, three successful claims maximum, one point per code,
+168 codes, 25 locations and score-then-last-active-completion ranking. Letter case
+is ignored; punctuation and leading characters are preserved. Duration, roster,
+capacity, owners, advancement and other event inputs are still unapproved. The
+round remains DRAFT with all clues unavailable/unverified and zero real claims.
+
+During LIVE, eligible signed-in teams open a mission page and enter any valid pool
+code there. A mission is a clue/navigation entry, not a scoring target. Several
+codes can be submitted on the same page. The team lock enforces three successful
+claims across all pages/tabs, and the code lock plus unique database link prevents
+two teams claiming the same code. A duplicate owned code adds no credit; a code
+claimed by another team reveals no keyword or claimant identity. Invalid codes do
+not consume a successful slot. Existing wrong-attempt cooldown and rate controls
+remain subject to approved rules. Paused, ended, expired, unopened, unavailable or
+ineligible requests cannot claim a code. Identical retries recover the original
+decision/receipt and never create another claim.
+
+Each successful code gives its stored keyword and a signed receipt. Team progress
+shows code claims and a score out of three; Round 2's released keyword list uses
+code keywords. Closing or voiding a clue does not erase ownership or points earned
+from an independent code. Standings rank by score descending, then original active
+elapsed time of the last credited claim ascending; three-point teams use their
+third-claim time. Pauses do not consume active time. Exact cutoff ties retain the
+existing reviewed tie procedure. Provisional/final publication and qualification
+retain independent review and appeal gates.
+
+Rule approval freezes code digests, keyword mappings and source checksums. Another
+verifier must approve an inventory prepared by the content maker. Signed exports
+include source originals, independent codes, claims, decisions and receipts;
+reviewed recovery reproduces the original code ownership, keyword mapping and
+rankings. Legacy checkpoint inventories treat the new null code link as an absent
+field so earlier mission evidence remains compatible. Legacy mission-answer
+corrections and mission-based paper scoring are disabled for independent rounds;
+pause and retain evidence/open an incident rather than using those incompatible
+workflows. Older mission-bound attempts retain their existing workflows.
+
+Validation: full backend **272 passed, 8 optional checks skipped**; full desktop/mobile
+Chromium **134 passed**; final checkpoint/portal checks **22 passed**, final readiness
+checks **20 passed**, final mission UI checks **12 passed**. Build, Ruff, Django system
+and migration-drift checks passed. Tests use synthetic codes and isolated databases,
+including same-code races, simultaneous third-slot requests, six claims on one
+mission across two teams, timing-ranked final qualification and signed restore.
+Migration 0020/0021 followed private signed backup
+`.local/before-independent-gameplay-20261010.dump`; applying them and configuring
+the real draft preserved 168 codes, 25 locations and zero actual claims. This is
+local development validation; physical rehearsal is still scheduled separately.
