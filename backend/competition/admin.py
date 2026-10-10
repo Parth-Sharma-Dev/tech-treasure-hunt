@@ -45,6 +45,13 @@ class EventContentSourceAdmin(ReadOnlyAdmin):
     exclude = ("original_bytes",)
 
 
+@admin.register(models.HuntCode)
+class HuntCodeAdmin(ReadOnlyAdmin):
+    view_permissions = ("prepare_content", "verify_evidence")
+    list_display = ("round", "code", "keyword")
+    list_filter = ("round",)
+
+
 @admin.register(models.Round)
 class RoundAdmin(ReadOnlyAdmin):
     view_permissions = ("prepare_content", "control_round", "verify_evidence", "publish_results")

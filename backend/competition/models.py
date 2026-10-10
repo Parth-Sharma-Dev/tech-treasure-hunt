@@ -5,6 +5,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import F, Q
+from django.db.models.functions import Upper
 
 
 def mission_token():
@@ -156,6 +157,48 @@ class EventContentSource(ImmutableEvidence):
                 fields=["round", "kind", "sha256"], name="event_content_source_unique"
             )
         ]
+
+
+class HuntCode(models.Model):
+    """Independent private codes; a mission identifies a clue, never a code."""
+
+    round = models.ForeignKey(Round, on_delete=models.PROTECT)
+    source = models.ForeignKey(EventContentSource, on_delete=models.PROTECT)
+    code = models.CharField(max_length=6)
+    keyword = models.CharField(max_length=100, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(F("round"), Upper("code"), name="hunt_code_round_case_unique")
+        ]
+
+    def clean(self):
+        if len(self.code) != 6 or any(not 33 <= ord(char) <= 126 for char in self.code):
+            raise ValidationError(
+                "Codes require exactly six printable ASCII characters, without spaces."
+            )
+        if self.source_id and (
+            self.source.round_id != self.round_id or self.source.kind != "CODE_POOL"
+        ):
+            raise ValidationError("Code source must be this round's independent code pool.")
+
+    def save(self, *args, **kwargs):
+        with transaction.atomic():
+            round = Round.objects.select_for_update().get(pk=self.round_id)
+            if round.state != Round.State.DRAFT:
+                raise ValidationError("Code content is frozen after READY.")
+            if self.pk:
+                previous = HuntCode.objects.get(pk=self.pk)
+                if any(
+                    getattr(previous, f) != getattr(self, f)
+                    for f in ("round_id", "source_id", "code")
+                ):
+                    raise ValidationError("Imported code identities cannot be changed.")
+            self.full_clean()
+            return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("Preserve imported codes and their original source.")
 
 
 class RoundPhase(ImmutableEvidence):
