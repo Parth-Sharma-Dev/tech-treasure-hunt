@@ -9,7 +9,6 @@ from .clock import clock_payload, database_now
 from .models import (
     AuditEvent,
     CodingWorkstation,
-    Completion,
     EventAnnouncement,
     Incident,
     ResultSnapshot,
@@ -125,6 +124,17 @@ def eligibility_reason(team, round, eligible):
     return "Qualification is under organizer review."
 
 
+def earned_keywords(team):
+    from .gameplay import own_progress
+
+    hunt = Round.objects.filter(number=1, is_demo=team.is_demo).order_by("-attempt_no").first()
+    if not hunt:
+        return []
+    return [
+        item["keyword"] for item in own_progress(team, hunt)["completions"] if not item["voided"]
+    ]
+
+
 def overview(team, round, now=None, session=None):
     from .faculty import participant_faculty
 
@@ -176,16 +186,7 @@ def overview(team, round, now=None, session=None):
             "instructions_visible": instructions_visible,
             "view_results": ResultSnapshot.objects.filter(round=round).exists(),
         },
-        "earned_keywords": list(
-            Completion.objects.filter(
-                team=team,
-                mission__round=Round.objects.filter(number=1, is_demo=team.is_demo)
-                .order_by("-attempt_no")
-                .first(),
-                mission__is_practice=False,
-                mission__is_void=False,
-            ).values_list("mission__keyword", flat=True)
-        )
+        "earned_keywords": earned_keywords(team)
         if round.number == 2 and instructions_visible and state in ["READY", "LOBBY"]
         else [],
     }

@@ -45,6 +45,15 @@ def correction_lock(round_id):
     list(Team.objects.select_for_update().filter(is_demo=round.is_demo).order_by("pk"))
     if round.number != 1 or round.delivery_mode != "ONLINE_HUNT":
         raise ApiProblem("unsupported_round", "Corrections here support Round 1 only.", 409)
+    from .answers import independent_codes
+
+    if independent_codes(round):
+        raise ApiProblem(
+            "unsupported_correction",
+            "Mission answer corrections do not apply to independent codes. "
+            "Record a reviewed incident.",
+            409,
+        )
     return round, rounds
 
 

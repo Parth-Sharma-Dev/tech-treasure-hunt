@@ -662,14 +662,14 @@ class Mission(models.Model):
     fallback_code = models.CharField(
         max_length=12, default=fallback_code, unique=True, editable=False
     )
-    hint = models.TextField()
+    hint = models.TextField(blank=True)
     symbol = models.CharField(max_length=100, blank=True)
     qr_location = models.CharField(max_length=200)
     clue_location = models.CharField(max_length=200)
     difficulty = models.CharField(max_length=20, blank=True)
     points = models.PositiveSmallIntegerField(default=1)
     answer_verifiers = models.JSONField(default=list)
-    keyword = models.CharField(max_length=100)
+    keyword = models.CharField(max_length=100, blank=True)
     volunteer_owner = staff_reference(null=True, blank=True)
     prepared_by = staff_reference(null=True, blank=True)
     available = models.BooleanField(default=True)

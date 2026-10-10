@@ -146,6 +146,8 @@ def staff_preview(request, round_id):
             and has_role(request.user, "verify_evidence"),
             "can_close_incident": has_role(request.user, "verify_evidence"),
             "can_correct": round.number == 1
+            and round.rules_snapshot.get("rules", round.rules).get("code_mode")
+            != "independent_pool"
             and has_role(request.user, "control_round", "adjudicate"),
             "play_mode": round.play_mode,
             "recovery_proposals": [

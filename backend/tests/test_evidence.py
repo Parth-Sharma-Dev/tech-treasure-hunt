@@ -48,6 +48,9 @@ def test_legacy_round1_checkpoint_still_reconciles(ended_hunt):
     payload = read_bundle(make_bundle(round)["signed_bundle"], round)
     payload["format"] = "round-evidence-v1"
     payload["objects"] = export_objects(round, extended=False)
+    for record in payload["objects"]:
+        if record["model"] == "competition.completion":
+            record["fields"].pop("hunt_code", None)
     payload["inventory"] = inventory(payload["objects"])
     signed = EXPORT_SIGNER.sign_object(payload)
     Completion.objects.all().delete()

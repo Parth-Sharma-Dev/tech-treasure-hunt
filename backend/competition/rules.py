@@ -39,6 +39,20 @@ def round_snapshot(round):
         "title": round.title,
         "is_demo": round.is_demo,
     }
+    from .answers import code_digest, independent_codes
+
+    if independent_codes(round):
+        from .models import HuntCode
+
+        snapshot["hunt_codes"] = [
+            {
+                "id": code.pk,
+                "digest": code_digest(round.pk, code.code),
+                "keyword": code.keyword,
+                "source_sha256": code.source.sha256,
+            }
+            for code in HuntCode.objects.filter(round=round).select_related("source").order_by("pk")
+        ]
     if round.delivery_mode == "CODING":
         from .coding_content import tasks_snapshot
 
@@ -117,6 +131,9 @@ def readiness_errors(round):
         if type(value) is not int or value <= 0:
             errors.append(f"{field} must be a positive integer.")
     if round.number == 1:
+        from .answers import POOL_FORMAT, independent_codes
+
+        pool = independent_codes(round)
         expected = {
             "points_per_mission": 1,
             "max_team_sessions": 1,
@@ -128,11 +145,38 @@ def readiness_errors(round):
             "ranking_policy": "score_then_last_active_completion",
             "paper_attempt_policy": "one_per_team_mission_per_60_active_seconds",
         }
+        if pool:
+            expected.update(
+                {"max_code_claims": 3, "points_per_code": 1, "answer_format": POOL_FORMAT}
+            )
         for key, value in expected.items():
             if type(round.rules.get(key)) is not type(value) or round.rules.get(key) != value:
                 errors.append(f"Configure the supported Round 1 policy for {key}.")
-        if round.rules.get("answer_format") not in ["four_ascii_digits", "six_ascii_alphanumeric"]:
+        if round.rules.get("answer_format") not in [
+            "four_ascii_digits",
+            "six_ascii_alphanumeric",
+            POOL_FORMAT,
+        ]:
             errors.append("Configure six_ascii_alphanumeric answer codes.")
+        if not pool and round.rules.get("answer_format") == POOL_FORMAT:
+            errors.append("Printable punctuation codes require the independent pool.")
+        if pool:
+            from .models import HuntCode
+
+            codes = list(HuntCode.objects.filter(round=round).select_related("source"))
+            if (
+                type(round.rules.get("expected_code_count")) is not int
+                or round.rules["expected_code_count"] != len(codes)
+                or not codes
+            ):
+                errors.append("Confirm the complete independent code inventory count.")
+            for code in codes:
+                try:
+                    code.clean()
+                except ValidationError:
+                    errors.append("A code has inconsistent format or source evidence.")
+                if not code.keyword.strip():
+                    errors.append("Every independent code needs a keyword.")
         cap = round.rules.get("registration_cap")
         browsers = round.rules.get("peak_browser_count")
         if type(cap) is not int or cap <= 0 or type(browsers) is not int or browsers <= 0:
@@ -170,6 +214,14 @@ def readiness_errors(round):
             if mission.is_void:
                 errors.append(f"Mission {mission.public_id} is voided; remove it from the release.")
             verifiers = mission.answer_verifiers
+            if pool:
+                if verifiers or mission.keyword:
+                    errors.append(
+                        f"Mission {mission.public_id} must not have code keys or keywords."
+                    )
+                if not mission.hint.strip() and not mission.symbol.strip():
+                    errors.append(f"Mission {mission.public_id} requires a clue.")
+                continue
             if (
                 not isinstance(verifiers, list)
                 or not verifiers
@@ -212,6 +264,14 @@ def approve_rules(round_id, actor):
     round = Round.objects.select_for_update().get(pk=round_id)
     if round.state != Round.State.DRAFT:
         raise ValidationError("Only draft rules can be approved.")
+    from .answers import independent_codes
+    from .models import HuntCode
+
+    if (
+        independent_codes(round)
+        and HuntCode.objects.filter(round=round, source__prepared_by=actor).exists()
+    ):
+        raise ValidationError("A different verifier must approve the independent code inventory.")
     errors = readiness_errors(round)
     if errors:
         raise ValidationError(errors)

@@ -316,7 +316,7 @@ class FacultyProfileAdmin(InformationAdmin):
 
 class MissionForm(forms.ModelForm):
     answer = forms.RegexField(
-        regex=r"\A(?:[A-Za-z0-9]{6}|[0-9]{4})\Z",
+        regex=r"\A(?:[!-~]{6}|[0-9]{4})\Z",
         required=False,
         strip=False,
         widget=forms.PasswordInput(render_value=False),
@@ -332,6 +332,15 @@ class MissionForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
+        from .answers import independent_codes
+
+        pool = cleaned.get("round") and independent_codes(cleaned["round"])
+        if pool and not cleaned.get("is_practice"):
+            if cleaned.get("answer") or cleaned.get("keyword"):
+                self.add_error(
+                    "answer", "Independent codes and keywords belong to the pool, not missions."
+                )
+            return cleaned
         if not self.instance.pk and not cleaned.get("answer"):
             self.add_error("answer", "A new mission needs an answer code.")
         if cleaned.get("answer") and cleaned.get("round"):
@@ -397,7 +406,12 @@ class MissionAdmin(ReadOnlyAdmin):
         if answer := form.cleaned_data.get("answer"):
             version = f"draft-{timezone.now().isoformat()}"
             obj.answer_verifiers = [
-                {"version": version, "digest": answer_digest(obj.pk, version, answer)}
+                {
+                    "version": version,
+                    "digest": answer_digest(
+                        obj.pk, version, answer, format=obj.round.rules.get("answer_format")
+                    ),
+                }
             ]
             obj.save(update_fields=["answer_verifiers"])
 

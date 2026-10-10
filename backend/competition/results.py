@@ -70,6 +70,10 @@ def locked_round(round_id):
 
 
 def build_preview(round, now):
+    from .answers import code_digest, independent_codes
+    from .models import HuntCode
+
+    pool = independent_codes(round)
     if round.number == 5 and round.delivery_mode == "BUZZER":
         from .buzzer_results import build_preview as buzzer_preview
 
@@ -86,7 +90,7 @@ def build_preview(round, now):
     missions = list(Mission.objects.filter(round=round, is_practice=False).order_by("pk"))
     completions = list(
         Completion.objects.filter(mission__round=round)
-        .select_related("mission", "team", "source_decision", "source_resolution")
+        .select_related("mission", "team", "source_decision", "source_resolution", "hunt_code")
         .order_by("pk")
     )
     phases = list(RoundPhase.objects.filter(round=round).order_by("started_at", "pk"))
@@ -138,7 +142,16 @@ def build_preview(round, now):
             continue
         source = completion.source_decision
         if source:
-            keys = completion.mission.answer_verifiers
+            keys = (
+                [
+                    {
+                        "version": "hunt-pool-v1",
+                        "digest": code_digest(round.pk, completion.hunt_code.code),
+                    }
+                ]
+                if pool and completion.hunt_code_id
+                else completion.mission.answer_verifiers
+            )
             if not any(
                 item.get("version") == source.answer_key_version
                 and item.get("digest") == source.answer_hmac
@@ -154,6 +167,13 @@ def build_preview(round, now):
                     or receipt.get("team_code") != completion.team.code
                     or receipt.get("active_elapsed_ms") != source.active_elapsed_ms
                     or receipt.get("outcome") != "accepted"
+                    or pool
+                    and receipt.get("claim_id") != completion.hunt_code_id
+                    or pool
+                    and (
+                        not completion.hunt_code_id
+                        or receipt.get("keyword") != completion.hunt_code.keyword
+                    )
                 ):
                     gaps.append("An accepted receipt does not match its decision evidence.")
             except (BadSignature, ValueError, TypeError, KeyError):
@@ -252,11 +272,19 @@ def build_preview(round, now):
                     gaps.append("A paper completion does not match its accepted numbered slip.")
         if completion.effective_active_ms > round.accumulated_active_ms:
             gaps.append("A completion falls outside the recorded active budget.")
-        if not completion.mission.is_void:
+        if pool and not completion.hunt_code_id:
+            gaps.append("Independent rounds require code-backed claims, not mission credit.")
+        if pool or not completion.mission.is_void:
             by_team[completion.team_id].append(completion)
+    projected_decisions = {item.source_decision_id for item in completions}
     projected = {(item.team_id, item.mission_id) for item in completions}
     if any(
-        item.outcome == "accepted" and (item.team_id, item.mission_id) not in projected
+        item.outcome == "accepted"
+        and (
+            item.pk not in projected_decisions
+            if pool
+            else (item.team_id, item.mission_id) not in projected
+        )
         for item in decisions
     ):
         gaps.append("An accepted decision is missing its effective completion projection.")
@@ -299,7 +327,14 @@ def build_preview(round, now):
         gaps.append(
             "Paper clock offset or official duration differs from the reviewed interval evidence."
         )
-    maximum = sum(mission.available and not mission.is_void for mission in missions)
+    maximum = 3 if pool else sum(mission.available and not mission.is_void for mission in missions)
+    if pool:
+        from .rules import round_snapshot
+
+        if round_snapshot(round).get("hunt_codes") != round.rules_snapshot.get("hunt_codes"):
+            gaps.append("The independent code inventory differs from the approved snapshot.")
+        if any(len(items) > 3 for items in by_team.values()):
+            gaps.append("A team has more than three successful code claims.")
     entries = []
     for team in teams:
         counted = by_team[team.pk]
@@ -416,6 +451,8 @@ def build_preview(round, now):
         "paper_slips": list(PaperSlip.objects.filter(round=round).order_by("pk").values()),
         "paper_window": list(PaperWindow.objects.filter(round=round).values()),
     }
+    if pool:
+        evidence["hunt_codes"] = list(HuntCode.objects.filter(round=round).order_by("pk").values())
     return {
         "round_id": round.pk,
         "number": round.number,

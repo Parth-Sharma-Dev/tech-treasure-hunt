@@ -331,8 +331,10 @@ def submit_answer(request, token, key_value, data):
 
 def own_progress(team, round):
     pool = independent_codes(round)
-    completions = Completion.objects.filter(team=team, mission__round=round).select_related(
-        "mission", "hunt_code"
+    completions = (
+        Completion.objects.filter(team=team, mission__round=round)
+        .select_related("mission", "hunt_code")
+        .order_by("effective_active_ms", "pk")
     )
     return {
         "code_mode": "independent_pool" if pool else "mission_bound",

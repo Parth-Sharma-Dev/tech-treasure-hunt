@@ -63,6 +63,8 @@ def public_rules(round):
             "cooldown_seconds",
             "team_answer_limit",
             "team_answer_window_ms",
+            "max_code_claims",
+            "points_per_code",
             "buzzer_order_policy",
             "buzzer_latency_policy",
             "buzzer_equal_time_policy",
@@ -70,6 +72,9 @@ def public_rules(round):
         )
         if key in rules
     }
+    if rules.get("code_mode") == "independent_pool":
+        public.pop("points_per_mission", None)
+        public.pop("paper_attempt_policy", None)
     if (
         round.number == 5
         and isinstance(rules.get("score_schema"), dict)
@@ -132,7 +137,15 @@ def practice_answer(team, answer):
     answer = validate_answer(mission.round, answer)
     accepted = any(
         hmac.compare_digest(
-            answer_digest(mission.pk, verifier["version"], answer), verifier["digest"]
+            answer_digest(
+                mission.pk,
+                verifier["version"],
+                answer,
+                format=mission.round.rules_snapshot.get("rules", mission.round.rules).get(
+                    "answer_format"
+                ),
+            ),
+            verifier["digest"],
         )
         for verifier in mission.answer_verifiers
     )

@@ -114,6 +114,15 @@ def round_queries(round, extended=True):
     for model in [m.Visit, m.AttemptState, m.MissionResolution, m.Completion]:
         queries.append(model.objects.filter(mission__round=round))
     if extended:
+        from .answers import independent_codes
+
+        if independent_codes(round):
+            queries.extend(
+                [
+                    m.EventContentSource.objects.filter(round=round),
+                    m.HuntCode.objects.filter(round=round),
+                ]
+            )
         if round.number == 5:
             queries.extend(
                 [
@@ -161,7 +170,18 @@ def export_objects(round, extended=True):
 
 
 def inventory(objects):
-    return {f"{item['model']}:{item['pk']}": digest(item) for item in objects}
+    entries = {}
+    for item in objects:
+        # Older mission checkpoints predate the nullable independent-code link.
+        # A null link is the same historical record as an absent field.
+        canonical = item
+        if item["model"] == "competition.completion" and item["fields"].get("hunt_code") is None:
+            canonical = {
+                **item,
+                "fields": {k: v for k, v in item["fields"].items() if k != "hunt_code"},
+            }
+        entries[f"{item['model']}:{item['pk']}"] = digest(canonical)
+    return entries
 
 
 def carry_provenance(round):
@@ -276,6 +296,8 @@ def make_bundle(round):
 
 
 def read_bundle(value, round):
+    from .answers import independent_codes
+
     try:
         payload = EXPORT_SIGNER.unsign_object(value)
     except (BadSignature, ValueError, TypeError):
@@ -295,6 +317,8 @@ def read_bundle(value, round):
         and round.number != 5
         or payload.get("format") == "round-evidence-v1"
         and round.number != 1
+        or payload.get("format") == "round-evidence-v1"
+        and independent_codes(round)
         or payload.get("round_id") != round.pk
         or payload.get("attempt_id") != str(round.attempt_id)
         or payload.get("rules_digest") != round.rules_digest

@@ -60,6 +60,15 @@ def paper_digest(round):
 def require_hunt(round):
     if round.number != 1 or round.delivery_mode != "ONLINE_HUNT":
         raise ApiProblem("unsupported_round", "Paper reconciliation is for Round 1 only.", 409)
+    from .answers import independent_codes
+
+    if independent_codes(round):
+        raise ApiProblem(
+            "unsupported_paper",
+            "Pause independent-code play and retain evidence; "
+            "mission-based paper scoring cannot claim codes.",
+            409,
+        )
 
 
 @transaction.atomic

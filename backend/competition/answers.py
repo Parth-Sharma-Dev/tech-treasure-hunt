@@ -48,8 +48,8 @@ def validate_answer(round, answer):
         raise ApiProblem("invalid_format", error.messages[0]) from None
 
 
-def answer_digest(mission_id, version, answer):
-    answer = normalize_answer(answer)
+def answer_digest(mission_id, version, answer, format=None):
+    answer = normalize_answer(answer, format)
     if not settings.ANSWER_HMAC_KEY:
         raise ImproperlyConfigured("ANSWER_HMAC_KEY must be configured.")
     payload = f"mission:{mission_id}:version:{version}:answer:{answer}".encode()
