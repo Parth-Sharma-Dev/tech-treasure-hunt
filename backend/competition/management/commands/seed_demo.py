@@ -108,6 +108,7 @@ class Command(BaseCommand):
             )
         hunt = Round.objects.get(number=1, attempt_no=1)
         if hunt.state == Round.State.DRAFT:
+            added_competitive = False
             for public_id, hint, answer, keyword, practice in (
                 (
                     "PRACTICE",
@@ -130,6 +131,13 @@ class Command(BaseCommand):
                     "STACK",
                     False,
                 ),
+                (
+                    "DEMO-M03",
+                    "Synthetic clue: prefix four-digit sixty-four with EF.",
+                    "EF0064",
+                    "QUEUE",
+                    False,
+                ),
             ):
                 mission, created = Mission.objects.get_or_create(
                     round=hunt,
@@ -145,6 +153,7 @@ class Command(BaseCommand):
                     },
                 )
                 if created:
+                    added_competitive |= not practice
                     mission.answer_verifiers = [
                         {
                             "version": "demo-v1",
@@ -152,6 +161,17 @@ class Command(BaseCommand):
                         }
                     ]
                     mission.save(update_fields=["answer_verifiers"])
+            if added_competitive:
+                hunt.rules = {
+                    **hunt.rules,
+                    "expected_mission_count": Mission.objects.filter(
+                        round=hunt, is_practice=False, available=True
+                    ).count(),
+                    "max_team_sessions": 1,
+                }
+                hunt.approved_by = hunt.approved_at = None
+                hunt.approval_digest = ""
+                hunt.save()
         # Seeds never approve rules or attest to independent clue verification.
         if credentials:
             existing_credentials.update(credentials)

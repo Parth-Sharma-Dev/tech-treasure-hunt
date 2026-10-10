@@ -253,7 +253,9 @@ def test_quota_is_shared_across_missions_and_replay_does_not_consume_it(game):
         open_mission(client, mission)
     now = round.live_started_at + timedelta(seconds=1)
     key = uuid.uuid4()
-    teammate = login()
+    # Two tabs in the permitted browser share one authenticated session.
+    teammate = Client(enforce_csrf_checks=True)
+    teammate.cookies = client.cookies.copy()
     for number in range(10):
         assert (
             submit(

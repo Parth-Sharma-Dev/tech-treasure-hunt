@@ -1,4 +1,5 @@
 import json
+import uuid
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from threading import Event
 from unittest.mock import MagicMock
@@ -9,11 +10,12 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.management import call_command
 from django.db import connections, transaction
-from django.test import override_settings
+from django.test import Client, override_settings
 from django.utils import timezone
 
 from competition.admin import MissionAdmin, MissionForm
 from competition.answers import answer_digest
+from competition.clock import control_round
 from competition.models import AuditEvent, Mission, Round, Team
 from competition.rules import approve_rules, mark_ready, readiness_errors
 
@@ -284,9 +286,74 @@ def test_demo_seed_is_repeatable_unsigned_and_does_not_reset_passwords(tmp_path)
     call_command("seed_demo", credentials_file=str(credentials_path))
     assert Round.objects.count() == 5
     assert Team.objects.count() == 2
-    assert Mission.objects.count() == 3
+    assert Mission.objects.count() == 4
+    hunt = Round.objects.get(number=1)
+    assert hunt.rules["expected_mission_count"] == 3
+    assert hunt.rules["max_team_sessions"] == 1
+    assert Mission.objects.filter(round=hunt, is_practice=False).count() == 3
     assert not Round.objects.exclude(state=Round.State.DRAFT).exists()
     assert not Round.objects.exclude(approved_by=None).exists()
     assert not Mission.objects.exclude(verified_at=None).exists()
     assert get_user_model().objects.get(username="DEMO-01").password == password_before
     assert json.loads(credentials_path.read_text()) == credentials_before
+
+
+def test_three_missions_each_credit_one_point_in_single_browser(configured_hunt):
+    from test_gameplay import post
+
+    round, first, maker, verifier = configured_hunt
+    Mission.objects.filter(pk=first.pk).delete()
+    codes = ["AB1024", "CD0042", "EF0064"]
+    for index, code in enumerate(codes):
+        mission = Mission.objects.create(
+            round=round,
+            public_id=f"THREE-{index}",
+            hint="Synthetic clue",
+            keyword=f"WORD-{index}",
+            qr_location="Synthetic QR",
+            clue_location="Synthetic clue",
+            prepared_by=maker,
+            volunteer_owner=maker,
+        )
+        mission.answer_verifiers = [
+            {"version": "three-v1", "digest": answer_digest(mission.pk, "three-v1", code)}
+        ]
+        mission.save()
+        mission.verified_by = verifier
+        mission.verified_at = timezone.now()
+        mission.save()
+    round.rules.update(answer_format="six_ascii_alphanumeric", expected_mission_count=3)
+    round.save()
+    approve_rules(round.pk, verifier)
+    mark_ready(round.pk, maker)
+    for action in ["open_lobby", "start"]:
+        round.refresh_from_db()
+        control_round(
+            round.pk,
+            maker,
+            {
+                "action": action,
+                "expected_version": round.control_version,
+                "action_id": str(uuid.uuid4()),
+                "reason": "Three-mission test",
+            },
+        )
+    user = Team.objects.get(code="TEST-TEAM").user
+    user.set_password("test-only")
+    user.save()
+    client = Client(enforce_csrf_checks=True)
+    assert (
+        post(
+            client, "/api/auth/login", {"team_code": "TEST-TEAM", "password": "test-only"}
+        ).status_code
+        == 200
+    )
+    for mission, code in zip(
+        Mission.objects.filter(round=round).order_by("pk"), codes, strict=True
+    ):
+        assert post(client, "/api/missions/open", {"token": mission.token}).status_code == 200
+        response = post(
+            client, f"/api/missions/{mission.token}/submit", {"answer": code}, uuid.uuid4()
+        )
+        assert response.json()["outcome"] == "accepted"
+    assert client.get(f"/api/rounds/{round.pk}/state").json()["score"] == 3

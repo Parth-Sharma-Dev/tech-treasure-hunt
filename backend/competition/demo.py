@@ -29,7 +29,7 @@ def demo_rules(number):
                 "cutoff_policy": "database_admission_no_grace",
                 "registration_cap": 2,
                 "peak_browser_count": 2,
-                "expected_mission_count": 2,
+                "expected_mission_count": 3,
             }
         )
     else:
