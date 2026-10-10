@@ -23,6 +23,10 @@ def build_preview(round, now):
     from .models import GreenCardRevision
 
     green = is_green_cards(round, rules)
+    from .models import WaygroundReport
+    from .wayground import is_wayground
+
+    way = is_wayground(round, rules)
     errors = schema_errors(round, rules)
     gaps = []
     phases = list(RoundPhase.objects.filter(round=round).order_by("started_at", "pk"))
@@ -71,7 +75,7 @@ def build_preview(round, now):
             maximum = Decimal(0)
     except Exception:
         maximum = Decimal(0)
-    if round.number == 2 and not errors:
+    if round.number == 2 and not errors and not way:
         maximum -= len(voided_questions(round))
     entries, metrics = [], {}
     for team in teams:
@@ -117,12 +121,14 @@ def build_preview(round, now):
             if revision.max_score != Decimal(rules.get("score_schema", {}).get("max_score", "0")):
                 gaps.append("A reviewed score uses the wrong approved maximum.")
             if round.number == 2:
-                if not errors:
+                if not errors and not way:
                     try:
                         score, _ = effective_question_score(round, revision.tie_metrics)
                     except ValueError:
                         gaps.append("Round 2 question credit evidence is malformed.")
-                finish = revision.tie_metrics.get("official_finish_active_ms")
+                finish = revision.tie_metrics.get(
+                    "reported_answer_time_ms" if way else "official_finish_active_ms"
+                )
                 if type(finish) is not int or not 0 <= finish <= round.active_budget_ms:
                     gaps.append("Round 2 official finish evidence is missing or invalid.")
                     finish = None
@@ -172,7 +178,13 @@ def build_preview(round, now):
                 "score": float(score),
                 "max_score": float(maximum),
                 "tie_time_ms": finish,
-                **({"official_finish_active_ms": finish} if round.number == 2 else {}),
+                **(
+                    {"reported_answer_time_ms": finish, "score_basis": "WAYGROUND_RAW"}
+                    if way
+                    else {"official_finish_active_ms": finish}
+                    if round.number == 2
+                    else {}
+                ),
                 "criterion_averages": averages if round.number == 4 else None,
                 **({"green_card": received} if green else {}),
                 "rank": None,
@@ -257,6 +269,10 @@ def build_preview(round, now):
         "incidents": list(Incident.objects.filter(round=round).order_by("pk").values()),
         "previous_final": previous_final.pk if previous_final else None,
     }
+    if way:
+        evidence["wayground_reports"] = list(
+            WaygroundReport.objects.filter(round=round).order_by("pk").values()
+        )
     evidence["voids"] = list(
         ExternalQuestionVoid.objects.filter(proposal__round=round).order_by("pk").values()
     )
@@ -289,5 +305,7 @@ def build_preview(round, now):
         if green
         else "FACULTY"
         if round.number == 4
+        else "WAYGROUND_RAW"
+        if way
         else "EXTERNAL_FINISH",
     }

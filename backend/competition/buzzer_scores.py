@@ -133,6 +133,7 @@ def carry_over(round):
                 "parts": parts,
                 "score": sum(map(Decimal, parts.values())),
                 "maximum": sum(map(Decimal, maxima.values())),
+                "maximum_is_storage_bound": kinds.get(2) == "WAYGROUND_RAW",
             }
     return codes, totals, basis, list(dict.fromkeys(errors))
 

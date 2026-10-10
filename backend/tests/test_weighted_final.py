@@ -84,6 +84,22 @@ def test_word_encoding_rejects_image_reveal_steps_and_legacy_source_contract(wei
     assert batch["errors"] and not BuzzerScoreRevision.objects.exists()
 
 
+def test_raw_wayground_points_carry_without_presenting_storage_bound_as_maximum(weighted):
+    snapshot = ResultSnapshot.objects.filter(round__number=2).latest("revision")
+    old_score = snapshot.ranked_entries[0]["score"]
+    entries = [dict(entry, score=7000, max_score=9999999.999) for entry in snapshot.ranked_entries]
+    ResultSnapshot.objects.filter(pk=snapshot.pk).update(
+        ranked_entries=entries, metadata={"ranking_kind": "WAYGROUND_RAW"}
+    )
+    intake(weighted, played(weighted, count=25))
+    preview = build_preview(weighted[0], timezone.now())
+    assert not preview["configuration_errors"] and not preview["evidence_gaps"]
+    entry = preview["entries"][0]
+    assert entry["score_basis"] == "CUMULATIVE_RAW"
+    assert entry["carry_over_score"] == 12 - old_score + 7000
+    assert entry["score"] == 42 - old_score + 7000
+
+
 def test_zero_point_green_card_snapshot_is_valid_qualification_but_not_carried_score(weighted):
     snapshot = ResultSnapshot.objects.filter(round__number=4).latest("revision")
     entries = [

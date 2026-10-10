@@ -827,6 +827,21 @@ class Completion(models.Model):
             raise ValidationError("Practice missions cannot create competitive completions.")
 
 
+class WaygroundReport(ImmutableEvidence):
+    round = models.ForeignKey(Round, on_delete=models.PROTECT)
+    maker = staff_reference()
+    filename = models.CharField(max_length=200)
+    sha256 = models.CharField(max_length=64)
+    content_base64 = models.TextField()
+    metadata = models.JSONField()
+    participants = models.JSONField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["round", "sha256"], name="wayground_report_unique")
+        ]
+
+
 class ImportBatch(models.Model):
     round = models.ForeignKey(Round, on_delete=models.PROTECT)
     file_digest = models.CharField(max_length=64)

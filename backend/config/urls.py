@@ -55,6 +55,11 @@ urlpatterns = [
     path("api/staff/teams/<int:team_id>/credentials", roster_views.issue_credentials),
     path("api/staff/rounds/<int:round_id>/imports", external_views.desk),
     path("api/staff/rounds/<int:round_id>/imports/validate", external_views.validate),
+    path("api/staff/rounds/<int:round_id>/imports/wayground", external_views.wayground_upload),
+    path(
+        "api/staff/rounds/<int:round_id>/imports/wayground/<int:report_id>",
+        external_views.wayground_download,
+    ),
     path("api/staff/rounds/<int:round_id>/questions/void", external_views.void),
     path("api/staff/rounds/<int:round_id>/imports/<int:batch_id>/commit", external_views.commit),
     path("api/staff/rounds/<int:round_id>/results", results_views.staff_preview),

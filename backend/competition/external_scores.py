@@ -61,6 +61,28 @@ def schema_errors(round, rules=None):
     )
     rules = rules if rules is not None else round.rules
     schema = rules.get("score_schema", {})
+    from .wayground import is_wayground
+    from .wayground import schema as wayground_schema
+
+    if is_wayground(round, rules):
+        count = schema.get("question_count")
+        errors = []
+        if type(count) is not int or not 1 <= count <= 500 or schema != wayground_schema(count):
+            errors.append(
+                "Configure the original Wayground Score/answer-duration schema and quiz count."
+            )
+        if rules.get("ranking_policy") != "wayground_score_then_answer_time":
+            errors.append("Rank by exported Score, then lower reported answering duration.")
+        if rules.get("qualification_tie_policy") not in [
+            "supervised_reserve_question",
+            "block_exact_ties",
+        ]:
+            errors.append("Declare a reserve-question or exact-tie hold policy.")
+        if not round.is_demo and (
+            round.advancement_count != 15 or budget != 2700000 or count != 30
+        ):
+            errors.append("Real Round 2 retains 30 questions, 45 minutes and 15 qualifiers.")
+        return errors
     from .green_cards import SCHEMA, is_green_cards
 
     green = is_green_cards(round, rules)
@@ -183,7 +205,7 @@ def effective_question_score(round, metrics):
 
 
 def intake_digest(round):
-    from .models import Incident, ResultSnapshot
+    from .models import Incident, ResultSnapshot, WaygroundReport
 
     previous = (
         Round.objects.filter(number=round.number - 1, is_demo=round.is_demo)
@@ -208,6 +230,9 @@ def intake_digest(round):
                 GreenCardRevision.objects.filter(round=round).order_by("pk").values()
             ),
             "voids": sorted(voided_questions(round)),
+            "wayground_reports": list(
+                WaygroundReport.objects.filter(round=round).order_by("pk").values()
+            ),
             "eligible": [
                 team.pk
                 for team in Team.objects.filter(is_demo=round.is_demo).order_by("pk")
@@ -221,6 +246,12 @@ def parse_rows(round, data):
     from .green_cards import is_green_cards
 
     green = is_green_cards(round)
+    from .wayground import is_wayground
+
+    if is_wayground(round) and "csv" in data:
+        raise ApiProblem(
+            "invalid_input", "Upload the original Wayground .xlsx and map its players."
+        )
     headers = ["team_name"] if green else HEADERS[round.number]
     if "csv" in data:
         content = data["csv"]
@@ -245,6 +276,10 @@ def parse_rows(round, data):
 
 
 def validate_rows(round, rows, enforce_eligibility=True):
+    from .wayground import is_wayground, validate_mapping
+
+    if is_wayground(round):
+        return validate_mapping(round, rows, enforce_eligibility)
     from .green_cards import is_green_cards, validate_names
 
     if is_green_cards(round):

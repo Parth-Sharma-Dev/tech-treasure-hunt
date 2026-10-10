@@ -5,6 +5,35 @@ const headers = ['team_code','correct_question_ids','official_finish_active_ms',
 const desk = { actor_id: 1, can_prepare: true, can_review: true, round: { id: 2, number: 2, title: 'Synthetic quiz', state: 'ENDED', headers, schema: { version: 'round2-v1', question_ids: ['Q01','Q02'] } }, batches: [] as unknown[], void_proposals: [] }
 const roster = { actor_id: 1, can_prepare: true, can_review: true, headers: ['code','name','leader_name','member_count','roster_reference','status'], teams: [], proposals: [] }
 
+test('Wayground workbook upload preserves raw points and requires mapped players/exclusions', async ({ page }) => {
+  const report = { id: 7, filename: 'export.xlsx', sha256: 'test-checksum', metadata: { question_count: 8 }, participants: [
+    { source_row:2,player_name:'Player A',score:'7000',answer_time_ms:24000,counts:{ Correct:8 } },
+    { source_row:3,player_name:'Player B',score:'5390',answer_time_ms:25000,counts:{ Correct:6 } },
+    { source_row:4,player_name:'Guest',score:'3180',answer_time_ms:33000,counts:{ Correct:4 } },
+  ] }
+  let loaded = false
+  let body: unknown
+  await page.route('**/api/staff/rounds/2/imports', route => route.fulfill({ json: { ...desk, round:{ ...desk.round,schema:{ version:'round2-wayground-v2' },headers:['Score','Total Time Taken'] },reports:loaded ? [report] : [],eligible_teams:[{ code:'TEAM-A',name:'Alpha' },{ code:'TEAM-B',name:'Beta' }] } }))
+  await page.route('**/api/staff/rounds/2/imports/wayground', async route => { const data=route.request().postDataJSON(); expect(data.filename).toBe('export.xlsx'); expect(Buffer.from(data.content_base64,'base64').toString()).toBe('original-file'); loaded=true; await route.fulfill({ json:{ report_id:7 } }) })
+  await page.route('**/api/staff/rounds/2/imports/validate', async route => { body=route.request().postDataJSON(); await route.fulfill({ json:{ batch_id:1,errors:[] } }) })
+  await page.goto('/staff/scores')
+  await page.getByLabel('Private intake or correction reason').fill('Original report and deliberate team mapping')
+  await page.getByLabel('Wayground Excel export').setInputFiles({ name:'export.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',buffer:Buffer.from('original-file') })
+  await page.getByRole('button',{ name:'Read Wayground workbook' }).click()
+  await expect(page.getByText('7000 platform points',{ exact:false })).toBeVisible()
+  await expect(page.getByLabel('CSV source')).toHaveCount(0)
+  await page.getByLabel('Team for Player A').selectOption('TEAM-A')
+  await page.getByLabel('Team for Player B').selectOption('TEAM-B')
+  await page.getByLabel('Team for Guest').selectOption('__EXCLUDE__')
+  await page.getByLabel('Exclusion reason for Guest').fill('Not an event team')
+  await page.getByRole('button',{ name:'Dry-run Wayground scores' }).click()
+  await expect.poll(() => body).toMatchObject({ schema_version:'round2-wayground-v2',rows:[
+    { report_id:7,source_row:2,team_code:'TEAM-A',excluded:false,exclusion_reason:'' },
+    { report_id:7,source_row:3,team_code:'TEAM-B',excluded:false,exclusion_reason:'' },
+    { report_id:7,source_row:4,team_code:'',excluded:true,exclusion_reason:'Not an event team' },
+  ] })
+})
+
 test('Round 4 takes only recipient names and requires complete-list confirmation', async ({ page }) => {
   await page.route('**/api/staff/results', route => route.fulfill({ json: { rounds: [{ id: 2, number: 4, title: 'Green Cards', attempt_no: 1 }] } }))
   await page.route('**/api/staff/rounds/2/imports', route => route.fulfill({ json: { ...desk, round: { ...desk.round, number: 4, headers: ['team_name'], schema: { version: 'round4-green-card-v2' } } } }))

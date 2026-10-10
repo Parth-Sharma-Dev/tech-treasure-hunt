@@ -1,10 +1,10 @@
 from django.db import transaction
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_GET, require_POST
 
 from .api import api_errors, json_body
 from .external_scores import HEADERS, commit_import, validate_import
-from .models import AuditEvent, ExternalVoidProposal, ImportBatch
+from .models import AuditEvent, ExternalVoidProposal, ImportBatch, Team, WaygroundReport
 from .results import has_role, locked_round, require_result_view
 
 
@@ -47,6 +47,20 @@ def desk(request, round_id):
             action="external_question_void", after__response__reviewed_proposal_id=proposal["id"]
         ).exists()
     context = {}
+    from .participant import round_eligible
+    from .wayground import is_wayground
+
+    if is_wayground(round):
+        context["reports"] = list(
+            WaygroundReport.objects.filter(round=round)
+            .order_by("-pk")
+            .values("id", "filename", "sha256", "metadata", "participants")
+        )
+        context["eligible_teams"] = [
+            {"code": t.code, "name": t.name}
+            for t in Team.objects.filter(is_demo=round.is_demo).order_by("code")
+            if round_eligible(t, round)
+        ]
     from .green_cards import is_green_cards
 
     if round.number == 5 and round.delivery_mode == "BUZZER":
@@ -65,7 +79,9 @@ def desk(request, round_id):
                 "state": round.state,
                 "title": round.title,
                 "schema": round.rules_snapshot.get("rules", round.rules).get("score_schema", {}),
-                "headers": ["team_name"]
+                "headers": ["Score", "Total Time Taken"]
+                if is_wayground(round)
+                else ["team_name"]
                 if is_green_cards(round)
                 else HEADERS.get(round.number, []),
             },
@@ -79,6 +95,36 @@ def desk(request, round_id):
 @api_errors
 def validate(request, round_id):
     return JsonResponse(validate_import(round_id, request.user, json_body(request)))
+
+
+@require_POST
+@api_errors
+def wayground_upload(request, round_id):
+    from .wayground import upload_report
+
+    return JsonResponse(upload_report(round_id, request.user, json_body(request)))
+
+
+@require_GET
+@api_errors
+def wayground_download(request, round_id, report_id):
+    import base64
+
+    from .api import ApiProblem
+    from .wayground import report_data
+
+    require_result_view(request.user)
+    report = WaygroundReport.objects.filter(round_id=round_id, pk=report_id).first()
+    if report is None:
+        raise ApiProblem("not_found", "Original report not found.", 404)
+    report_data(report)
+    response = HttpResponse(
+        base64.b64decode(report.content_base64),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = f'attachment; filename="wayground-report-{report.pk}.xlsx"'
+    response["Cache-Control"] = "no-store"
+    return response
 
 
 @require_POST

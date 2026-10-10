@@ -121,6 +121,11 @@ def build_preview(round, now):
                 "carry_over_scores": prior["parts"],
                 "carry_over_score": float(prior["score"]),
                 "score": float(total),
+                **(
+                    {"score_basis": "CUMULATIVE_RAW"}
+                    if prior.get("maximum_is_storage_bound")
+                    else {}
+                ),
                 "score_decimal": str(total),
                 "max_score": float(prior["maximum"] + maximum5),
                 "last_correct_at": max(completions) if completions else None,

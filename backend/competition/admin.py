@@ -425,6 +425,11 @@ class GreenCardEvidenceAdmin(ReadOnlyAdmin):
     view_permissions = ("control_round", "verify_evidence", "adjudicate")
 
 
+@admin.register(models.WaygroundReport)
+class WaygroundEvidenceAdmin(ReadOnlyAdmin):
+    view_permissions = ("control_round", "verify_evidence", "adjudicate")
+
+
 @admin.register(models.TeamSession)
 class TeamSessionAdmin(ReadOnlyAdmin):
     view_permissions = ("control_round",)

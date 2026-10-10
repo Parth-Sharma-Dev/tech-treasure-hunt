@@ -133,6 +133,7 @@ def round_queries(round, extended=True):
             m.ImportBatch,
             m.ScoreRevision,
             m.GreenCardRevision,
+            m.WaygroundReport,
             m.ExternalVoidProposal,
         ]:
             queries.append(model.objects.filter(round=round))
@@ -697,6 +698,8 @@ def evidence_page(round_id, actor, kind, cursor=None, limit=200):
         raise ApiProblem("invalid_request", "Choose a supported evidence export type.")
     if type(limit) is not int or not 1 <= limit <= 500:
         raise ApiProblem("invalid_request", "Export limits must be from 1 to 500.")
+    if kind == "waygroundreport":
+        limit = min(limit, 2)  # Original workbook bytes need a smaller bounded page.
     stamp = checkpoint_digest(round)
     offset = 0
     if cursor:

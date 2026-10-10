@@ -33,6 +33,14 @@ def question_void(round_id, actor, data):
     if replay := audit_replay(action_id, fingerprint):
         return replay
     require_external(round)
+    from .wayground import is_wayground
+
+    if is_wayground(round):
+        raise ApiProblem(
+            "unsupported_correction",
+            "Correct Wayground scores using a reviewed replacement export.",
+            409,
+        )
     if round.number != 2 or round.state not in ["ENDED", "PROVISIONAL"]:
         raise ApiProblem(
             "invalid_transition",
