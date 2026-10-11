@@ -5,7 +5,8 @@ from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR.parent / ".env")
+if os.environ.get("DJANGO_SETTINGS_MODULE") != "config.settings_production":
+    load_dotenv(BASE_DIR.parent / ".env")
 
 
 def required_env(name):
