@@ -17,6 +17,7 @@ from .views import csrf, frontend, health
 urlpatterns = [
     path("staff-mfa/enroll/", mfa_views.enroll, name="staff-mfa-enroll"),
     path("staff-mfa/qr/", mfa_views.enrollment_qr, name="staff-mfa-qr"),
+    path("staff-mfa/recovery/", mfa_views.regenerate_recovery, name="staff-mfa-recovery"),
     path("admin/", admin.site.urls),
     path("api/health", health, name="health"),
     path("api/auth/csrf", csrf, name="csrf"),

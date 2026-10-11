@@ -16,7 +16,13 @@ from django_otp.plugins.otp_totp.models import TOTPDevice
 from test_gameplay import game as _game
 from test_gameplay import open_mission
 
-from competition.mfa import PENDING_KEY, VERIFIED_KEY, issue_enrollment
+from competition.mfa import (
+    PENDING_KEY,
+    VERIFIED_KEY,
+    invalidate_restored_authentication,
+    issue_enrollment,
+    reset_staff_mfa,
+)
 from competition.models import AuditEvent, StaffLoginWindow, StaffMfaEnrollment
 
 pytestmark = [pytest.mark.django_db, pytest.mark.staff_mfa]
@@ -344,3 +350,63 @@ def test_failed_otp_does_not_reflect_password_or_invite_in_html(staff):
     response = sign_in(Client(), staff, "invalid")
     assert response.status_code == 200
     assert PASSWORD not in response.content.decode()
+
+
+def test_recovery_replacement_requires_mfa_and_fresh_password(staff):
+    anonymous = Client()
+    assert anonymous.get("/staff-mfa/recovery/").status_code == 302
+    anonymous.force_login(staff)
+    assert anonymous.get("/staff-mfa/recovery/").status_code == 302
+    client, _ = verified_client(staff)
+    assert client.get("/staff-mfa/recovery/").status_code == 200
+    assert post(client, "/staff-mfa/recovery/", {"password": "wrong"}).status_code == 200
+    assert not StaticToken.objects.filter(device__user=staff).exists()
+    response = post(client, "/staff-mfa/recovery/", {"password": PASSWORD})
+    assert b"Recovery codes replaced" in response.content
+    old = set(StaticToken.objects.filter(device__user=staff).values_list("token", flat=True))
+    assert len(old) == 10
+    assert not any(value.encode() in client.get("/staff-mfa/recovery/").content for value in old)
+    post(client, "/staff-mfa/recovery/", {"password": PASSWORD})
+    assert not StaticToken.objects.filter(device__user=staff, token__in=old).exists()
+
+
+def test_recovery_login_session_survives_backup_code_regeneration(staff):
+    TOTPDevice.objects.create(user=staff, confirmed=True)
+    recovery = StaticDevice.objects.create(user=staff, confirmed=True)
+    StaticToken.objects.create(device=recovery, token="0123456789abcdef")
+    client = Client(enforce_csrf_checks=True)
+    assert sign_in(client, staff, "0123456789abcdef", factor="recovery").status_code == 302
+    assert post(client, "/staff-mfa/recovery/", {"password": PASSWORD}).status_code == 200
+    assert client.get("/api/staff/rounds").status_code == 200
+
+
+def test_reset_requires_independent_superuser_and_revokes_old_session(staff):
+    client, _ = verified_client(staff)
+    with pytest.raises(ValidationError):
+        reset_staff_mfa(staff, staff, "Self-reset rejected")
+    actor = get_user_model().objects.create_superuser(
+        username="reset-reviewer", password="test-only"
+    )
+    code = reset_staff_mfa(staff, actor, "Identity checked by organizer; lost phone")
+    assert not TOTPDevice.objects.filter(user=staff).exists()
+    assert not StaticDevice.objects.filter(user=staff).exists()
+    assert client.get("/api/staff/rounds").status_code == 403
+    assert client.get("/admin/").status_code == 302
+    assert (
+        StaffMfaEnrollment.objects.get(code_hash=hashlib.sha256(code.encode()).hexdigest()).user
+        == staff
+    )
+    assert AuditEvent.objects.filter(action="staff_mfa_reset", actor=actor).exists()
+
+
+def test_restore_invalidates_cookies_enrollment_and_spent_recovery_codes(staff):
+    client, _ = verified_client(staff)
+    recovery = StaticDevice.objects.create(user=staff, confirmed=True)
+    StaticToken.objects.create(device=recovery, token="restored-code")
+    # A different unenrolled account represents a pending invite in an older backup.
+    other = get_user_model().objects.create_user(username="restore-staff", is_staff=True)
+    issue_enrollment(other, staff, "Before backup")
+    invalidate_restored_authentication("default")
+    assert client.get("/api/staff/rounds").status_code == 403
+    assert not StaticToken.objects.exists()
+    assert not StaffMfaEnrollment.objects.filter(expires_at__gt=timezone.now()).exists()

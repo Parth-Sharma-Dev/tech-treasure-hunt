@@ -2,8 +2,9 @@ import base64
 from io import BytesIO
 
 import qrcode
+from django import forms
 from django.contrib import admin
-from django.contrib.auth import get_user_model, login
+from django.contrib.auth import authenticate, get_user_model, login
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.http import Http404, HttpResponse
@@ -14,14 +15,19 @@ from django.utils.crypto import constant_time_compare
 from django.views.decorators.cache import never_cache
 from django.views.decorators.debug import sensitive_post_parameters, sensitive_variables
 from django.views.decorators.http import require_http_methods, require_safe
-from django_otp import verify_token
+from django_otp import DEVICE_ID_SESSION_KEY, verify_token
+from django_otp import login as otp_login
+from django_otp.models import Device
+from django_otp.plugins.otp_static.models import StaticDevice, StaticToken
 
 from .mfa import (
     PENDING_KEY,
     EnrollmentCredentialsForm,
     EnrollmentTokenForm,
+    password_attempt,
     recovery_codes,
     reset_password_attempts,
+    staff_mfa_verified,
     start_enrollment,
 )
 from .models import AuditEvent, StaffMfaEnrollment
@@ -151,3 +157,78 @@ def enrollment_qr(request):
     response = HttpResponse(output.getvalue(), content_type="image/png")
     response["X-Content-Type-Options"] = "nosniff"
     return response
+
+
+class RecoveryCodesForm(forms.Form):
+    password = forms.CharField(
+        label="Confirm your current staff password",
+        widget=forms.PasswordInput(render_value=False, attrs={"autocomplete": "current-password"}),
+    )
+
+
+@never_cache
+@require_http_methods(["GET", "POST"])
+@sensitive_post_parameters()
+@sensitive_variables()
+def regenerate_recovery(request):
+    if not staff_mfa_verified(request):
+        return redirect("/admin/login/?next=/staff-mfa/recovery/")
+    form = RecoveryCodesForm(request.POST if request.method == "POST" else None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            password_attempt(request.user.username)
+        except ValidationError as error:
+            form.add_error(None, error)
+        else:
+            user = authenticate(
+                request, username=request.user.username, password=form.cleaned_data["password"]
+            )
+            if user is None:
+                form.add_error("password", "Password not accepted.")
+            else:
+                with transaction.atomic():
+                    current = get_user_model().objects.select_for_update().get(pk=user.pk)
+                    device = Device.from_persistent_id(
+                        request.session.get(DEVICE_ID_SESSION_KEY, ""), for_verify=True
+                    )
+                    if not (
+                        current.is_active
+                        and current.is_staff
+                        and device
+                        and device.confirmed
+                        and device.user_id == current.pk
+                        and constant_time_compare(
+                            current.get_session_auth_hash(), user.get_session_auth_hash()
+                        )
+                    ):
+                        return redirect("/admin/login/?next=/staff-mfa/recovery/")
+                    codes = recovery_codes(current)
+                    if isinstance(device, StaticDevice):
+                        # Preserve this verified session when replacing its recovery device.
+                        otp_login(request, StaticDevice.objects.get(user=current))
+                    reset_password_attempts(current)
+                    AuditEvent.objects.create(
+                        actor=current,
+                        action="staff_mfa_recovery_codes_reissued",
+                        after={"user_id": current.pk},
+                        reason="Verified staff confirmed password and replaced recovery codes.",
+                    )
+                    return render(
+                        request,
+                        "staff_mfa/complete.html",
+                        {
+                            **admin.site.each_context(request),
+                            "title": "Recovery codes replaced",
+                            "codes": codes,
+                        },
+                    )
+    return render(
+        request,
+        "staff_mfa/recovery.html",
+        {
+            **admin.site.each_context(request),
+            "title": "Replace recovery codes",
+            "form": form,
+            "remaining": StaticToken.objects.filter(device__user=request.user).count(),
+        },
+    )

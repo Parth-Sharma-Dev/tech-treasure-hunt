@@ -193,3 +193,40 @@ def recovery_codes(user):
         codes.add(secrets.token_hex(8))
     StaticToken.objects.bulk_create([StaticToken(device=device, token=code) for code in codes])
     return sorted(codes)
+
+
+@transaction.atomic
+def reset_staff_mfa(user, actor, reason):
+    if not (actor.is_active and actor.is_staff and actor.is_superuser) or actor.pk == user.pk:
+        raise ValidationError("A different active superuser must authorize a lost-device reset.")
+    if not reason.strip() or len(reason) > 500:
+        raise ValidationError(
+            "Record the verified identity and reset reason (up to 500 characters)."
+        )
+    user = get_user_model().objects.select_for_update().get(pk=user.pk)
+    if not user.is_active or not user.is_staff:
+        raise ValidationError("Only an active staff account can receive a reset.")
+    TOTPDevice.objects.filter(user=user).delete()
+    StaticDevice.objects.filter(user=user).delete()
+    StaffMfaEnrollment.objects.filter(user=user).update(expires_at=timezone.now())
+    reset_password_attempts(user)
+    AuditEvent.objects.create(
+        actor=actor,
+        action="staff_mfa_reset",
+        after={"user_id": user.pk},
+        reason=reason,
+    )
+    return issue_enrollment(user, actor, reason)
+
+
+def invalidate_restored_authentication(alias):
+    """Revoke restored cookies, enrollment invites and potentially spent backup codes."""
+    from django.contrib.sessions.models import Session
+    from django.db import connections
+
+    tables = set(connections[alias].introspection.table_names())
+    for model in (Session, StaticToken):
+        if model._meta.db_table in tables:
+            model.objects.using(alias).all().delete()
+    if StaffMfaEnrollment._meta.db_table in tables:
+        StaffMfaEnrollment.objects.using(alias).update(expires_at=timezone.now())

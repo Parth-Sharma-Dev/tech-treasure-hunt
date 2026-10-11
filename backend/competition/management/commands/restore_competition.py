@@ -107,6 +107,9 @@ class Command(BaseCommand):
                     revoked_at=now
                 )
                 Team.objects.using(alias).update(session_version=F("session_version") + 1)
+                from competition.mfa import invalidate_restored_authentication
+
+                invalidate_restored_authentication(alias)
                 for round in Round.objects.using(alias).exclude(state="DRAFT"):
                     Incident.objects.using(alias).create(
                         round=round,

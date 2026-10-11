@@ -1,0 +1,8 @@
+{% extends "admin/base_site.html" %}
+{% block nav-sidebar %}{% endblock %}
+{% block content %}
+<p>You have {{ remaining }} unused recovery codes.</p>
+<p>Confirm your password to replace all previous recovery codes with ten new codes. Save the new codes privately; previous codes will stop working.</p>
+<form method="post">{% csrf_token %}{{ form.as_p }}<input type="submit" value="Replace recovery codes"></form>
+<p><a href="{% url 'admin:index' %}">Return to administration</a></p>
+{% endblock %}
