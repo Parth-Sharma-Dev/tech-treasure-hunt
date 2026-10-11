@@ -14,7 +14,7 @@ from django.db.models import F
 from django.utils import timezone
 from psycopg import sql
 
-from competition.management.commands.backup_competition import pg_environment
+from competition.management.commands.backup_competition import pg_connection_options, pg_environment
 from competition.models import Incident, Round, Team, TeamSession
 from competition.rules import require_staff_permission
 
@@ -66,6 +66,7 @@ class Command(BaseCommand):
             dbname=config["NAME"],
             user=config["USER"],
             password=config["PASSWORD"],
+            **pg_connection_options(config),
             autocommit=True,
         ) as admin:
             if admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", [target]).fetchone():

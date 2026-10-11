@@ -9,6 +9,22 @@ from django.core.management.base import BaseCommand, CommandError
 from django.core.signing import Signer
 from django.db import connections
 
+PG_OPTION_ENV = {
+    "sslmode": "PGSSLMODE",
+    "sslrootcert": "PGSSLROOTCERT",
+    "sslcert": "PGSSLCERT",
+    "sslkey": "PGSSLKEY",
+    "sslcrl": "PGSSLCRL",
+    "connect_timeout": "PGCONNECT_TIMEOUT",
+}
+
+
+def pg_connection_options(config):
+    # Carry transport policy into direct psycopg/client-tool connections. Query
+    # timeouts for live requests do not apply to a potentially long backup/restore.
+    options = config.get("OPTIONS", {})
+    return {key: options[key] for key in PG_OPTION_ENV if key in options}
+
 
 def pg_environment(config, database=None):
     return {
@@ -18,6 +34,7 @@ def pg_environment(config, database=None):
         "PGUSER": config["USER"],
         "PGPASSWORD": config["PASSWORD"],
         "PGDATABASE": database or config["NAME"],
+        **{PG_OPTION_ENV[key]: str(value) for key, value in pg_connection_options(config).items()},
     }
 
 
