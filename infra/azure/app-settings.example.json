@@ -1,0 +1,18 @@
+[
+  { "name": "DJANGO_SETTINGS_MODULE", "value": "config.settings_production", "slotSetting": true },
+  { "name": "DJANGO_DEBUG", "value": "false", "slotSetting": true },
+  { "name": "DJANGO_SECRET_KEY", "value": "REPLACE_WITH_SECRET", "slotSetting": true },
+  { "name": "ANSWER_HMAC_KEY", "value": "REPLACE_WITH_SECRET", "slotSetting": true },
+  { "name": "DJANGO_ALLOWED_HOSTS", "value": "REPLACE_WITH_APP_HOSTNAME", "slotSetting": true },
+  { "name": "DJANGO_CSRF_TRUSTED_ORIGINS", "value": "https://REPLACE_WITH_APP_HOSTNAME", "slotSetting": true },
+  { "name": "DJANGO_TRUST_PROXY_SSL_HEADER", "value": "true", "slotSetting": true },
+  { "name": "POSTGRES_DB", "value": "treasure_hunt", "slotSetting": true },
+  { "name": "POSTGRES_USER", "value": "REPLACE_WITH_APP_ROLE", "slotSetting": true },
+  { "name": "POSTGRES_PASSWORD", "value": "REPLACE_WITH_SECRET", "slotSetting": true },
+  { "name": "POSTGRES_HOST", "value": "REPLACE_WITH_SERVER.postgres.database.azure.com", "slotSetting": true },
+  { "name": "POSTGRES_PORT", "value": "5432", "slotSetting": true },
+  { "name": "POSTGRES_SSLROOTCERT", "value": "system", "slotSetting": true },
+  { "name": "WEB_CONCURRENCY", "value": "3", "slotSetting": false },
+  { "name": "SCM_DO_BUILD_DURING_DEPLOYMENT", "value": "true", "slotSetting": false },
+  { "name": "DISABLE_COLLECTSTATIC", "value": "true", "slotSetting": false }
+]
