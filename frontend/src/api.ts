@@ -4,6 +4,16 @@ export class ApiError extends Error {
   }
 }
 
+export function staffSignInRequired(error: unknown): boolean {
+  return error instanceof ApiError && (error.code === 'staff_mfa_required' || error.code === 'staff_login_required')
+}
+
+function responseError(path: string, response: Response, body: { error?: { message?: string; code?: string } } | null): ApiError {
+  const error = new ApiError(response.status, response.headers.get('X-Request-ID'), body?.error?.message, body?.error?.code)
+  if (path.startsWith('/api/staff/') && staffSignInRequired(error)) window.dispatchEvent(new Event('tth:staff-sign-in-required'))
+  return error
+}
+
 export async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(path, {
     credentials: 'same-origin',
@@ -13,7 +23,7 @@ export async function getJson<T>(path: string, signal?: AbortSignal): Promise<T>
   })
   if (!response.ok) {
     const body = await response.json().catch(() => null)
-    throw new ApiError(response.status, response.headers.get('X-Request-ID'), body?.error?.message, body?.error?.code)
+    throw responseError(path, response, body)
   }
   return response.json() as Promise<T>
 }
@@ -26,7 +36,7 @@ export async function postJson<T>(path: string, body: unknown, headers: Record<s
     body: JSON.stringify(body),
   })
   const data = await response.json().catch(() => null)
-  if (!response.ok) throw new ApiError(response.status, response.headers.get('X-Request-ID'), data?.error?.message, data?.error?.code)
+  if (!response.ok) throw responseError(path, response, data)
   if (data === null) throw new Error('The response could not be read. Check the outcome before retrying.')
   return data as T
 }

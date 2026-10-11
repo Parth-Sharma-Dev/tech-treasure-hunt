@@ -9,6 +9,7 @@ import { StaffCoding } from './StaffCoding'
 import { StaffScores } from './StaffScores'
 import { StaffRoster } from './StaffRoster'
 import { StaffBuzzer } from './StaffBuzzer'
+import { StaffSignInNotice } from './StaffAction'
 
 const rounds = [
   ['01', 'Treasure hunt', 'Follow the clues. Find your next move.'],
@@ -45,6 +46,7 @@ export function App() {
       </header>
 
       <main id="main">
+        <StaffSignInNotice />
         {location.pathname === '/staff/buzzer' ? <StaffBuzzer /> : <>
         {location.pathname === '/staff/scores' ? <StaffScores /> : location.pathname === '/staff/roster' ? <StaffRoster /> : location.pathname === '/staff/coding' ? <StaffCoding /> : /^\/rounds\/[1-9][0-9]*\/coding$/.test(location.pathname) ? <CodingWorkspace /> : location.pathname === '/staff/results' ? <StaffResults /> : /^\/rounds\/[1-9][0-9]*\/results$/.test(location.pathname) ? <PublishedResults /> : /^\/rounds\/[1-9][0-9]*$/.test(location.pathname) ? <Lobby roundId={Number(location.pathname.split('/')[2])} /> : location.pathname === '/staff/rounds' ? <StaffRounds /> : location.pathname === '/login' ? <Login /> : location.pathname.startsWith('/missions/') ? <Mission /> : location.pathname === '/lobby' ? <Lobby /> : <>
         <section className="hero" aria-labelledby="hero-heading">

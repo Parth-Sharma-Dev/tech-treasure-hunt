@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { ApiError, getJson, postJson } from './api'
+import { ApiError, getJson, postJson, staffSignInRequired } from './api'
 import { pollInterval } from './RoundClock'
 import { PaperDesk, type PaperData } from './PaperDesk'
 import { RecoveryDesk, type RecoveryData } from './RecoveryDesk'
@@ -64,7 +64,7 @@ function useResultAction(preview: Preview, refresh: () => void) {
   const key = `tth:results:${preview.actor_id}:${preview.round_id}`
   const [pending, setPending] = useState<Action | null>(() => { try { return JSON.parse(sessionStorage.getItem(key) ?? 'null') as Action | null } catch { return null } })
   const mutation = useMutation({ mutationFn: (request: Action) => postJson(`/api/staff/rounds/${preview.round_id}/${request.endpoint}`, request.data), onSuccess: () => { sessionStorage.removeItem(key); setPending(null); refresh() }, onError: error => {
-    if (error instanceof ApiError && error.status >= 400 && error.status < 500) { sessionStorage.removeItem(key); setPending(null); refresh() }
+    if (error instanceof ApiError && error.status >= 400 && error.status < 500 && !staffSignInRequired(error)) { sessionStorage.removeItem(key); setPending(null); refresh() }
   } })
   return { pending, mutation, disabled: !!pending || mutation.isPending, send: (endpoint: Action['endpoint'], data: Record<string, unknown>) => {
     const request = { endpoint, data: { ...data, action_id: crypto.randomUUID() } }

@@ -4,6 +4,32 @@ import { portalRound } from './portal-fixtures'
 const clock = { round_id: 1, state: 'LIVE', play_mode: 'ONLINE', control_version: 2, server_time: '2026-10-06T12:00:00Z', remaining_ms: 120_000, active_budget_ms: 120_000, active_elapsed_ms: 0, deadline_at: '2026-10-06T12:02:00Z' }
 const round = { ...clock, title: 'Synthetic hunt', number: 1, attempt_no: 1, is_demo: true }
 
+test('MFA expiry preserves a saved control through sign-in and reload', async ({ page }) => {
+  let original: unknown
+  let calls = 0
+  await page.route('**/api/health', route => route.fulfill({ json: { status: 'ok' } }))
+  await page.route('**/api/staff/rounds', route => route.fulfill({ json: { rounds: [round] } }))
+  await page.route('**/api/staff/rounds/1/control', async route => {
+    calls++
+    if (calls === 1) {
+      original = route.request().postDataJSON()
+      await route.fulfill({ status: 403, json: { error: { code: 'staff_mfa_required', message: 'Verify staff MFA.' } } })
+    } else {
+      expect(route.request().postDataJSON()).toEqual(original)
+      await route.fulfill({ json: { ...round, state: 'FROZEN', control_version: 3 } })
+    }
+  })
+  await page.goto('/staff/rounds')
+  await page.getByLabel('Reason', { exact: true }).fill('Preserve pause after MFA expiry')
+  await page.getByRole('button', { name: 'Apply: Pause round', exact: true }).click()
+  await expect(page.getByRole('link', { name: 'Sign in with MFA' })).toHaveAttribute('href', '/admin/login/?next=%2Fstaff%2Frounds')
+  expect(await page.evaluate(() => sessionStorage.getItem('tth:control:1'))).not.toBeNull()
+  await page.reload()
+  await page.getByRole('button', { name: 'Retry same action' }).click()
+  await expect(page.getByText('Action confirmed. Current state has been refreshed.')).toBeVisible()
+  expect(calls).toBe(2)
+})
+
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/health', route => route.fulfill({ json: { status: 'ok' } }))
   await page.route('**/api/auth/csrf', route => route.fulfill({ json: { csrf_token: 'test-token' } }))

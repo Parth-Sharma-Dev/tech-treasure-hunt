@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { ApiError, getJson, postJson } from './api'
+import { ApiError, getJson, postJson, staffSignInRequired } from './api'
 import { RoundClock, pollInterval, stateLabels, type Clock } from './RoundClock'
 import { StaffNavigation } from './StaffAction'
 
@@ -25,7 +25,7 @@ function Controls({ round, receivedAt, refresh }: { round: StaffRound; receivedA
     mutationFn: (request: ActionRequest) => postJson<Clock & { deadline_reached: boolean }>(`/api/staff/rounds/${round.round_id}/control`, request),
     onSuccess: () => { sessionStorage.removeItem(storageKey); setPending(null); setReason(''); refresh() },
     onError: error => {
-      if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
+      if (error instanceof ApiError && error.status >= 400 && error.status < 500 && !staffSignInRequired(error)) {
         sessionStorage.removeItem(storageKey); setPending(null); refresh()
       }
     },

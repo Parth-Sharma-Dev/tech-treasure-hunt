@@ -1,6 +1,10 @@
 import hashlib
+import os
+import shutil
+import subprocess
 from datetime import timedelta
 from io import StringIO
+from pathlib import Path
 
 import pytest
 from django.contrib import admin
@@ -28,6 +32,29 @@ from competition.models import AuditEvent, StaffLoginWindow, StaffMfaEnrollment
 pytestmark = [pytest.mark.django_db, pytest.mark.staff_mfa]
 game = _game
 PASSWORD = "synthetic-staff-test-password"
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.skipif(
+    os.environ.get("TTH_BROWSER_INTEGRATION") != "1",
+    reason="Opt-in: requires Playwright Chromium.",
+)
+def test_real_browser_mfa_enrollment_and_recovery(staff, live_server):
+    invite = issue_enrollment(staff, staff, "Synthetic browser MFA rehearsal")
+    result = subprocess.run(
+        [shutil.which("node"), "frontend/scripts/live-mfa-smoke.mjs"],
+        cwd=Path(__file__).resolve().parents[2],
+        env={
+            **os.environ,
+            "TTH_BACKEND_URL": live_server.url.replace("localhost", "127.0.0.1"),
+            "TTH_MFA_INVITE": invite,
+        },
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert StaticToken.objects.filter(device__user=staff).count() == 9
 
 
 @pytest.fixture

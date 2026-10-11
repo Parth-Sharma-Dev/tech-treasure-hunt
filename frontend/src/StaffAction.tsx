@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { ApiError, postJson } from './api'
+import { ApiError, postJson, staffSignInRequired } from './api'
 
 type Request = { endpoint: string; data: Record<string, unknown> }
 
@@ -10,7 +10,7 @@ export function useStaffAction(key: string, refresh: () => void) {
   })
   const mutation = useMutation({ mutationFn: (request: Request) => postJson(request.endpoint, request.data),
     onSuccess: () => { sessionStorage.removeItem(key); setPending(null); refresh() },
-    onError: error => { if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
+    onError: error => { if (error instanceof ApiError && error.status >= 400 && error.status < 500 && !staffSignInRequired(error)) {
       sessionStorage.removeItem(key); setPending(null); refresh()
     } },
   })
@@ -30,4 +30,15 @@ export function StaffActionStatus({ action }: { action: ReturnType<typeof useSta
 
 export function StaffNavigation() {
   return <nav className="staff-navigation" aria-label="Staff workflows"><a href="/staff/rounds">Round controls</a><a href="/staff/results">Results and appeals</a><a href="/staff/buzzer">Round 5 buzzer</a><a href="/staff/coding">Coding lab</a><a href="/staff/scores">External scores</a><a href="/staff/roster">Team roster</a><a href="/admin/competition/facultyprofile/">Faculty profiles</a></nav>
+}
+
+export function StaffSignInNotice() {
+  const [required, setRequired] = useState(false)
+  useEffect(() => {
+    const show = () => setRequired(true)
+    window.addEventListener('tth:staff-sign-in-required', show)
+    return () => window.removeEventListener('tth:staff-sign-in-required', show)
+  }, [])
+  if (!required || !location.pathname.startsWith('/staff/')) return null
+  return <section className="panel" role="alert"><p>Staff access requires your password and an authenticator or recovery code. Saved actions remain available after sign in.</p><a href={`/admin/login/?next=${encodeURIComponent(location.pathname)}`}>Sign in with MFA</a></section>
 }
