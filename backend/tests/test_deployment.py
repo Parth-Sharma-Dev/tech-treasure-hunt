@@ -12,7 +12,7 @@ import pytest
 BACKEND = Path(__file__).resolve().parents[1]
 
 
-def production_process(code, overrides=None):
+def production_process(code, overrides=None, *, cwd=BACKEND):
     env = {
         key: value
         for key, value in os.environ.items()
@@ -36,7 +36,7 @@ def production_process(code, overrides=None):
         else:
             env[key] = value
     return subprocess.run(
-        [sys.executable, "-c", code], cwd=BACKEND, env=env, capture_output=True, text=True
+        [sys.executable, "-c", code], cwd=cwd, env=env, capture_output=True, text=True
     )
 
 
@@ -207,5 +207,107 @@ def test_backend_only_release_still_returns_404_for_frontend_routes(tmp_path):
         "assert client.get('/').status_code == 404; "
         "assert client.get('/login').status_code == 404; "
         "assert client.get('/api/auth/csrf').status_code == 200"
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def frontend_fixture(tmp_path):
+    dist = tmp_path / "dist"
+    (dist / "assets").mkdir(parents=True)
+    (dist / ".vite").mkdir()
+    (dist / ".vite/manifest.json").write_text(
+        json.dumps({"index.html": {"isEntry": True, "file": "assets/app-12345678.js"}})
+    )
+    (dist / "index.html").write_text(
+        '<script type="module" src="/static/frontend/assets/app-12345678.js"></script>'
+    )
+    (dist / "assets/app-12345678.js").write_text("console.log('fixture')")
+    return dist
+
+
+def package_frontend(dist, output):
+    return subprocess.run(
+        [
+            sys.executable,
+            str(BACKEND.parent / "tools/package_backend.py"),
+            "--frontend-dist",
+            str(dist),
+            "--output",
+            str(output),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_website_package_includes_only_compiled_frontend_and_preserves_binary_assets(tmp_path):
+    dist = frontend_fixture(tmp_path)
+    binary = b"binary-test\r\n\x00\xff"
+    (dist / "assets/image-12345678.png").write_bytes(binary)
+    output = tmp_path / "website.zip"
+    result = package_frontend(dist, output)
+    assert result.returncode == 0, result.stderr
+    assert "SHA256:" in result.stdout
+    with zipfile.ZipFile(output) as archive:
+        assert archive.read("frontend_dist/assets/image-12345678.png") == binary
+        assert "frontend_dist/index.html" in archive.namelist()
+        assert "config/settings_production.py" in archive.namelist()
+        assert not any(name.startswith("frontend_dist/.vite/") for name in archive.namelist())
+
+
+@pytest.mark.parametrize("extra", [".env", "host-answers.json", "assets/app-12345678.js.map"])
+def test_website_package_rejects_unexpected_private_files_or_source_maps(tmp_path, extra):
+    dist = frontend_fixture(tmp_path)
+    (dist / extra).write_text("private test fixture")
+    output = tmp_path / "website.zip"
+    result = package_frontend(dist, output)
+    assert result.returncode != 0
+    assert "Unexpected frontend build file" in result.stderr
+    assert not output.exists()
+
+
+def test_website_package_rejects_missing_or_wrongly_based_assets(tmp_path):
+    dist = frontend_fixture(tmp_path)
+    (dist / "index.html").write_text('<script src="/assets/app-12345678.js"></script>')
+    result = package_frontend(dist, tmp_path / "wrong-base.zip")
+    assert result.returncode != 0
+    (dist / "index.html").write_text(
+        '<script src="/static/frontend/assets/app-12345678.js"></script>'
+    )
+    (dist / "assets/app-12345678.js").unlink()
+    result = package_frontend(dist, tmp_path / "missing.zip")
+    assert result.returncode != 0
+    assert "Missing or incorrectly configured frontend asset" in result.stderr
+
+
+@pytest.mark.skipif(
+    not (BACKEND.parent / "frontend/dist/.vite/manifest.json").is_file(),
+    reason="Run npm run build in frontend to test the real compiled release.",
+)
+def test_real_website_package_serves_build_using_production_settings(tmp_path):
+    output = tmp_path / "website.zip"
+    result = package_frontend(BACKEND.parent / "frontend/dist", output)
+    assert result.returncode == 0, result.stderr
+    release = tmp_path / "release"
+    with zipfile.ZipFile(output) as archive:
+        archive.extractall(release)
+    result = production_process(
+        "import re; import django; django.setup(); "
+        "from django.core.management import call_command; "
+        "from django.test import Client; "
+        "call_command('collectstatic', interactive=False, verbosity=0); "
+        "client = Client(HTTP_HOST='hunt.example.com', HTTP_X_FORWARDED_PROTO='https'); "
+        "response = client.get('/login'); "
+        "assert response.status_code == 200; "
+        "html = b''.join(response.streaming_content).decode(); "
+        'assets = re.findall(r\'(?:src|href)="(/static/frontend/assets/[^"]+)"\', html); '
+        "assert len(assets) >= 2; "
+        "responses = [client.get(url) for url in assets]; "
+        "assert all(r.status_code == 200 for r in responses); "
+        "assert all('immutable' in r['Cache-Control'] for r in responses); "
+        "assert client.get('/api/auth/csrf').status_code == 200; "
+        "assert client.get('/api/not-a-route').status_code == 404; "
+        "assert client.get('/staff/buzzer').status_code == 200",
+        cwd=release,
     )
     assert result.returncode == 0, result.stderr
