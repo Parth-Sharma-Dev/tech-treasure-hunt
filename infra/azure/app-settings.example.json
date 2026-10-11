@@ -12,6 +12,8 @@
   { "name": "POSTGRES_HOST", "value": "REPLACE_WITH_SERVER.postgres.database.azure.com", "slotSetting": true },
   { "name": "POSTGRES_PORT", "value": "5432", "slotSetting": true },
   { "name": "POSTGRES_SSLROOTCERT", "value": "system", "slotSetting": true },
+  { "name": "AZURE_MISSION_ACCOUNT_NAME", "value": "REPLACE_WITH_STORAGE_ACCOUNT", "slotSetting": true },
+  { "name": "AZURE_MISSION_CONTAINER", "value": "mission-images", "slotSetting": true },
   { "name": "WEB_CONCURRENCY", "value": "3", "slotSetting": false },
   { "name": "SCM_DO_BUILD_DURING_DEPLOYMENT", "value": "true", "slotSetting": false },
   { "name": "DISABLE_COLLECTSTATIC", "value": "true", "slotSetting": false }

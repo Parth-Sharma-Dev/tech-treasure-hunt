@@ -1,5 +1,10 @@
 # Actual event content preparation
 
+Round 1 image-upload/display support is now implemented. After deployment, fill
+the remaining 12 mission placeholders through admin using the
+[private image preparation workflow](ROUND1_IMAGE_CONTENT.md). The supplied 13
+riddle missions keep their content; actual images remain pending.
+
 10 October 2026: the organizer supplied the real round names, Round 1 riddle PDF,
 Round 2 quiz DOCX and five CSE faculty contacts. Physical rehearsal is planned for
 11 October; this record does not certify that rehearsal.

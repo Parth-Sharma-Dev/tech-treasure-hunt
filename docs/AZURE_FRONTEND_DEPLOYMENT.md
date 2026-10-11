@@ -59,8 +59,10 @@ az webapp deploy --resource-group $resourceGroup --name $appName --src-path ".lo
 Deploy before play or during a controlled maintenance pause. On each instance,
 startup collects Django admin assets and the bundled React JS/CSS, then launches
 Gunicorn. Existing signing secrets and the database stay in place. This frontend
-integration adds no migrations; for future code/schema releases use the backend
-runbook's single-session migration step. Keep the previous combined ZIP for a
+integration itself adds no migrations; the subsequent Round 1 image feature
+requires migration 0022 and [private image storage setup](ROUND1_IMAGE_CONTENT.md).
+Use the backend runbook's single-session migration step for schema releases.
+Keep the previous combined ZIP for a
 schema-compatible rollback. Redeploying a backend-only ZIP will remove the React
 pages from that release.
 

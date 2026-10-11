@@ -59,6 +59,9 @@ These cover organizer start/pause, team login, explicit QR opening, an answer wi
 
 ## Requirements
 
+Round 1's remaining image clues can be uploaded through deployed Django admin
+while DRAFT. See [private image content and Azure storage setup](docs/ROUND1_IMAGE_CONTENT.md).
+
 - Python 3.13 (tested with 3.13.13).
 - Node.js 24 (tested with 24.15.0) and npm.
 - PostgreSQL 18 (tested with 18.6), either installed locally or using Docker Compose.

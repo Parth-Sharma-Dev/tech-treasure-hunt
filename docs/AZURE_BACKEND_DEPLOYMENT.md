@@ -58,6 +58,7 @@ file or put secrets into CLI command arguments, deployment logs or the ZIP.
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Dedicated event database and role credentials. |
 | `POSTGRES_HOST`, `POSTGRES_PORT` | Azure server FQDN, port `5432`; private DNS must resolve it from the app. |
 | `POSTGRES_SSLROOTCERT` | `system` uses the runtime's system CA trust; alternatively an absolute path to a maintained CA bundle available on every instance. TLS always uses `verify-full`. |
+| `AZURE_MISSION_ACCOUNT_NAME`, `AZURE_MISSION_CONTAINER` | Private Blob account/container for Round 1 images; required before image operations. Configure App Service managed identity and container permissions. |
 | `WEB_CONCURRENCY` | Initial value `3` synchronous workers per instance; tune through rehearsal. |
 | `SCM_DO_BUILD_DURING_DEPLOYMENT` | `true` enables installation of the ZIP's root `requirements.txt`. |
 | `DISABLE_COLLECTSTATIC` | `true` skips Oryx's collection; startup collects static files using resolved runtime settings. |
@@ -152,6 +153,8 @@ commands and [event preparation notes](ACTUAL_EVENT_PREPARATION.md). Transfer so
 files securely only for that operation. Preserve the answer key if carrying stored
 answer hashes. Leave Round 5 unpublished in DRAFT until its actual content arrives.
 Do not run demo seed commands in production or treat a fresh schema as event-ready.
+Round 1 images can be uploaded later through admin after migration 0022 and private
+Blob setup; follow [Round 1 image preparation](ROUND1_IMAGE_CONTENT.md).
 
 For backups/recovery, use a trusted machine or release environment with private
 database connectivity and PostgreSQL 18 client tools; those tools are not included
@@ -159,6 +162,8 @@ in the ZIP and might not be installed on App Service. Store backups and signed
 manifests in private durable storage. Runtime temporary files do not survive all
 deployments. Follow [evidence recovery](EVIDENCE_RECOVERY.md), including preservation
 of original signing keys and independent review before using restored evidence.
+Database backups retain uploaded image references/hashes. Preserve the referenced
+private Blob objects separately and restore both together.
 
 ## 6. Verify and proceed to frontend integration
 
