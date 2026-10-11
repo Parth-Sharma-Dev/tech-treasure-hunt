@@ -1,0 +1,8 @@
+{% extends "admin/base_site.html" %}
+{% block nav-sidebar %}{% endblock %}
+{% block content %}
+<h1>MFA enabled</h1>
+<p>Save these ten one-time recovery codes privately now. This page will not show them again. Each code replaces your authenticator code once; your password is still required.</p>
+<ul>{% for code in codes %}<li><code>{{ code }}</code></li>{% endfor %}</ul>
+<p><a href="{% url 'admin:index' %}">Continue to administration</a></p>
+{% endblock %}

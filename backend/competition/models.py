@@ -1213,3 +1213,24 @@ class AuditEvent(ImmutableEvidence):
     after = models.JSONField(default=dict)
     reason = models.TextField()
     incident = models.ForeignKey(Incident, on_delete=models.PROTECT, null=True, blank=True)
+
+
+class StaffMfaEnrollment(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    issued_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="issued_mfa_enrollments"
+    )
+    code_hash = models.CharField(max_length=64, unique=True, editable=False)
+    issued_at = models.DateTimeField()
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+    device = models.ForeignKey(
+        "otp_totp.TOTPDevice", on_delete=models.SET_NULL, null=True, blank=True
+    )
+    reason = models.CharField(max_length=500)
+
+
+class StaffLoginWindow(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    started_at = models.DateTimeField()
+    attempts = models.PositiveSmallIntegerField(default=0)

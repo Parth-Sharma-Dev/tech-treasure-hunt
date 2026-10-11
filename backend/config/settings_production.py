@@ -11,6 +11,7 @@ from .settings import DATABASES, FRONTEND_DIST_DIR, MIDDLEWARE, SECRET_KEY, requ
 if os.environ.get("DJANGO_DEBUG", "false").lower() != "false":
     raise ImproperlyConfigured("DJANGO_DEBUG must be false in production.")
 DEBUG = False
+STAFF_MFA_REQUIRED = True
 
 MIDDLEWARE = list(MIDDLEWARE)
 MIDDLEWARE.insert(1, "config.middleware.AllowedHostMiddleware")

@@ -76,7 +76,12 @@ def build_package(output, frontend_dist=None):
     files = {
         Path(name).relative_to("backend").as_posix(): REPO / name
         for name in source_list
-        if name and Path(name).suffix == ".py"
+        if name
+        and (
+            Path(name).suffix == ".py"
+            or name.startswith("backend/competition/templates/staff_mfa/")
+            and Path(name).suffix == ".html"
+        )
     }
     files.update(
         {

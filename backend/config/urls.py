@@ -6,6 +6,7 @@ from competition import (
     coding_views,
     external_views,
     gameplay_views,
+    mfa_views,
     results_views,
     roster_views,
     views,
@@ -14,6 +15,8 @@ from competition import (
 from .views import csrf, frontend, health
 
 urlpatterns = [
+    path("staff-mfa/enroll/", mfa_views.enroll, name="staff-mfa-enroll"),
+    path("staff-mfa/qr/", mfa_views.enrollment_qr, name="staff-mfa-qr"),
     path("admin/", admin.site.urls),
     path("api/health", health, name="health"),
     path("api/auth/csrf", csrf, name="csrf"),

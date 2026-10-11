@@ -1,0 +1,17 @@
+{% extends "admin/login.html" %}
+{% block content %}
+<div id="content-main">
+  <h1>Staff sign-in</h1>
+  <p>Use your staff password and an authenticator-app or one-time recovery code.</p>
+  <form method="post">{% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}{% if field.name != 'otp_device' and field.name != 'otp_challenge' %}
+      <div class="form-row">{{ field.errors }}{{ field.label_tag }} {{ field }}</div>
+    {% endif %}{% endfor %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <div class="submit-row"><input type="submit" value="Sign in"></div>
+  </form>
+  <p><a href="{% url 'staff-mfa-enroll' %}">First-time MFA enrollment</a> requires a code from the organizer's trusted deployment console.</p>
+  <p>If you lost your authenticator and recovery codes, contact the organizer for a reviewed reset.</p>
+</div>
+{% endblock %}

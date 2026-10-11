@@ -2,6 +2,7 @@
 DJANGO_SETTINGS_MODULE = "config.settings"
 pythonpath = ["."]
 testpaths = ["tests"]
+markers = ["staff_mfa: exercise enforced staff MFA with real one-time codes"]
 
 [tool.ruff]
 target-version = "py313"

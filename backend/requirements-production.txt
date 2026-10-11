@@ -27,3 +27,5 @@ PyJWT==2.15.1
 requests==2.34.2
 typing-extensions==4.16.0
 urllib3==2.8.0
+django-otp==1.7.4
+qrcode==8.2

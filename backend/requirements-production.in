@@ -7,3 +7,5 @@ whitenoise>=6.12,<7
 Pillow>=12.3,<13
 django-storages[azure]>=1.14.6,<2
 azure-identity>=1.25,<2
+django-otp>=1.7.4,<2
+qrcode>=8.2,<9

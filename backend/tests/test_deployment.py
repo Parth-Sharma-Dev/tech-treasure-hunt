@@ -111,6 +111,22 @@ def test_proxy_header_is_not_trusted_without_opt_in():
     assert result.returncode == 0, result.stderr
 
 
+def test_production_always_enforces_staff_mfa_and_denies_api_before_database_access():
+    result = production_process(
+        "import django; django.setup(); "
+        "from django.conf import settings; "
+        "from django.test import Client; "
+        "assert settings.STAFF_MFA_REQUIRED is True; "
+        "assert 'django_otp.middleware.OTPMiddleware' in settings.MIDDLEWARE; "
+        "client = Client(HTTP_HOST='hunt.example.com', HTTP_X_FORWARDED_PROTO='https'); "
+        "response = client.get('/api/staff/rounds'); "
+        "assert response.status_code == 403; "
+        "assert response.json()['error']['code'] == 'staff_login_required'",
+        {"STAFF_MFA_REQUIRED": "false"},
+    )
+    assert result.returncode == 0, result.stderr
+
+
 def test_production_images_use_private_azure_storage_without_local_fallback():
     result = production_process(
         "import django; django.setup(); "
@@ -162,7 +178,11 @@ def test_backend_package_excludes_local_secrets_content_and_development_files(tm
         assert "config/settings_production.py" in names
         assert any(name.startswith("competition/migrations/") for name in names)
         assert all(
-            name.endswith(".py") or name in {"startup.sh", "requirements.txt"} for name in names
+            name.endswith(".py")
+            or name in {"startup.sh", "requirements.txt"}
+            or name.startswith("competition/templates/staff_mfa/")
+            and name.endswith(".html")
+            for name in names
         )
         assert not any(
             name.startswith((".env", ".local", "tests/", "frontend/", "docs/")) for name in names

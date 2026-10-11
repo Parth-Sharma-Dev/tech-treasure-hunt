@@ -7,11 +7,18 @@ from django.core.exceptions import ImproperlyConfigured, PermissionDenied, Valid
 from django.db import transaction
 from django.utils import timezone
 from django.utils.html import format_html
+from django_otp.plugins.otp_static.models import StaticDevice
+from django_otp.plugins.otp_totp.models import TOTPDevice
 
 from . import models
 from .answers import answer_digest
 from .rules import approve_rules, mark_ready
 from .sessions import revoke_session
+
+# OTP secrets/recovery tokens are never exposed through model administration.
+for device_model in (TOTPDevice, StaticDevice):
+    if admin.site.is_registered(device_model):
+        admin.site.unregister(device_model)
 
 
 def permitted(request, codename):

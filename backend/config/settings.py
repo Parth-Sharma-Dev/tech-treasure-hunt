@@ -24,13 +24,16 @@ CSRF_TRUSTED_ORIGINS = [
     origin for origin in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if origin
 ]
 INSTALLED_APPS = [
-    "django.contrib.admin",
+    "config.admin_apps.StaffAdminConfig",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "django_otp",
+    "django_otp.plugins.otp_totp",
+    "django_otp.plugins.otp_static",
     "competition",
 ]
 MIDDLEWARE = [
@@ -40,6 +43,8 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django_otp.middleware.OTPMiddleware",
+    "config.middleware.StaffMfaMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -101,6 +106,12 @@ SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_AGE = 12 * 60 * 60
+STAFF_MFA_REQUIRED = True
+STAFF_MFA_MAX_AGE_SECONDS = 12 * 60 * 60
+OTP_TOTP_ISSUER = "Tech Treasure Hunt staff"
+OTP_TOTP_SYNC = False
+OTP_TOTP_THROTTLE_FACTOR = 1
+OTP_STATIC_THROTTLE_FACTOR = 1
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_FAILURE_VIEW = "config.views.csrf_failure"
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
