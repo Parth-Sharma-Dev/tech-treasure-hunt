@@ -1,0 +1,25 @@
+{
+  "route_reference": "event-20261012-route-plan",
+  "accessibility_policy": "Request an approved accessible route or workstation assistance.",
+  "qualification_tie_policy": "supervised_reserve_question",
+  "appeal_minutes": 5,
+  "paper_attempt_policy": "pause_and_review_for_independent_pool_or_external_quiz",
+  "unresolved_data_policy": "suspend_for_review",
+  "retention_days": 30,
+  "short_roster_policy": "advance_all_eligible",
+  "allowed_tools": [
+    "Wayground quiz and contest website as instructed by organizers"
+  ],
+  "movement_policy": "Use the assigned supervised quiz workstation or venue.",
+  "delivery_instructions": "Record earned keywords before the quiz starts. Quiz answers are submitted in Wayground; reviewed final website results determine qualification.",
+  "ranking_policy": "wayground_score_then_answer_time",
+  "score_schema": {
+    "version": "round2-wayground-v2",
+    "max_score": "9999999.999",
+    "maximum_is_storage_bound": true,
+    "question_count": 30,
+    "score_metric": "wayground_score",
+    "time_metric": "reported_answer_duration",
+    "source_sheet": "Participant Data"
+  }
+}

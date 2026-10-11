@@ -1,0 +1,36 @@
+{
+  "route_reference": "event-20261012-route-plan",
+  "accessibility_policy": "Request an approved accessible route or workstation assistance.",
+  "qualification_tie_policy": "supervised_reserve_clue",
+  "appeal_minutes": 5,
+  "paper_attempt_policy": "pause_and_review_for_independent_pool_or_external_quiz",
+  "unresolved_data_policy": "suspend_for_review",
+  "retention_days": 30,
+  "short_roster_policy": "advance_all_eligible",
+  "allowed_tools": [
+    "Contest website, QR scanner and organizer-issued codes"
+  ],
+  "movement_policy": "Stay together and follow the organizer-approved campus route.",
+  "delivery_instructions": "Open a mission before submitting a six-character code. Preserve punctuation; letter case is ignored. Each team may claim at most three distinct unclaimed codes.",
+  "ranking_policy": "score_then_last_active_completion",
+  "code_mode": "independent_pool",
+  "answer_format": "six_printable_ascii",
+  "max_code_claims": 3,
+  "points_per_code": 1,
+  "expected_code_count": 168,
+  "expected_mission_count": 25,
+  "max_team_sessions": 1,
+  "free_wrong_attempts": 5,
+  "cooldown_seconds": [
+    30,
+    60,
+    120,
+    240,
+    300
+  ],
+  "team_answer_limit": 10,
+  "team_answer_window_ms": 60000,
+  "cutoff_policy": "database_admission_no_grace",
+  "registration_cap": 110,
+  "peak_browser_count": 112
+}
