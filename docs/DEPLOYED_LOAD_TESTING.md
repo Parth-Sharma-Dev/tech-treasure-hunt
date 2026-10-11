@@ -28,6 +28,23 @@ reads; it logs out its team sessions afterward. It does not execute staff contro
 Reports contain aggregate counts/latencies/statuses, not passwords, answers or
 HTTP bodies. It requires explicit confirmation of the isolated database, but
 cannot independently detect which remote database your website is using.
+The runner now checks one team's login, visible database round IDs and state
+before starting the roster ramp, then logs out the preflight session. Wrong round
+numbers/IDs or an unavailable session stop here. Reports distinguish application
+error codes from transport error classes without printing private response data.
+
+If an interrupted run leaves active test sessions, use the content administrator's
+**Team sessions** page (`/admin/competition/teamsession/`) and **Revoke selected stale
+browser sessions** for the abandoned sessions, identified by team and run-time
+timestamps. Preserve legitimate participant sessions. A timeout can leave a
+server-side login active even though the generator did not receive its response.
+
+For the prepared database, the previously observed R1 database ID was **6**, not
+the round number **1**. Always verify on the selected copy:
+
+```sh
+python manage.py shell -c "from django.db import connection; from competition.models import Round; print(connection.settings_dict['HOST'],connection.settings_dict['NAME']); print(list(Round.objects.filter(number=1,is_demo=False).values('id','attempt_no','state')))"
+```
 
 ## Run progressively from your computer
 

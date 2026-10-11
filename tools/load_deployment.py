@@ -9,6 +9,7 @@ import csv
 import json
 import math
 import random
+import re
 import threading
 import time
 import uuid
@@ -27,6 +28,8 @@ class Metrics:
         self.samples = defaultdict(list)
         self.statuses = Counter()
         self.failures = Counter()
+        self.error_codes = Counter()
+        self.transport_errors = Counter()
         self.logged_in = 0
 
     def record(self, label, status, elapsed):
@@ -48,6 +51,8 @@ class Metrics:
             "logged_in_teams": self.logged_in,
             "request_statuses": dict(self.statuses),
             "functional_failures": dict(self.failures),
+            "application_error_codes": dict(self.error_codes),
+            "transport_errors": dict(self.transport_errors),
             "latency_ms": {
                 label: {
                     "requests": len(values),
@@ -65,6 +70,7 @@ class Client:
         self.base, self.metrics, self.timeout = base, metrics, timeout
         self.opener = build_opener(HTTPCookieProcessor(CookieJar()))
         self.csrf = None
+        self.rounds = []
 
     def request(self, label, path, data=None, extra=None):
         headers = {
@@ -90,12 +96,30 @@ class Client:
                 if "no-store" not in response.headers.get("Cache-Control", ""):
                     self.metrics.fail("authenticated_response_cached")
         except HTTPError as error:
-            status, raw = error.code, error.read(100000)
-        except (URLError, OSError, TimeoutError):
+            status = error.code
+            try:
+                raw = error.read(100000)
+            except (OSError, TimeoutError):
+                raw = b""
+        except (URLError, OSError, TimeoutError) as error:
             status, raw = 0, b""
+            reason = getattr(error, "reason", None)
+            with self.metrics.lock:
+                self.metrics.transport_errors[
+                    f"{label}:{type(error).__name__}:{type(reason).__name__}"
+                ] += 1
         self.metrics.record(label, status, time.perf_counter() - started)
         if status != 200:
             self.metrics.fail(f"{label}_http_failure")
+            try:
+                code = json.loads(raw).get("error", {}).get("code")
+                if isinstance(code, str) and re.fullmatch(
+                    r"[a-z][a-z0-9_]{0,63}", code
+                ):
+                    with self.metrics.lock:
+                        self.metrics.error_codes[f"{label}:{code}"] += 1
+            except (ValueError, UnicodeDecodeError, AttributeError):
+                pass
             return None
         if label == "image":
             return bool(raw.startswith(b"\x89PNG\r\n\x1a\n"))
@@ -118,6 +142,7 @@ class Client:
         if not result or result.get("team", {}).get("code") != row["Team ID"]:
             return False
         self.csrf = result["csrf_token"]
+        self.rounds = result.get("rounds", [])
         with self.metrics.lock:
             self.metrics.logged_in += 1
         return True
@@ -148,6 +173,49 @@ def read_credentials(path, count, submit):
             "Write mode requires one distinct unclaimed Load Code per team."
         )
     return rows
+
+
+def preflight(row, args):
+    """Validate one session and the exact round before starting the roster-wide ramp."""
+    metrics = Metrics()
+    client = Client(args.base_url, metrics, args.timeout)
+    error, visible = None, []
+    signed_in = False
+    try:
+        signed_in = client.login(row)
+        if not signed_in:
+            error = "preflight_login_failed"
+        else:
+            visible = [
+                {key: r.get(key) for key in ("id", "number", "state")}
+                for r in client.rounds
+            ]
+            selected = next(
+                (r for r in client.rounds if r.get("id") == args.round_id), None
+            )
+            if selected is None:
+                error = "round_id_not_visible_to_team"
+            elif args.mission_token and selected.get("state") != "LIVE":
+                error = "mission_test_requires_live_round_on_isolated_copy"
+            elif not client.request("state", f"/api/rounds/{args.round_id}/state"):
+                error = "preflight_round_state_failed"
+            elif args.mission_token:
+                mission = client.request(
+                    "mission", f"/api/missions/{args.mission_token}"
+                )
+                if not mission or mission.get("round_id") != args.round_id:
+                    error = "mission_does_not_match_selected_round"
+    except Exception:  # noqa: BLE001 - preserve private input/response redaction.
+        error = "preflight_unexpected_failure"
+        metrics.fail(error)
+    finally:
+        if signed_in and not client.request("logout", "/api/auth/logout", {}):
+            error = error or "preflight_logout_failed"
+    return {
+        "abort_reason": error,
+        "visible_rounds": visible,
+        "metrics": metrics.report(),
+    }
 
 
 def worker(index, row, args, metrics, deadline, abort):
@@ -273,6 +341,18 @@ def main():
             "Credential input is invalid; check columns, distinct IDs and Load Codes."
         )
     args.report.parent.mkdir(parents=True, exist_ok=True)
+    preflight_result = preflight(rows[0], args)
+    if preflight_result["abort_reason"]:
+        report = {
+            "passed": False,
+            "requested_teams": args.teams,
+            "load_ramp_started": False,
+            "preflight": preflight_result,
+        }
+        with args.report.open("x", encoding="utf-8") as output:
+            json.dump(report, output, indent=2)
+        print(json.dumps(report, indent=2))
+        return 1
     metrics, abort = Metrics(), threading.Event()
     started = time.monotonic()
     deadline = started + args.ramp_seconds + args.duration_seconds
@@ -294,6 +374,8 @@ def main():
             "duration_seconds": round(time.monotonic() - started, 2),
             "poll_seconds": args.poll_seconds,
             "write_mode": args.submit,
+            "load_ramp_started": True,
+            "preflight": preflight_result,
         }
     )
     total = sum(report["request_statuses"].values())
