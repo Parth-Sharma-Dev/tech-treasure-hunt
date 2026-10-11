@@ -1,7 +1,4 @@
-Django>=6.0,<6.1
-djangorestframework>=3.16,<4
-psycopg[binary]>=3.2,<4
-python-dotenv>=1.1,<2
+-r requirements-production.in
 pytest>=8,<10
 pytest-django>=4.11,<5
 ruff>=0.12,<1

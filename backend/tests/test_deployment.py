@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import sys
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -80,7 +81,13 @@ def test_production_https_redirect_proxy_and_cookie_behavior():
         "assert response.cookies['csrftoken']['secure']; "
         "assert response['Strict-Transport-Security']; "
         "assert response['Cache-Control'] == 'no-store'; "
-        "assert client.get('/api/auth/csrf', HTTP_HOST='evil.example').status_code == 400"
+        "assert client.get('/api/auth/csrf', HTTP_HOST='evil.example').status_code == 400; "
+        "assert client.get('/api/auth/csrf', HTTP_HOST='evil.example', "
+        "HTTP_X_FORWARDED_PROTO='https').status_code == 400; "
+        "assert client.get('/api/health', HTTP_HOST='evil.example').status_code == 400; "
+        "from unittest.mock import patch; "
+        "probe = patch('config.views.connection.cursor'); probe.start(); "
+        "assert client.get('/api/health').status_code == 200; probe.stop()"
     )
     assert result.returncode == 0, result.stderr
 
@@ -102,3 +109,52 @@ def test_proxy_header_is_not_trusted_without_opt_in():
         {"DJANGO_TRUST_PROXY_SSL_HEADER": None},
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_production_serves_collected_admin_static_files(tmp_path):
+    result = production_process(
+        "import django; django.setup(); "
+        "from django.test import Client, override_settings; "
+        "from django.core.management import call_command; "
+        f"root = {str(tmp_path / 'staticfiles')!r}; "
+        "override = override_settings(STATIC_ROOT=root); override.enable(); "
+        "call_command('collectstatic', interactive=False, verbosity=0); "
+        "response = Client(HTTP_HOST='hunt.example.com').get("
+        "'/static/admin/css/base.css', HTTP_X_FORWARDED_PROTO='https'); "
+        "assert response.status_code == 200; "
+        "assert response['Content-Type'].startswith('text/css'); "
+        "assert 'X-Request-ID' in response"
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_backend_package_excludes_local_secrets_content_and_development_files(tmp_path):
+    output = tmp_path / "backend.zip"
+    result = subprocess.run(
+        [sys.executable, str(BACKEND.parent / "tools/package_backend.py"), "--output", str(output)],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    with zipfile.ZipFile(output) as archive:
+        names = set(archive.namelist())
+        assert {"manage.py", "config/wsgi.py", "startup.sh", "requirements.txt"} <= names
+        assert "config/settings_production.py" in names
+        assert any(name.startswith("competition/migrations/") for name in names)
+        assert all(
+            name.endswith(".py") or name in {"startup.sh", "requirements.txt"} for name in names
+        )
+        assert not any(
+            name.startswith((".env", ".local", "tests/", "frontend/", "docs/")) for name in names
+        )
+        requirements = archive.read("requirements.txt").decode()
+        assert "gunicorn==" in requirements and "whitenoise==" in requirements
+        assert "pytest" not in requirements and "ruff" not in requirements
+        assert b"\r" not in archive.read("startup.sh")
+    repeat = subprocess.run(
+        [sys.executable, str(BACKEND.parent / "tools/package_backend.py"), "--output", str(output)],
+        capture_output=True,
+        text=True,
+    )
+    assert repeat.returncode != 0
+    assert "FileExistsError" in repeat.stderr
