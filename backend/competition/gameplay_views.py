@@ -4,7 +4,14 @@ from django.views.decorators.http import require_GET, require_POST, require_safe
 
 from .api import ApiProblem, api_errors, json_body
 from .clock import clock_payload, database_now
-from .gameplay import attempt_uuid, mission_read, open_mission, own_progress, submit_answer
+from .gameplay import (
+    attempt_uuid,
+    find_mission,
+    mission_read,
+    open_mission,
+    own_progress,
+    submit_answer,
+)
 from .mission_images import image_response
 from .models import Mission, Round, SubmissionDecision
 from .sessions import require_team
@@ -27,6 +34,16 @@ def staff_mission_image(request, mission_id):
     if mission is None or not mission.clue_image:
         raise ApiProblem("not_found", "Image not found.", 404)
     return image_response(mission)
+
+
+@require_safe
+@api_errors
+def mission_image(request, token):
+    # Exactly the same session, cohort and explicit-open gates as the textual clue.
+    payload = mission_read(request, token)
+    if payload["image"] is None:
+        raise ApiProblem("not_found", "Image not found.", 404)
+    return image_response(find_mission(token=token))
 
 
 @require_GET

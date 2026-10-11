@@ -5,6 +5,37 @@ const url = `/missions/${token}`
 const clock = { round_id: 1, state: 'LIVE', play_mode: 'ONLINE', control_version: 2, server_time: '2026-10-06T12:00:00Z', remaining_ms: 120_000, active_budget_ms: 120_000, active_elapsed_ms: 0, deadline_at: '2026-10-06T12:02:00Z' }
 const mission = { team_code: 'TEST-01', token, mission_id: 'TEST-M1', round_id: 1, clock, opened: false, hint: null as string | null, symbol: '✦', completed: false, voided: false, keyword: null as string | null, wrong_count: 0, cooldown_remaining_ms: 0 }
 const decision = { outcome: 'accepted', decision_id: 'test-decision', keyword: 'START', points_awarded: 1, receipt: 'signed-test-receipt', cooldown_remaining_ms: 0 }
+const clueImage = { url: `/api/missions/${token}/image`, alt: 'Approved green symbol', sha256: 'a'.repeat(64), width: 40, height: 24 }
+const cluePng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAACgAAAAYCAIAAAAH5iiXAAAAOElEQVR4nO3NQQEAMAwCMYrySe8bA9fHiIGMnk74plVjjsErNMaYq1JjjLkqNcaYq1JjjLkqNcaYq1JjjLlKn8cLxvIAsIO9ec0AAAAASUVORK5CYII=', 'base64')
+
+test('image clue appears only after explicit open and stays within the viewport', async ({ page }) => {
+  let opened = false
+  let downloads = 0
+  await page.route(`**/api/missions/${token}`, route => route.fulfill({ json: { ...mission, opened, image: opened ? clueImage : null } }))
+  await page.route(`**/api/missions/${token}/image?*`, route => { downloads++; return route.fulfill({ contentType: 'image/png', body: cluePng }) })
+  await page.route('**/api/missions/open', route => { opened = true; return route.fulfill({ json: { ...mission, opened, image: clueImage } }) })
+  await page.goto(url)
+  await expect(page.getByRole('button', { name: 'Open mission', exact: true })).toBeVisible()
+  await expect(page.getByAltText(clueImage.alt)).toHaveCount(0)
+  expect(downloads).toBe(0)
+  await page.getByRole('button', { name: 'Open mission', exact: true }).click()
+  const image = page.getByAltText(clueImage.alt)
+  await expect(image).toBeVisible()
+  await expect.poll(() => image.evaluate(node => (node as HTMLImageElement).naturalWidth)).toBe(40)
+  expect(downloads).toBe(1)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
+})
+
+test('a failed image can be retried without opening or submitting the mission again', async ({ page }) => {
+  let downloads = 0
+  await page.route(`**/api/missions/${token}`, route => route.fulfill({ json: { ...mission, opened: true, image: clueImage } }))
+  await page.route(`**/api/missions/${token}/image?*`, route => ++downloads === 1 ? route.fulfill({ status: 503, json: { error: { message: 'Image temporarily unavailable.' } } }) : route.fulfill({ contentType: 'image/png', body: cluePng }))
+  await page.goto(url)
+  await expect(page.getByRole('alert')).toContainText('The clue image could not be loaded.')
+  await page.getByRole('button', { name: 'Retry clue image' }).click()
+  await expect.poll(() => page.getByAltText(clueImage.alt).evaluate(node => (node as HTMLImageElement).naturalWidth)).toBe(40)
+  expect(downloads).toBe(2)
+})
 
 test('independent punctuation codes share one clue and stop after three claims', async ({ page }) => {
   let claims = 0

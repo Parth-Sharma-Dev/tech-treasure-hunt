@@ -114,3 +114,5 @@ footer { display: flex; justify-content: space-between; gap: 20px; border-top: 1
 .source-preview { overflow: auto; max-height: 28rem; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .875rem; }
 .faculty-card img, .faculty-placeholder { width: 7rem; height: 7rem; border-radius: 50%; object-fit: cover; }
 .faculty-placeholder { display: inline-flex; align-items: center; justify-content: center; background: #f4f1ea; color: #253620; font-size: 2rem; }
+.mission-image { margin-top: 1rem; }
+.mission-image img { display: block; width: auto; height: auto; max-width: 100%; max-height: min(70vh, 640px); object-fit: contain; }

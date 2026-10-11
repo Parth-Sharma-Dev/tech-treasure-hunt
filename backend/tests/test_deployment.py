@@ -111,6 +111,26 @@ def test_proxy_header_is_not_trusted_without_opt_in():
     assert result.returncode == 0, result.stderr
 
 
+def test_production_images_use_private_azure_storage_without_local_fallback():
+    result = production_process(
+        "import django; django.setup(); "
+        "from django.core.files.storage import storages; "
+        "from django.core.exceptions import ImproperlyConfigured; "
+        "storage = storages['mission_images']; "
+        "assert storage.__class__.__name__ == 'PrivateAzureStorage'; "
+        "assert storage.overwrite_files is False; "
+        "assert storage.token_credential is not None\n"
+        "try:\n storage.url('private.png')\n"
+        "except ValueError:\n pass\n"
+        "else:\n raise AssertionError('A public image URL was exposed')\n"
+        "try:\n storage.exists('private.png')\n"
+        "except ImproperlyConfigured:\n pass\n"
+        "else:\n raise AssertionError('Missing storage configuration was accepted')\n",
+        {"AZURE_MISSION_ACCOUNT_NAME": ""},
+    )
+    assert result.returncode == 0, result.stderr
+
+
 def test_production_serves_collected_admin_static_files(tmp_path):
     result = production_process(
         "import django; django.setup(); "

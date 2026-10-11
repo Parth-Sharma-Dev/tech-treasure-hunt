@@ -6,21 +6,25 @@ from unittest.mock import MagicMock
 import pytest
 from django.apps import apps
 from django.contrib import admin
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.forms.models import model_to_dict
 from django.test import Client
 from django.utils import timezone
 from PIL import Image, PngImagePlugin
+from test_gameplay import game as _game
+from test_gameplay import login, open_mission
 from test_rules import configured_hunt as _configured_hunt
 
 from competition.admin import MissionAdmin, MissionForm
 from competition.evidence import export_objects, inventory
 from competition.mission_images import PrivateFileStorage, normalize_upload, verified_image_bytes
-from competition.models import Mission, Round
+from competition.models import Mission, Round, Team
 from competition.rules import approve_rules, mark_ready, readiness_errors, round_snapshot
 
 configured_hunt = _configured_hunt
+game = _game
 pytestmark = pytest.mark.django_db
 
 
@@ -192,3 +196,69 @@ def test_admin_preview_is_private_and_redacts_storage_failure(configured_hunt):
     response = client.get(path)
     assert response.status_code == 503
     assert mission.clue_image.name not in response.content.decode()
+
+
+def image_game(game):
+    round, missions, team, actor, client = game
+    Round.objects.filter(pk=round.pk).update(state="DRAFT")
+    attach(missions[0])
+    Round.objects.filter(pk=round.pk).update(state="LIVE")
+    return round, missions[0], team, actor, client
+
+
+def test_image_requires_login_and_explicit_open_and_never_leaks_blob_name(game):
+    _, mission, _, _, client = image_game(game)
+    path = f"/api/missions/{mission.token}/image"
+    assert Client().get(path).status_code == 401
+    assert client.get(path).status_code == 404
+    assert client.get(f"/api/missions/{mission.token}").json()["image"] is None
+    data = open_mission(client, mission)
+    assert data["image"]["url"] == path
+    assert data["image"]["alt"] == mission.image_alt
+    assert mission.clue_image.name not in str(data)
+    response = client.get(path)
+    assert response.status_code == 200
+    assert response.content == verified_image_bytes(mission)
+    assert response["Cache-Control"] == "no-store" and response["Vary"] == "Cookie"
+    assert response["X-Content-Type-Options"] == "nosniff"
+    assert client.head(path).status_code == 200
+    csrf = client.get("/api/auth/csrf").json()["csrf_token"]
+    assert client.post(path, HTTP_X_CSRFTOKEN=csrf).status_code == 405
+
+
+def test_image_gates_cohort_release_states_and_revoked_sessions(game):
+    round, mission, team, _, client = image_game(game)
+    open_mission(client, mission)
+    path = f"/api/missions/{mission.token}/image"
+    for state in ["DRAFT", "READY", "LOBBY"]:
+        Round.objects.filter(pk=round.pk).update(state=state)
+        assert client.get(path).status_code == 404
+    for state in ["LIVE", "FROZEN", "ENDED"]:
+        Round.objects.filter(pk=round.pk).update(state=state)
+        assert client.get(path).status_code == 200
+    Round.objects.filter(pk=round.pk).update(is_demo=True)
+    assert client.get(path).status_code == 404
+    Round.objects.filter(pk=round.pk).update(is_demo=False)
+    team.session_version += 1
+    team.save()
+    assert client.get(path).status_code == 401
+
+
+def test_image_endpoint_detects_changed_storage_bytes(game):
+    _, mission, _, _, client = image_game(game)
+    open_mission(client, mission)
+    with mission.clue_image.open("wb") as stream:
+        stream.write(b"replacement bytes")
+    response = client.get(f"/api/missions/{mission.token}/image")
+    assert response.status_code == 503
+    assert "replacement bytes" not in response.content.decode()
+
+
+def test_one_team_opening_an_image_does_not_release_it_to_another_team(game):
+    _, mission, _, _, client = image_game(game)
+    open_mission(client, mission)
+    user = get_user_model().objects.create_user(username="other-image-team", password="test-only")
+    Team.objects.create(code="SECOND", name="Second image team", user=user, member_count=3)
+    other = login("SECOND")
+    assert other.get(f"/api/missions/{mission.token}/image").status_code == 404
+    assert other.get(f"/api/missions/{mission.token}").json()["image"] is None

@@ -10,6 +10,7 @@ type MissionData = {
   team_code: string; token: string; mission_id: string; round_id: number; clock: Clock
   opened: boolean; hint: string | null; symbol: string | null; completed: boolean; voided: boolean
   keyword: string | null; wrong_count: number; cooldown_remaining_ms: number
+  image?: { url: string; alt: string; sha256: string; width: number; height: number } | null
 }
 type Decision = { outcome: string; decision_id: string; keyword: string | null; points_awarded: number; receipt?: string; cooldown_remaining_ms: number }
 type Pending = { key: string; answer: string }
@@ -87,6 +88,14 @@ function Attempt({ mission }: { mission: MissionData }) {
   </section>
 }
 
+function ClueImage({ image }: { image: NonNullable<MissionData['image']> }) {
+  const [failed, setFailed] = useState(false)
+  const [attempt, setAttempt] = useState(0)
+  return <div className="mission-image">
+    {failed ? <div role="alert"><p>The clue image could not be loaded.</p><p>{image.alt}</p><button onClick={() => { setAttempt(attempt + 1); setFailed(false) }}>Retry clue image</button></div> : <img src={`${image.url}?v=${image.sha256}&retry=${attempt}`} alt={image.alt} width={image.width} height={image.height} referrerPolicy="no-referrer" onError={() => setFailed(true)} />}
+  </div>
+}
+
 export function Mission() {
   const token = location.pathname.slice('/missions/'.length)
   const client = useQueryClient()
@@ -99,7 +108,7 @@ export function Mission() {
   if (mission.isError) return <section className="participant-page narrow"><h1>{mission.error instanceof ApiError && mission.error.status === 401 ? 'Sign in to continue' : 'Mission unavailable'}</h1><p role="alert">{mission.error.message}</p><a className="button" href={`/login?next=${encodeURIComponent(location.pathname)}`}>Team sign in</a><p><a href="/lobby">Return to lobby</a></p></section>
   const data = mission.data
   return <section className="participant-page"><p className="eyebrow">{data.team_code} · {data.mission_id}</p><h1>Follow the clue.</h1><p>{stateLabels[data.clock.state]}</p><RoundClock clock={data.clock} receivedAt={data.receivedAt} /><a href="/lobby">Return to lobby</a>
-    {!data.opened ? <section className="panel"><h2>Open this mission</h2><p>Opening records access for your team. A QR link does not prove physical presence.</p><button disabled={open.isPending || data.clock.state !== 'LIVE' || data.clock.play_mode !== 'ONLINE' || data.voided} onClick={() => open.mutate()}>{open.isPending ? 'Opening…' : 'Open mission'}</button>{open.isError && <p role="alert">{open.error.message}</p>}</section> : <><section className="panel"><h2>Your clue</h2><p>{data.symbol} {data.hint}</p></section><Attempt mission={data} /></>}
+    {!data.opened ? <section className="panel"><h2>Open this mission</h2><p>Opening records access for your team. A QR link does not prove physical presence.</p><button disabled={open.isPending || data.clock.state !== 'LIVE' || data.clock.play_mode !== 'ONLINE' || data.voided} onClick={() => open.mutate()}>{open.isPending ? 'Opening…' : 'Open mission'}</button>{open.isError && <p role="alert">{open.error.message}</p>}</section> : <><section className="panel"><h2>Your clue</h2><p>{data.symbol} {data.hint}</p>{data.image && <ClueImage key={data.image.sha256} image={data.image} />}</section><Attempt mission={data} /></>}
     <TeamProgress roundId={data.round_id} />
   </section>
 }

@@ -35,6 +35,7 @@ STORAGES = {
             ),
             "overwrite_files": False,
             "timeout": 10,
+            "client_options": {"connection_timeout": 5, "read_timeout": 10, "retry_total": 1},
         },
     },
 }

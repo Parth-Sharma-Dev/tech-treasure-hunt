@@ -75,6 +75,15 @@ def mission_payload(mission, team, round, now):
         "opened": opened,
         "hint": mission.hint if visible else None,
         "symbol": mission.symbol if visible else None,
+        "image": {
+            "url": f"/api/missions/{mission.token}/image",
+            "alt": mission.image_alt,
+            "sha256": mission.image_sha256,
+            "width": mission.image_width,
+            "height": mission.image_height,
+        }
+        if visible and mission.clue_image
+        else None,
         "completed": completion is not None and not pool,
         "code_mode": "independent_pool" if pool else "mission_bound",
         "successful_claims": claims,
