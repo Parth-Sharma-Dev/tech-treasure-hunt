@@ -97,5 +97,9 @@ deployed rehearsal before participant release.
 Round 5 content is added through the deployed admin independently of code packages;
 see [adding Round 5 content after deployment](ROUND5_OPERATIONS.md#add-content-after-azure-deployment).
 
+This release requires staff MFA for admin and staff APIs. After uploading the new
+ZIP, migrate and enroll every staff account using [staff MFA activation](STAFF_MFA.md).
+Existing password-only sessions will require the new sign-in flow.
+
 The build and static-file behavior follows [Vite's production build guidance](https://vite.dev/guide/build)
 and [WhiteNoise's Django configuration](https://whitenoise.readthedocs.io/en/stable/django.html).

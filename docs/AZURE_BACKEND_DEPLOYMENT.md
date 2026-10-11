@@ -177,7 +177,10 @@ On a failed release, keep play closed and redeploy the recorded previous ZIP if
 its code is compatible with the database schema. A code rollback does not undo
 migrations or restore evidence; use reviewed recovery for database incidents.
 
-Before opening play, finish single-origin React integration, staff access/MFA,
+Staff MFA is implemented in this release. Apply its migrations and enroll each
+staff account using [staff MFA activation](STAFF_MFA.md) before verifying admin.
+
+Before opening play, finish single-origin React integration, staff MFA enrollment,
 Front Door origin restrictions/WAF tuning, alerts/budget checks, and deployed
 double-capacity/shared-IP/recovery rehearsal. The old opt-in local load runner is
 not a valid 140-team capacity certificate. These remain deployment/release work,
