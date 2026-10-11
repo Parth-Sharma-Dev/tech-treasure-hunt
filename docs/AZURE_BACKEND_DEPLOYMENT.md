@@ -10,6 +10,8 @@ The first package exposes `/api/*`, `/admin/` and Django's `/static/` assets. `/
 `/login`, `/lobby` and `/staff/*` return 404 until React is integrated. Test backend
 deployment through the health API and Django admin. React integration should keep
 the agreed single browser origin for cookies, CSRF and participant screens.
+When ready, follow the [combined frontend deployment](AZURE_FRONTEND_DEPLOYMENT.md)
+to add React to this same App Service.
 
 ## 1. Prepare the host and database
 
@@ -87,7 +89,6 @@ Run from the repository root with local PostgreSQL available:
 git status --short
 $release = git rev-parse --short HEAD
 .venv/Scripts/python tools/package_backend.py --output ".local/deploy/backend-$release.zip"
-Get-FileHash ".local/deploy/backend-$release.zip" -Algorithm SHA256
 ```
 
 Commit and review source changes before packaging a release. The builder reads
@@ -97,7 +98,7 @@ uses pinned production dependencies as root `requirements.txt`. It excludes loca
 environment files, private event inputs, database dumps, `.git`, tests, development
 tools, docs, React and Django's Ruff/pytest `pyproject.toml`. Linux line endings are
 normalized. Existing ZIPs are preserved; choose a new filename for a new release.
-Keep the commit ID and ZIP SHA-256 with the deployment record.
+The builder prints the SHA-256. Keep it and the commit ID with the deployment record.
 
 ## 4. Deploy to the prepared App Service
 

@@ -11,6 +11,49 @@ Implemented locally in M12–M14 on 9 October 2026. All five stages use the same
 5. Have the verifier approve the rules and the controller mark READY. This freezes the question set and private versions. Revisions after READY require a new attempt.
 6. Independently finalize real Round 4 qualification before opening the Round 5 lobby/start. Only active same-cohort qualifiers in the latest attempts may participate; recovery/qualification-impact incidents suspend access.
 
+## Add content after Azure deployment
+
+The deployment ZIP contains application code. Questions, rules, private answer
+metadata and verification records live in PostgreSQL, so you can add Round 5
+content after deploying either the backend-only or combined website ZIP. Content
+entry does not require a new ZIP, a restart or a database migration.
+
+1. Keep the real Round 5 attempt in **DRAFT** with **BUZZER** delivery. Take a
+   private backup before substantial event preparation changes.
+2. Sign in at `/admin/` with an active staff account authorized for
+   `competition.prepare_content`. Open **Competition → Buzzer questions**
+   (`/admin/competition/buzzerquestion/`) and add the real questions to that exact
+   Round 5 attempt. Supply a stable public ID, stage, version, private source
+   reference and JSON private content, for example:
+
+   ```json
+   {
+     "answer": "Replace with the actual organizer answer",
+     "presentation_reference": "private-host-pack:stage-1/question-1"
+   }
+   ```
+
+3. Prepare exactly **five questions per stage, 25 total**, for the current scored
+   final. Preserve the approved stage order and scoring schema. Keep images,
+   slides and answer packs in private host materials or private durable storage;
+   `presentation_reference` identifies those materials. The current website
+   accepts buzzes and records offline answers; this admin field is not an image
+   upload or a public slide-delivery feature. Never add the packs to React assets.
+4. A different active authorized staff member with
+   `competition.verify_evidence` checks the actual materials and uses
+   **Independently verify selected private buzzer questions**. Later content edits
+   invalidate the affected question's verification.
+5. Complete the real round rules and offline procedures, independently approve
+   them, then have the controller mark the round **READY**. READY freezes the
+   content; later revisions require a new attempt. Start only after the required
+   qualification and rehearsal checks.
+
+Use the production admin URL even while only Django is deployed. The React
+`/staff/buzzer` desk becomes available after the combined website release.
+Subsequent code deployments preserve database content when they use the same
+PostgreSQL database and persistent signing keys. A new ZIP is needed for changed
+application features, frontend code or schema, not for ordinary draft content.
+
 | Rule field | Supported value |
 |---|---|
 | `buzzer_order_policy` | `database_receipt_time` |
