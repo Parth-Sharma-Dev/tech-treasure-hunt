@@ -4,7 +4,7 @@ Updated 10 October 2026. [Current rules](RULE_UPDATES_20261010.md) supersede ear
 
 ## Round 2 — Wayground Excel
 
-Before READY configure `score_schema` using `competition.wayground.schema(question_count)`, `ranking_policy = "wayground_score_then_answer_time"`, the approved advancement cut and qualification tie policy. Current version is `round2-wayground-v2`; the supplied demo has eight questions. Real-event settings retain the approved 30-question, 45-minute, 15-qualifier contract unless the rules are formally changed.
+Before READY configure `score_schema` using `competition.wayground.schema(question_count)`, `ranking_policy = "wayground_score_then_answer_time"`, the approved advancement cut and qualification tie policy. Current version is `round2-wayground-v2`; the supplied demo has eight questions. On 11 October the organizer approved **30 questions, 60 minutes and 20 qualifiers** for new real attempts. Previously frozen 45-minute/15-qualifier Wayground attempts remain valid for historical scoring and recovery.
 
 1. After ENDED select the exact attempt in `/staff/scores` and enter a private intake reason.
 2. Upload the original `.xlsx` using **Read Wayground workbook**. Review `Participant Data` against the workbook: `Score` gives raw points; `Total Time Taken` is summed answering duration. Numeric Excel day fractions are converted to milliseconds. Neither Accuracy nor Correct determines points; Started At is not a completion timestamp.

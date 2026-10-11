@@ -78,10 +78,16 @@ def schema_errors(round, rules=None):
             "block_exact_ties",
         ]:
             errors.append("Declare a reserve-question or exact-tie hold policy.")
-        if not round.is_demo and (
-            round.advancement_count != 15 or budget != 2700000 or count != 30
-        ):
-            errors.append("Real Round 2 retains 30 questions, 45 minutes and 15 qualifiers.")
+        if not round.is_demo:
+            contract = (budget, round.advancement_count)
+            supported = {(3600000, 20)}
+            if frozen:
+                # Previously approved contracts retain their scoring/recovery behavior.
+                supported.add((2700000, 15))
+            if count != 30 or contract not in supported:
+                errors.append(
+                    "New real Round 2 requires 30 questions, 60 minutes and 20 qualifiers."
+                )
         return errors
     from .green_cards import SCHEMA, is_green_cards
 

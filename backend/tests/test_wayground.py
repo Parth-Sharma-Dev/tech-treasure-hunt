@@ -21,6 +21,29 @@ from competition.wayground_workbook import read_workbook
 
 pytestmark = pytest.mark.django_db
 external = _external
+
+
+def test_new_real_round2_schedule_and_frozen_legacy_contract():
+    from competition.external_scores import schema_errors
+    from competition.models import Round
+
+    rules = {
+        "score_schema": schema(30),
+        "ranking_policy": "wayground_score_then_answer_time",
+        "qualification_tie_policy": "supervised_reserve_question",
+    }
+    round = Round(
+        number=2, is_demo=False, advancement_count=20, active_budget_ms=3600000, rules=rules
+    )
+    assert schema_errors(round) == []
+    round.advancement_count, round.active_budget_ms = 15, 2700000
+    assert schema_errors(round)
+    round.rules_snapshot = {"rules": rules, "active_budget_ms": 2700000}
+    assert schema_errors(round, rules) == []
+    round.advancement_count = 20
+    assert schema_errors(round, rules)
+
+
 HEADERS = [
     "Player Name",
     "Score",

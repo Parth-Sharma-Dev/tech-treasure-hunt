@@ -35,13 +35,13 @@ their attempt numbers and use these field values:
 | Title | QR Mission Hunt | Tech Quiz |
 | Delivery mode | ONLINE_HUNT | EXTERNAL |
 | Rules version | mock-r1-20261011-v1 | mock-r2-20261011-v1 |
-| Active budget ms | 900000 | 2700000 |
-| Advancement count | 25 | 15 |
+| Active budget ms | 900000 | 3600000 |
+| Advancement count | 25 | 20 |
 | Is demo | Unchecked | Unchecked |
 | Owners | Actual staff-ID mapping above | Same mapping |
 
-R1 has a 15-minute mock budget. Real-cohort R2 requires 45 minutes, 30 questions
-and cut 15; end it early using normal controls. The short-roster policy below lets
+R1 has a 15-minute mock budget. The updated real-cohort R2 requires 60 minutes, 30 questions
+and cut 20; end it early using normal controls. The short-roster policy below lets
 all three eligible teams advance. Require exactly three active real-cohort teams
 for this run; local-demo teams belong to a different cohort.
 
