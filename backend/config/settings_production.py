@@ -2,6 +2,7 @@
 
 import os
 
+from azure.identity import ManagedIdentityCredential
 from django.core.exceptions import ImproperlyConfigured
 
 from .settings import *  # noqa: F403
@@ -20,6 +21,22 @@ MIDDLEWARE.insert(
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+    "mission_images": {
+        "BACKEND": "competition.mission_images.PrivateAzureStorage",
+        "OPTIONS": {
+            "account_name": os.environ.get("AZURE_MISSION_ACCOUNT_NAME", ""),
+            "azure_container": os.environ.get("AZURE_MISSION_CONTAINER", "mission-images"),
+            "token_credential": ManagedIdentityCredential(
+                **(
+                    {"client_id": os.environ["AZURE_MISSION_CLIENT_ID"]}
+                    if os.environ.get("AZURE_MISSION_CLIENT_ID")
+                    else {}
+                )
+            ),
+            "overwrite_files": False,
+            "timeout": 10,
+        },
+    },
 }
 STATICFILES_DIRS = (
     [("frontend/assets", FRONTEND_DIST_DIR / "assets")]

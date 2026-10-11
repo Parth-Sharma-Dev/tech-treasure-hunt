@@ -1,12 +1,32 @@
 from django.http import JsonResponse
 from django.views.decorators.debug import sensitive_post_parameters
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.http import require_GET, require_POST, require_safe
 
 from .api import ApiProblem, api_errors, json_body
 from .clock import clock_payload, database_now
 from .gameplay import attempt_uuid, mission_read, open_mission, own_progress, submit_answer
-from .models import Round, SubmissionDecision
+from .mission_images import image_response
+from .models import Mission, Round, SubmissionDecision
 from .sessions import require_team
+
+
+@require_safe
+@api_errors
+def staff_mission_image(request, mission_id):
+    user = request.user
+    if not (
+        user.is_active
+        and user.is_staff
+        and (
+            user.has_perm("competition.prepare_content")
+            or user.has_perm("competition.verify_evidence")
+        )
+    ):
+        raise ApiProblem("forbidden", "Access is not permitted.", 403)
+    mission = Mission.objects.filter(pk=mission_id).first()
+    if mission is None or not mission.clue_image:
+        raise ApiProblem("not_found", "Image not found.", 404)
+    return image_response(mission)
 
 
 @require_GET

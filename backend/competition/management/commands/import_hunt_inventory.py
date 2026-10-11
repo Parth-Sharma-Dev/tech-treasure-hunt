@@ -137,6 +137,7 @@ class Command(BaseCommand):
                     public_id=f"MISSION-{number:02}",
                     clue_location=location,
                     hint="",
+                    clue_type=Mission.ClueType.IMAGE,
                     qr_location="",
                     keyword="",
                     answer_verifiers=[],

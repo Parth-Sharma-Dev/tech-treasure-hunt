@@ -7,6 +7,8 @@ from django.db import models, transaction
 from django.db.models import F, Q
 from django.db.models.functions import Upper
 
+from .mission_images import private_image_storage
+
 
 def mission_token():
     return secrets.token_urlsafe(32)
@@ -656,6 +658,10 @@ class TeamLoginWindow(models.Model):
 
 
 class Mission(models.Model):
+    class ClueType(models.TextChoices):
+        TEXT = "TEXT", "Riddle / text symbol"
+        IMAGE = "IMAGE", "Image / visual symbol"
+
     round = models.ForeignKey(Round, on_delete=models.PROTECT)
     public_id = models.CharField(max_length=24)
     token = models.CharField(max_length=64, default=mission_token, unique=True, editable=False)
@@ -664,6 +670,14 @@ class Mission(models.Model):
     )
     hint = models.TextField(blank=True)
     symbol = models.CharField(max_length=100, blank=True)
+    clue_type = models.CharField(max_length=5, choices=ClueType.choices, default=ClueType.TEXT)
+    clue_image = models.FileField(
+        storage=private_image_storage, upload_to="round1-clues", blank=True, editable=False
+    )
+    image_alt = models.CharField(max_length=500, blank=True)
+    image_sha256 = models.CharField(max_length=64, blank=True, editable=False)
+    image_width = models.PositiveIntegerField(default=0, editable=False)
+    image_height = models.PositiveIntegerField(default=0, editable=False)
     qr_location = models.CharField(max_length=200)
     clue_location = models.CharField(max_length=200)
     difficulty = models.CharField(max_length=20, blank=True)
@@ -687,6 +701,12 @@ class Mission(models.Model):
     def __str__(self):
         return f"{self.public_id} (round {self.round_id})"
 
+    def clean(self):
+        from .mission_images import image_errors
+
+        if errors := image_errors(self):
+            raise ValidationError(errors)
+
     def save(self, *args, **kwargs):
         with transaction.atomic():
             round = Round.objects.select_for_update().get(pk=self.round_id)
@@ -700,6 +720,12 @@ class Mission(models.Model):
                     "public_id",
                     "hint",
                     "symbol",
+                    "clue_type",
+                    "clue_image",
+                    "image_alt",
+                    "image_sha256",
+                    "image_width",
+                    "image_height",
                     "qr_location",
                     "clue_location",
                     "difficulty",

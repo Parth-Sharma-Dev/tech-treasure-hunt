@@ -41,6 +41,14 @@ def round_snapshot(round):
     }
     from .answers import code_digest, independent_codes
 
+    images = Mission.objects.filter(round=round, is_practice=False).exclude(clue_image="")
+    if images.exists():
+        snapshot["mission_images"] = list(
+            images.order_by("pk").values(
+                "id", "clue_image", "image_sha256", "image_alt", "image_width", "image_height"
+            )
+        )
+
     if independent_codes(round):
         from .models import HuntCode
 
@@ -202,6 +210,9 @@ def readiness_errors(round):
         if not missions:
             errors.append("Add at least one independently verified competitive mission.")
         for mission in missions:
+            from .mission_images import image_errors
+
+            errors += [f"Mission {mission.public_id}: {error}" for error in image_errors(mission)]
             staff_ids = (mission.volunteer_owner_id, mission.prepared_by_id, mission.verified_by_id)
             if any(identity is None for identity in staff_ids) or not mission.verified_at:
                 errors.append(
@@ -221,7 +232,11 @@ def readiness_errors(round):
                     errors.append(
                         f"Mission {mission.public_id} must not have code keys or keywords."
                     )
-                if not mission.hint.strip() and not mission.symbol.strip():
+                if (
+                    not mission.hint.strip()
+                    and not mission.symbol.strip()
+                    and not mission.clue_image
+                ):
                     errors.append(f"Mission {mission.public_id} requires a clue.")
                 continue
             if (
@@ -311,6 +326,18 @@ def mark_ready(round_id, actor):
         errors.append("The rule approver must remain authorized to verify evidence.")
     if errors:
         raise ValidationError(errors)
+    from azure.core.exceptions import AzureError
+    from django.core.exceptions import ImproperlyConfigured
+
+    from .mission_images import verified_image_bytes
+
+    for mission in Mission.objects.filter(round=round, available=True).exclude(clue_image=""):
+        try:
+            verified_image_bytes(mission)
+        except (ValidationError, OSError, AzureError, ImproperlyConfigured):
+            raise ValidationError(
+                f"Mission {mission.public_id}: verify the stored image and storage before READY."
+            ) from None
     round.rules_snapshot = snapshot
     round.rules_digest = digest
     round.state = Round.State.READY

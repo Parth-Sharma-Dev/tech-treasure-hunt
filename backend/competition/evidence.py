@@ -175,6 +175,23 @@ def inventory(objects):
         # Older mission checkpoints predate the nullable independent-code link.
         # A null link is the same historical record as an absent field.
         canonical = item
+        if item["model"] == "competition.mission":
+            defaults = {
+                "clue_type": "TEXT",
+                "clue_image": "",
+                "image_alt": "",
+                "image_sha256": "",
+                "image_width": 0,
+                "image_height": 0,
+            }
+            canonical = {
+                **item,
+                "fields": {
+                    key: value
+                    for key, value in item["fields"].items()
+                    if key not in defaults or value != defaults[key]
+                },
+            }
         if item["model"] == "competition.completion" and item["fields"].get("hunt_code") is None:
             canonical = {
                 **item,
@@ -521,6 +538,8 @@ def restore_missing(round, payload):
         if existing:
             current = json.loads(serializers.serialize("json", [existing], cls=EvidenceEncoder))[0]
             if current != item:
+                if inventory([current]) == inventory([item]):
+                    continue
                 if item["model"] not in mutable:
                     raise ApiProblem(
                         "evidence_conflict",

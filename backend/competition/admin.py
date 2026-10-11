@@ -1,10 +1,12 @@
 import uuid
 
+from azure.core.exceptions import AzureError
 from django import forms
 from django.contrib import admin, messages
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError
 from django.db import transaction
 from django.utils import timezone
+from django.utils.html import format_html
 
 from . import models
 from .answers import answer_digest
@@ -315,6 +317,11 @@ class FacultyProfileAdmin(InformationAdmin):
 
 
 class MissionForm(forms.ModelForm):
+    upload_image = forms.FileField(
+        required=False,
+        help_text="JPEG/PNG/WebP, up to 5 MiB; stored privately as a metadata-free PNG.",
+    )
+    clear_image = forms.BooleanField(required=False, label="Remove the attached draft image")
     answer = forms.RegexField(
         regex=r"\A(?:[!-~]{6}|[0-9]{4})\Z",
         required=False,
@@ -335,6 +342,27 @@ class MissionForm(forms.ModelForm):
         from .answers import independent_codes
 
         pool = cleaned.get("round") and independent_codes(cleaned["round"])
+        from .mission_images import normalize_upload
+
+        if cleaned.get("upload_image") and cleaned.get("clear_image"):
+            self.add_error("upload_image", "Choose upload or removal, not both.")
+        elif cleaned.get("upload_image"):
+            if cleaned.get("clue_type") != "IMAGE":
+                self.add_error("clue_type", "Select Image / visual symbol before uploading.")
+            else:
+                try:
+                    image = normalize_upload(cleaned["upload_image"])
+                except ValidationError as error:
+                    self.add_error("upload_image", error)
+                else:
+                    self.instance.clue_image = image["file"]
+                    self.instance.image_sha256 = image["sha256"]
+                    self.instance.image_width = image["width"]
+                    self.instance.image_height = image["height"]
+        elif cleaned.get("clear_image"):
+            self.instance.clue_image = ""
+            self.instance.image_sha256 = ""
+            self.instance.image_width = self.instance.image_height = 0
         if pool and not cleaned.get("is_practice"):
             if cleaned.get("answer") or cleaned.get("keyword"):
                 self.add_error(
@@ -368,6 +396,10 @@ class MissionAdmin(ReadOnlyAdmin):
         "verified_by",
         "verified_at",
         "is_void",
+        "image_preview",
+        "image_sha256",
+        "image_width",
+        "image_height",
     )
     list_filter = ("round", "is_practice")
     actions = ("verify_selected_missions",)
@@ -375,8 +407,19 @@ class MissionAdmin(ReadOnlyAdmin):
     def get_fields(self, request, obj=None):
         fields = super().get_fields(request, obj)
         if obj is not None and not self.has_change_permission(request, obj):
-            return [field for field in fields if field != "answer"]
+            return [
+                field for field in fields if field not in {"answer", "upload_image", "clear_image"}
+            ]
         return fields
+
+    @admin.display(description="Private image preview")
+    def image_preview(self, obj):
+        if not obj or not obj.clue_image:
+            return "No clue image uploaded."
+        return format_html(
+            '<a href="{}" target="_blank" rel="noopener">View private image</a>',
+            f"/api/staff/missions/{obj.pk}/image",
+        )
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "round":
@@ -399,6 +442,10 @@ class MissionAdmin(ReadOnlyAdmin):
 
     @transaction.atomic
     def save_model(self, request, obj, form, change):
+        # Reject frozen edits before FileField can upload a new object.
+        current_round = models.Round.objects.select_for_update().get(pk=obj.round_id)
+        if current_round.state != "DRAFT":
+            raise ValidationError("Mission content is frozen after READY.")
         obj.prepared_by = request.user
         obj.verified_by = None
         obj.verified_at = None
@@ -434,6 +481,21 @@ class MissionAdmin(ReadOnlyAdmin):
                         request,
                         f"{mission}: requires a draft and an independent verifier.",
                         messages.ERROR,
+                    )
+                    continue
+                from .mission_images import image_errors, verified_image_bytes
+
+                try:
+                    if errors := image_errors(mission):
+                        raise ValidationError(errors)
+                    if mission.clue_image:
+                        verified_image_bytes(mission)
+                except (ValidationError, OSError) as error:
+                    self.message_user(request, str(error), messages.ERROR)
+                    continue
+                except (AzureError, ImproperlyConfigured):
+                    self.message_user(
+                        request, "Private image storage is unavailable.", messages.ERROR
                     )
                     continue
                 mission.verified_by = request.user

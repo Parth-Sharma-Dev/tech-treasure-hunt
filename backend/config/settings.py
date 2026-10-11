@@ -87,6 +87,14 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 FRONTEND_DIST_DIR = BASE_DIR / "frontend_dist"
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    "mission_images": {
+        "BACKEND": "competition.mission_images.PrivateFileStorage",
+        "OPTIONS": {"location": BASE_DIR.parent / ".local" / "mission-images"},
+    },
+}
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
 SESSION_COOKIE_HTTPONLY = True

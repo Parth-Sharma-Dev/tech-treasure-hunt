@@ -44,6 +44,7 @@ urlpatterns = [
     path("api/practice/submit", views.submit_practice),
     path("api/missions/open", gameplay_views.open),
     path("api/missions/<str:token>", gameplay_views.mission),
+    path("api/staff/missions/<int:mission_id>/image", gameplay_views.staff_mission_image),
     path("api/missions/<str:token>/submit", gameplay_views.submit),
     path("api/rounds/<int:round_id>/state", gameplay_views.state),
     path("api/rounds/<int:round_id>/attempts/<str:key>", gameplay_views.attempt),
