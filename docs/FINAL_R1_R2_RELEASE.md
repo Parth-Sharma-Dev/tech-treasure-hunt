@@ -50,9 +50,10 @@ plus the two staff browsers). These are planning values, not a capacity certific
 
 ## Roster and visibility
 
-The supplied initial CSV has 110 Team ID/Password rows. Full registration details
-are pending because teams contain a mix of three/four members. Preserve leading
-zeros, use supplied membership counts and set every official team `is_demo=False`.
+The final `Le_Bhai.csv` contains 110 Team ID/leader name/leader email/password rows.
+The organizer subsequently confirmed **four members in all teams**. Use the
+[private bulk import](OFFICIAL_TEAM_IMPORT.md), preserve leading zeros and set
+every official team `is_demo=False`.
 Use Django's password hashing API; never assign a plaintext string to `User.password`.
 Credentials and source files remain private, outside Git/public site assets.
 
