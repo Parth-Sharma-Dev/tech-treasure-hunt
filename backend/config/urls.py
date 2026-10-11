@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, re_path
 
 from competition import (
     buzzer_views,
@@ -11,7 +11,7 @@ from competition import (
     views,
 )
 
-from .views import csrf, health
+from .views import csrf, frontend, health
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -75,4 +75,14 @@ urlpatterns = [
     path(
         "api/staff/teams/<int:team_id>/sessions/<int:session_id>/revoke", views.staff_revoke_session
     ),
+]
+
+# A bounded SPA route list keeps unknown APIs, static files and private paths as 404s.
+urlpatterns += [
+    path("", frontend, name="frontend"),
+    path("login", frontend),
+    path("lobby", frontend),
+    re_path(r"^staff/(?:rounds|results|scores|roster|coding|buzzer)$", frontend),
+    re_path(r"^rounds/[1-9][0-9]*(?:/(?:results|coding))?$", frontend),
+    re_path(r"^missions/[^/]+$", frontend),
 ]

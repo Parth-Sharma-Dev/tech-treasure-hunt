@@ -158,3 +158,54 @@ def test_backend_package_excludes_local_secrets_content_and_development_files(tm
     )
     assert repeat.returncode != 0
     assert "FileExistsError" in repeat.stderr
+
+
+def test_production_frontend_deep_links_and_asset_cache_policy(tmp_path):
+    frontend = tmp_path / "frontend_dist"
+    (frontend / "assets").mkdir(parents=True)
+    (frontend / "index.html").write_text('<html><div id="root">Public shell</div></html>')
+    (frontend / "assets/app-12345678.js").write_text("console.log('public test bundle')")
+    (frontend / "assets/plain.js").write_text("console.log('unhashed test file')")
+    result = production_process(
+        "from pathlib import Path; import django; django.setup(); "
+        "from django.test import Client, override_settings; "
+        "from django.core.management import call_command; "
+        f"override = override_settings(FRONTEND_DIST_DIR=Path({str(frontend)!r}), "
+        f"STATIC_ROOT={str(tmp_path / 'staticfiles')!r}, "
+        f"STATICFILES_DIRS=[('frontend/assets', {str(frontend / 'assets')!r})]); "
+        "override.enable(); call_command('collectstatic', interactive=False, verbosity=0); "
+        "client = Client(HTTP_HOST='hunt.example.com', HTTP_X_FORWARDED_PROTO='https'); "
+        "routes = ['/', '/login', '/lobby', '/rounds/5', '/rounds/3/coding', "
+        "'/rounds/1/results', '/missions/qr-token', '/staff/rounds', '/staff/buzzer', "
+        "'/staff/scores', '/staff/results', '/staff/roster', '/staff/coding']; "
+        "responses = [client.get(route) for route in routes]; "
+        "assert all(r.status_code == 200 for r in responses); "
+        "assert all(r['Cache-Control'] == 'no-store' for r in responses); "
+        "assert client.head('/login').status_code == 200; "
+        "assert client.post('/login').status_code == 405; "
+        "missing = ['/api/missing', '/static/missing.js', "
+        "'/static/frontend/index.html', '/.env', '/frontend_dist/index.html', "
+        "'/unknown', '/rounds/1/unknown', '/missions/a/b']; "
+        "assert all(client.get(path).status_code == 404 for path in missing); "
+        "asset = client.get('/static/frontend/assets/app-12345678.js'); "
+        "assert asset.status_code == 200; "
+        "assert 'immutable' in asset['Cache-Control']; "
+        "plain = client.get('/static/frontend/assets/plain.js'); "
+        "assert 'immutable' not in plain['Cache-Control']; "
+        "assert client.get('/api/auth/csrf')['Content-Type'] == 'application/json'; "
+        "assert client.get('/admin/').status_code == 302"
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_backend_only_release_still_returns_404_for_frontend_routes(tmp_path):
+    result = production_process(
+        "from pathlib import Path; import django; django.setup(); "
+        "from django.test import Client, override_settings; "
+        f"override_settings(FRONTEND_DIST_DIR=Path({str(tmp_path / 'absent')!r})).enable(); "
+        "client = Client(HTTP_HOST='hunt.example.com', HTTP_X_FORWARDED_PROTO='https'); "
+        "assert client.get('/').status_code == 404; "
+        "assert client.get('/login').status_code == 404; "
+        "assert client.get('/api/auth/csrf').status_code == 200"
+    )
+    assert result.returncode == 0, result.stderr

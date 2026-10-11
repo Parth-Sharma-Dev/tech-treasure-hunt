@@ -5,7 +5,7 @@ import os
 from django.core.exceptions import ImproperlyConfigured
 
 from .settings import *  # noqa: F403
-from .settings import DATABASES, MIDDLEWARE, SECRET_KEY, required_env
+from .settings import DATABASES, FRONTEND_DIST_DIR, MIDDLEWARE, SECRET_KEY, required_env
 
 if os.environ.get("DJANGO_DEBUG", "false").lower() != "false":
     raise ImproperlyConfigured("DJANGO_DEBUG must be false in production.")
@@ -21,6 +21,15 @@ STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
+STATICFILES_DIRS = (
+    [("frontend/assets", FRONTEND_DIST_DIR / "assets")]
+    if (FRONTEND_DIST_DIR / "assets").is_dir()
+    else []
+)
+# Vite fingerprints assets before collectstatic; both Vite and Django hashes are immutable.
+WHITENOISE_IMMUTABLE_FILE_TEST = (
+    r"^/static/(?:frontend/assets/[^/]+-[A-Za-z0-9_-]{8,}\.[^/]+|.+\.[a-f0-9]{12}\.[^/]+)$"
+)
 
 if len(SECRET_KEY) < 50 or len(set(SECRET_KEY)) < 5 or SECRET_KEY.startswith("django-insecure-"):
     raise ImproperlyConfigured("DJANGO_SECRET_KEY must be a strong production signing secret.")
