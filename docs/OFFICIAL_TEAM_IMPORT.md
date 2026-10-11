@@ -51,11 +51,15 @@ az webapp deploy \
   --target-path /home/site/private-transfer/teams-110-private.csv \
   --clean false \
   --restart false \
+  --track-status false \
   --ignore-stack true
 ```
 
 This is data, not the website ZIP. The destination is outside the public code/static
 directories. Do not place it in wwwroot/static, React assets or a public Blob.
+`--track-status false` avoids waiting for Linux website startup during this file
+transfer. Verify the private file exists in SSH before importing; a website startup
+failure remains a separate issue and still needs runtime-log diagnosis.
 
 ## 3. Validate, review and import
 

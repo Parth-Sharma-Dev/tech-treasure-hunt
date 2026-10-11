@@ -63,6 +63,7 @@ az webapp deploy \
   --target-path /home/site/private-transfer/event-content-20261011.zip \
   --clean false \
   --restart false \
+  --track-status false \
   --ignore-stack true
 ```
 
