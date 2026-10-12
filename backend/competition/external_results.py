@@ -120,7 +120,10 @@ def build_preview(round, now):
                     gaps.append("The original source batch digest is inconsistent.")
             if revision.max_score != Decimal(rules.get("score_schema", {}).get("max_score", "0")):
                 gaps.append("A reviewed score uses the wrong approved maximum.")
-            if round.number == 2:
+            absent = way and revision.tie_metrics.get("absent") is True
+            if absent:
+                eligible = False
+            elif round.number == 2:
                 if not errors and not way:
                     try:
                         score, _ = effective_question_score(round, revision.tie_metrics)
@@ -179,7 +182,12 @@ def build_preview(round, now):
                 "max_score": float(maximum),
                 "tie_time_ms": finish,
                 **(
-                    {"reported_answer_time_ms": finish, "score_basis": "WAYGROUND_RAW"}
+                    {
+                        "reported_answer_time_ms": finish,
+                        "score_basis": "ABSENT"
+                        if revision and revision.tie_metrics.get("absent") is True
+                        else "WAYGROUND_RAW",
+                    }
                     if way
                     else {"official_finish_active_ms": finish}
                     if round.number == 2

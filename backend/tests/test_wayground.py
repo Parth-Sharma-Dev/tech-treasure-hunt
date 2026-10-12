@@ -173,6 +173,78 @@ def test_original_excel_values_and_day_fraction_conversion():
         read_workbook(b"not an xlsx")
 
 
+def test_reviewed_absence_closes_coverage_without_invented_time_or_qualification(way):
+    report = upload(way, workbook(scores=("7000",)))
+    row = mapping(way, report)[0]
+    batch = validate_import(way[0].pk, way[2], action(schema_version=VERSION, rows=[row]))
+    commit_import(way[0].pk, way[3], action(batch_id=batch["batch_id"], evidence_confirmed=True))
+    before = ScoreRevision.objects.get(round=way[0], team=way[1][0])
+    absence = {
+        "team_code": way[1][1].code,
+        "absent": True,
+        "absence_reason": "Did not attend",
+        "attendance_reference": "Synthetic signed attendance register",
+    }
+    pending = validate_import(way[0].pk, way[2], action(schema_version=VERSION, rows=[absence]))
+    assert not pending["errors"]
+    assert not ScoreRevision.objects.filter(round=way[0], team=way[1][1]).exists()
+    with pytest.raises(ApiProblem, match="different verifier"):
+        commit_import(
+            way[0].pk, way[2], action(batch_id=pending["batch_id"], evidence_confirmed=True)
+        )
+    commit_import(way[0].pk, way[3], action(batch_id=pending["batch_id"], evidence_confirmed=True))
+    way[0].refresh_from_db()
+    preview = build_preview(way[0], timezone.now())
+    assert preview["evidence_gaps"] == []
+    absent = next(e for e in preview["entries"] if e["team_code"] == way[1][1].code)
+    assert absent["eligible"] is False and absent["rank"] is None
+    assert absent["score_basis"] == "ABSENT" and absent["tie_time_ms"] is None
+    assert ScoreRevision.objects.get(round=way[0], team=way[1][0]).pk == before.pk
+    prior = ResultSnapshot.objects.get(round__number=1)
+    assert way[1][1].code in prior.qualifier_codes
+    proposed = propose_result(
+        way[0].pk,
+        way[2],
+        action(
+            status="PROVISIONAL",
+            expected_version=way[0].control_version,
+            evidence_digest=preview["evidence_digest"],
+        ),
+    )
+    approve_result(
+        way[0].pk,
+        way[3],
+        action(
+            proposal_id=proposed["proposal_id"],
+            evidence_confirmed=True,
+        ),
+    )
+
+
+def test_absence_cannot_overwrite_a_recorded_participant_score(way):
+    intake(way)
+    result = validate_import(
+        way[0].pk,
+        way[2],
+        action(
+            schema_version=VERSION,
+            rows=[
+                {
+                    "team_code": way[1][0].code,
+                    "absent": True,
+                    "absence_reason": "Absent",
+                    "attendance_reference": "Attendance register",
+                }
+            ],
+        ),
+    )
+    assert result["errors"]
+    with pytest.raises(ApiProblem, match="validation"):
+        commit_import(
+            way[0].pk, way[3], action(batch_id=result["batch_id"], evidence_confirmed=True)
+        )
+
+
 def test_raw_platform_points_commit_and_publish_without_accuracy_normalization(way):
     _, batch = intake(way)
     assert [r["score"] for r in batch["preview"]] == ["7000", "5390"]

@@ -115,6 +115,8 @@ def upload_report(round_id, actor, data):
 
 
 def validate_mapping(round, rows, enforce_eligibility=True):
+    if rows and any(isinstance(row, dict) and row.get("absent") is True for row in rows):
+        return validate_absences(round, rows, enforce_eligibility)
     required = {"report_id", "source_row", "team_code", "excluded", "exclusion_reason"}
     if not rows or any(not isinstance(row, dict) or set(row) != required for row in rows):
         return [], [
@@ -190,4 +192,49 @@ def validate_mapping(round, rows, enforce_eligibility=True):
         errors.append(
             {"message": "Every original player needs a mapping or an explicit reviewed exclusion."}
         )
+    return sorted(preview, key=lambda r: r["team_code"]), errors
+
+
+def validate_absences(round, rows, enforce_eligibility=True):
+    """Attendance evidence is separate from the immutable platform workbook."""
+    from .external_scores import current_scores
+
+    required = {"team_code", "absent", "absence_reason", "attendance_reference"}
+    teams = {t.code: t for t in Team.objects.filter(is_demo=round.is_demo)}
+    scores = current_scores(round)
+    preview, errors, seen = [], [], set()
+    for index, row in enumerate(rows, 1):
+        try:
+            if not isinstance(row, dict) or set(row) != required or row["absent"] is not True:
+                raise ValueError("Use a separate batch of explicit absence evidence only.")
+            code = row["team_code"]
+            if not isinstance(code, str) or code in seen:
+                raise ValueError("Supply each absent team exactly once.")
+            seen.add(code)
+            team = teams.get(code)
+            if not team or enforce_eligibility and not round_eligible(team, round):
+                raise ValueError("Absence must concern an eligible team in this cohort.")
+            for key in ("absence_reason", "attendance_reference"):
+                if not isinstance(row[key], str) or not row[key].strip() or len(row[key]) > 200:
+                    raise ValueError(
+                        "Supply bounded absence reason and attendance evidence reference."
+                    )
+            existing = scores.get(team.pk)
+            if existing and existing.tie_metrics.get("absent") is not True:
+                raise ValueError("A recorded participant score cannot be replaced by an absence.")
+            preview.append(
+                {
+                    "team_code": code,
+                    "score": "0",
+                    "max_score": STORAGE_BOUND,
+                    "tie_metrics": {
+                        "absent": True,
+                        "absence_reason": row["absence_reason"],
+                        "attendance_reference": row["attendance_reference"],
+                    },
+                    "source_reference": row["attendance_reference"],
+                }
+            )
+        except (ValueError, TypeError) as error:
+            errors.append({"row": index, "message": str(error)})
     return sorted(preview, key=lambda r: r["team_code"]), errors
