@@ -14,7 +14,7 @@ Round 5 has **five stages within the final round**. The host presents images, ke
 | 4 | Progressive image guessing | 1 | 5 |
 | 5 | Word encoding/decoding | 2 | 10 |
 
-Five questions/stage, 25 total, 30 marks. Wrong/unanswered remain zero, with no negative marks. R4 Green Cards qualify teams without carried points; final R1–3 points carry into the event award. Stage/overall duration still requires actual organizer input. See [current rules](RULE_UPDATES_20261010.md).
+Five questions/stage, 25 total, 30 marks. Wrong/unanswered remain zero, with no penalties. On 12 October the organizer confirmed **only Round 5 points determine the winner**; earlier rounds and Green Cards establish eligibility only. Actual duration and verified content remain pending.
 
 ## Entry and public information — implemented locally in M12
 

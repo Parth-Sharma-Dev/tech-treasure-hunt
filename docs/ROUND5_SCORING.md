@@ -1,6 +1,6 @@
 # Round 5 scoring and the event winner
 
-The organizer revised the rules on 10 October: stages 1–4 earn one mark/question, stage 5 word encoding earns two, five questions/stage, zero penalties and one overall winner. Round 4 is qualification-only; only final R1–3 points carry. Answers and judging remain offline; source review and publication take place on the website.
+The organizer confirmed on 12 October: stages 1-4 earn one point per correct answer, stage 5 earns two, five questions per stage, no penalties and one overall winner. **Only Round 5 points determine the winner; no earlier scores carry over.** Earlier frozen v1/v2 attempts retain their historical contracts. Answers and judging remain offline.
 
 ## Confirmed contract
 
@@ -11,11 +11,11 @@ The organizer revised the rules on 10 October: stages 1–4 earn one mark/questi
 | Stage total | 5 for stages 1–4; 10 for stage 5 |
 | Round 5 total | 30 before independently reviewed global question voids |
 | Answer passing | Only to teams with retained native buzzes, in server-recorded order, after earlier teams are wrong/unanswered |
-| Carry-over | Sum each finalist's final R1–3 points; R4 contributes zero and supplies only Green Card qualification |
+| Carry-over | None. Earlier rounds establish eligibility only; only Round 5 points determine the winner. |
 | Winner | One team: **The Winner of Tech Treasure Hunt** |
 | Ranking | Round 5 score, then earlier host-confirmed completion of the last credited correct Round 5 answer |
 
-All four earlier rounds must have final, reviewed results in the same cohort. Missing R1–3 points are coverage gaps, never implicit zeros; R4 must establish the complete reviewed Green Card qualification and contributes exactly zero. A material incident or changed prior qualification/results blocks or stales dependent review.
+All four earlier rounds must have final reviewed qualification results in the same cohort. Round 4 establishes the complete Green Card recipient list. Earlier point totals are not added to the final. Material incidents or changed prior qualifications block or stale dependent review.
 
 The completion timestamp is the server time when the host records the observed offline answer, before contended scoring locks. It is distinct from the team's buzzer timestamp and from the later reviewer/import time. Host records must be made immediately after the response, before opening the next question. Client/imported completion times are not accepted.
 
@@ -90,7 +90,7 @@ Corrections append revisions linked to the prior window ledger. Overturning a ho
 
 ## Publish the winner
 
-Use `/staff/results` for independent provisional/final publication. Public entries contain five stage totals, Round 5 total, carried points, cumulative total and last-correct completion time; answers, native receipt IDs and private sheet references remain staff-only.
+Use `/staff/results` for independent provisional/final publication. Public entries show five stage totals, Round 5 points and last-correct completion time. New v3 finals do not display a carry-over column. Earlier v1/v2 publications retain their historical cumulative display. Answers and private source references remain staff-only.
 
 Final awards require all 25 frozen questions and every retained window to have reviewed play/void coverage, reproducible sources, final prior qualification results, no material gaps/pending batches, the full appeal window and two-person review. Changed points/order require revised provisional results and renewed appeals.
 

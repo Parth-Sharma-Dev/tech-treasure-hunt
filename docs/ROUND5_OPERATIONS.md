@@ -62,7 +62,7 @@ application features, frontend code or schema, not for ordinary draft content.
 | `buzzer_early_policy` | `reject_closed_window` |
 | `offline_rules_reference` | Actual approved host/rules reference; synthetic/PENDING values are local demo placeholders only |
 
-Closed/early presses are rejected. Exact equal recorded buzz times are held for reviewed priority; team code never breaks them. Current rules award one per correct answer in stages 1–4 and two in stage 5 word encoding (30 total), zero otherwise, allow queue-based passing and carry final R1–3 points into one event award; R4 Green Cards contribute zero. Reveal steps do not change marks.
+Closed/early presses are rejected. Exact equal buzz times require reviewed priority; team code never breaks them. Correct answers earn one point in stages 1-4 and two in stage 5, 30 total; otherwise zero. Passing follows the confirmed buzzer queue. The 12 October organizer revision determines the winner from **Round 5 points only**; no earlier scores carry over. Stage 4 reveal steps do not change marks.
 
 For local unsigned preparation:
 
