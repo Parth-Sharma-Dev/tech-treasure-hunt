@@ -34,7 +34,7 @@ def milliseconds(value):
         ) from None
 
 
-def read_workbook(content):
+def read_workbook(content, include_ranking=False):
     if not isinstance(content, bytes) or not 0 < len(content) <= MAX_BYTES:
         raise ValueError("Upload a Wayground .xlsx file of at most 1 MB.")
     try:
@@ -112,6 +112,7 @@ def read_workbook(content):
                     "Participant Data headers do not match the supplied Wayground export."
                 )
             participants, counts = [], set()
+            ranks = set()
             for row_number, cells in rows[1:]:
                 if not any(cells.values()):
                     continue
@@ -160,6 +161,15 @@ def read_workbook(content):
                         "counts": stats,
                     }
                 )
+                if include_ranking:
+                    rank = cells.get(columns.get("Rank", ""), "")
+                    if not re.fullmatch(r"[1-9][0-9]*", rank) or int(rank) in ranks:
+                        raise ValueError("Workbook ranks must be distinct positive integers.")
+                    ranks.add(int(rank))
+                    participants[-1]["workbook_rank"] = int(rank)
+                    participants[-1]["reported_accuracy"] = cells.get(
+                        columns.get("Accuracy", ""), ""
+                    )
             if len(counts) != 1 or not participants:
                 raise ValueError("Participant rows disagree on the quiz question count.")
             return {

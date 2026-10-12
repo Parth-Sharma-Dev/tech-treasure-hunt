@@ -118,6 +118,11 @@ def validate_mapping(round, rows, enforce_eligibility=True):
     if rows and any(isinstance(row, dict) and row.get("absent") is True for row in rows):
         return validate_absences(round, rows, enforce_eligibility)
     required = {"report_id", "source_row", "team_code", "excluded", "exclusion_reason"}
+    workbook_ranking = any(
+        isinstance(row, dict) and row.get("use_workbook_rank") is True for row in rows
+    )
+    if workbook_ranking:
+        required |= {"use_workbook_rank", "ranking_change_reference"}
     if not rows or any(not isinstance(row, dict) or set(row) != required for row in rows):
         return [], [
             {"message": "Map every report participant or explicitly exclude them with a reason."}
@@ -130,7 +135,11 @@ def validate_mapping(round, rows, enforce_eligibility=True):
         return [], [{"message": "Original report does not belong to this Round 2."}]
     try:
         metadata, participants = report_data(report)
-    except ApiProblem as error:
+        if workbook_ranking:
+            _, participants = read_workbook(
+                base64.b64decode(report.content_base64, validate=True), include_ranking=True
+            )
+    except (ApiProblem, ValueError) as error:
         return [], [{"message": str(error)}]
     if (
         metadata["question_count"]
@@ -142,6 +151,15 @@ def validate_mapping(round, rows, enforce_eligibility=True):
     preview, errors, seen, assigned = [], [], set(), set()
     for index, row in enumerate(rows, 1):
         try:
+            if workbook_ranking and (
+                row["use_workbook_rank"] is not True
+                or not isinstance(row["ranking_change_reference"], str)
+                or not row["ranking_change_reference"].strip()
+                or len(row["ranking_change_reference"]) > 200
+            ):
+                raise ValueError(
+                    "Confirm workbook ranking and supply its reviewed decision reference."
+                )
             source_id = row["source_row"]
             if type(source_id) is not int or source_id not in sources or source_id in seen:
                 raise ValueError("Map each original participant row exactly once.")
@@ -186,6 +204,12 @@ def validate_mapping(round, rows, enforce_eligibility=True):
                     "source_reference": f"Wayground {report.sha256}: row {source_id}",
                 }
             )
+            if workbook_ranking:
+                preview[-1]["tie_metrics"].update(
+                    workbook_rank=source["workbook_rank"],
+                    reported_accuracy=source["reported_accuracy"],
+                    ranking_change_reference=row["ranking_change_reference"],
+                )
         except (ValueError, TypeError) as error:
             errors.append({"row": index, "message": str(error)})
     if seen != set(sources):

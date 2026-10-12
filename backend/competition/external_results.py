@@ -68,6 +68,9 @@ def build_preview(round, now):
         gaps.append(f"Round {round.number - 1} final qualification needs review.")
     teams = list(Team.objects.filter(is_demo=round.is_demo).order_by("code"))
     scores = current_scores(round)
+    workbook_ranking = way and any(
+        "workbook_rank" in revision.tie_metrics for revision in scores.values()
+    )
     maximum = rules.get("score_schema", {}).get("max_score", "0")
     try:
         maximum = Decimal(maximum)
@@ -158,16 +161,25 @@ def build_preview(round, now):
                     gaps.append("Faculty criterion averages are missing or malformed.")
                     averages = {}
                     criterion_sums = {}
+        workbook_rank = revision.tie_metrics.get("workbook_rank") if revision else None
+        if workbook_ranking and eligible and type(workbook_rank) is not int:
+            gaps.append(
+                "Every participating team needs the same reviewed workbook ranking decision."
+            )
         metric = (
-            (-int(received),)
-            if green
+            (workbook_rank if type(workbook_rank) is int else 10**15,)
+            if workbook_ranking
             else (
-                (-score, finish if finish is not None else 10**15)
-                if round.number == 2
+                (-int(received),)
+                if green
                 else (
-                    -score,
-                    -Decimal(criterion_sums.get("technical", "0")),
-                    -Decimal(criterion_sums.get("problem_solving", "0")),
+                    (-score, finish if finish is not None else 10**15)
+                    if round.number == 2
+                    else (
+                        -score,
+                        -Decimal(criterion_sums.get("technical", "0")),
+                        -Decimal(criterion_sums.get("problem_solving", "0")),
+                    )
                 )
             )
         )
@@ -196,6 +208,7 @@ def build_preview(round, now):
                 "criterion_averages": averages if round.number == 4 else None,
                 **({"green_card": received} if green else {}),
                 "rank": None,
+                **({"workbook_rank": workbook_rank} if workbook_ranking else {}),
             }
         )
     entries.sort(
@@ -209,7 +222,7 @@ def build_preview(round, now):
         metric = metrics[entry["team_code"]]
         if metric != last:
             rank = position
-        entry["rank"], last = rank, metric
+        entry["rank"], last = entry["workbook_rank"] if workbook_ranking else rank, metric
     cut, tied = round.rules_snapshot.get("advancement_count"), []
     if type(cut) is not int or cut <= 0:
         errors.append("Set a positive approved advancement count.")
@@ -313,6 +326,8 @@ def build_preview(round, now):
         if green
         else "FACULTY"
         if round.number == 4
+        else "WAYGROUND_WORKBOOK_RANK"
+        if workbook_ranking
         else "WAYGROUND_RAW"
         if way
         else "EXTERNAL_FINISH",

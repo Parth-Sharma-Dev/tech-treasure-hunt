@@ -58,11 +58,11 @@ HEADERS = [
 ]
 
 
-def workbook(scores=("7000", "5390", "3180"), formula=False):
+def workbook(scores=("7000", "5390", "3180"), formula=False, ranks=None):
     ns = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
     sheet = ET.Element("worksheet", xmlns=ns)
     data = ET.SubElement(sheet, "sheetData")
-    values = [HEADERS]
+    values = [HEADERS + (["Rank", "Accuracy"] if ranks is not None else [])]
     for i, score in enumerate(scores):
         correct = (8, 6, 4)[i]
         values.append(
@@ -79,6 +79,8 @@ def workbook(scores=("7000", "5390", "3180"), formula=False):
                 "0",
             ]
         )
+        if ranks is not None:
+            values[-1].extend([str(ranks[i]), "80%"])
     for index, values_row in enumerate(values, 1):
         row = ET.SubElement(data, "row", r=str(index))
         for column, value in enumerate(values_row):
@@ -243,6 +245,82 @@ def test_absence_cannot_overwrite_a_recorded_participant_score(way):
         commit_import(
             way[0].pk, way[3], action(batch_id=result["batch_id"], evidence_confirmed=True)
         )
+
+
+def test_reviewed_workbook_rank_supersedes_raw_score_order_and_preserves_original(way):
+    report = upload(way, workbook(ranks=[2, 1, 3]))
+    original_rows = mapping(way, report)
+    first = validate_import(way[0].pk, way[2], action(schema_version=VERSION, rows=original_rows))
+    commit_import(way[0].pk, way[3], action(batch_id=first["batch_id"], evidence_confirmed=True))
+    way[0].refresh_from_db()
+    assert build_preview(way[0], timezone.now())["entries"][0]["team_code"] == way[1][0].code
+    corrected_rows = [
+        {
+            **r,
+            "use_workbook_rank": True,
+            "ranking_change_reference": "Organizer requests exported Rank; verifier reviewed",
+        }
+        for r in original_rows
+    ]
+    correction = validate_import(
+        way[0].pk, way[2], action(schema_version=VERSION, rows=corrected_rows)
+    )
+    assert correction["errors"] == []
+    with pytest.raises(ApiProblem, match="different verifier"):
+        commit_import(
+            way[0].pk, way[2], action(batch_id=correction["batch_id"], evidence_confirmed=True)
+        )
+    commit_import(
+        way[0].pk, way[3], action(batch_id=correction["batch_id"], evidence_confirmed=True)
+    )
+    way[0].refresh_from_db()
+    preview = build_preview(way[0], timezone.now())
+    assert preview["evidence_gaps"] == []
+    assert preview["ranking_kind"] == "WAYGROUND_WORKBOOK_RANK"
+    assert [e["team_code"] for e in preview["entries"][:2]] == [way[1][1].code, way[1][0].code]
+    assert [e["rank"] for e in preview["entries"][:2]] == [1, 2]
+    assert [e["score"] for e in preview["entries"][:2]] == [5390, 7000]
+    assert ScoreRevision.objects.filter(round=way[0]).count() == 4
+    assert WaygroundReport.objects.get(pk=report["report_id"]).participants[0]["score"] == "7000"
+    for status in ["PROVISIONAL", "FINAL"]:
+        latest = ResultSnapshot.objects.filter(round=way[0]).order_by("-revision").first()
+        now = latest.appeal_deadline + timedelta(seconds=1) if latest else timezone.now()
+        with patch("competition.results.database_now", return_value=now):
+            preview = build_preview(way[0], now)
+            proposal = propose_result(
+                way[0].pk,
+                way[2],
+                action(
+                    status=status,
+                    expected_version=way[0].control_version,
+                    evidence_digest=preview["evidence_digest"],
+                    evidence_confirmed=True,
+                ),
+            )
+            approve_result(
+                way[0].pk,
+                way[3],
+                action(
+                    proposal_id=proposal["proposal_id"],
+                    evidence_confirmed=True,
+                ),
+            )
+        way[0].refresh_from_db()
+    assert ResultSnapshot.objects.filter(round=way[0]).latest("revision").qualifier_codes == [
+        way[1][1].code
+    ]
+
+
+@pytest.mark.parametrize("ranks", [[1, 1, 3], [0, 2, 3]])
+def test_invalid_exported_ranks_cannot_be_used(way, ranks):
+    report = upload(way, workbook(ranks=ranks))
+    rows = [
+        {**r, "use_workbook_rank": True, "ranking_change_reference": "Reviewed decision"}
+        for r in mapping(way, report)
+    ]
+    result = validate_import(way[0].pk, way[2], action(schema_version=VERSION, rows=rows))
+    assert result["errors"]
+    assert not ScoreRevision.objects.filter(round=way[0]).exists()
 
 
 def test_raw_platform_points_commit_and_publish_without_accuracy_normalization(way):
