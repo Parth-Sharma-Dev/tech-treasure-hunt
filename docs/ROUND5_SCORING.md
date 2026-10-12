@@ -13,7 +13,7 @@ The organizer revised the rules on 10 October: stages 1–4 earn one mark/questi
 | Answer passing | Only to teams with retained native buzzes, in server-recorded order, after earlier teams are wrong/unanswered |
 | Carry-over | Sum each finalist's final R1–3 points; R4 contributes zero and supplies only Green Card qualification |
 | Winner | One team: **The Winner of Tech Treasure Hunt** |
-| Ranking | Cumulative score, then earlier host-confirmed completion of the last credited correct Round 5 answer |
+| Ranking | Round 5 score, then earlier host-confirmed completion of the last credited correct Round 5 answer |
 
 All four earlier rounds must have final, reviewed results in the same cohort. Missing R1–3 points are coverage gaps, never implicit zeros; R4 must establish the complete reviewed Green Card qualification and contributes exactly zero. A material incident or changed prior qualification/results blocks or stales dependent review.
 
@@ -27,9 +27,9 @@ Use **BUZZER** delivery and retain the existing owner/content/clock controls. Re
 
 ```json
 {
-  "ranking_policy": "cumulative_score_then_last_correct",
+  "ranking_policy": "round5_score_then_last_correct",
   "score_schema": {
-    "version": "round5-v2",
+    "version": "round5-v3",
     "questions_per_stage": 5,
     "points_per_stage": {"1":1,"2":1,"3":1,"4":1,"5":2},
     "wrong_points": 0,
@@ -37,7 +37,7 @@ Use **BUZZER** delivery and retain the existing owner/content/clock controls. Re
     "max_score": 30,
     "answer_passing": "buzzer_queue",
     "winner_count": 1,
-    "carry_over": "sum_final_rounds_1_to_3",
+    "carry_over": "none",
     "tie_break": "last_correct_completion"
   }
 }
@@ -84,7 +84,7 @@ Use **Load native host records as source drafts** to populate known native IDs a
 
 Blank native IDs are appropriate only where no corresponding record exists. `reveal_step` is 0–100 in stage 4 and zero elsewhere under v2; legacy v1 retains stage 5 reveals. `buzzer_tie_order` uses `|`-separated team codes; all rows preserve the same adjudicated order. Private references are bounded to 200 characters and original answers to 2,000 characters. CSV input is limited to 1 MB and source batches to 2,000 rows.
 
-Dry-run does not award points. A different authorized verifier checks every native receipt, original response, completion time, source reference and carry-over basis, then commits the complete batch atomically. Invalid, stale, duplicate or incomplete sources cannot partly change scores. Replay uses the original action UUID.
+Dry-run does not award points. A different authorized verifier checks every native receipt, original response, completion time, source reference and prior qualification basis, then commits the complete batch atomically. Invalid, stale, duplicate or incomplete sources cannot partly change scores. Replay uses the original action UUID.
 
 Corrections append revisions linked to the prior window ledger. Overturning a host verdict or suppressing a recorded response needs retained adjudication evidence; it cannot fabricate a new answer or completion time. A retry of the same question requires reviewed voiding of superseded windows so one question never earns credit twice. Rejected/pending batches remain auditable.
 
@@ -92,8 +92,22 @@ Corrections append revisions linked to the prior window ledger. Overturning a ho
 
 Use `/staff/results` for independent provisional/final publication. Public entries contain five stage totals, Round 5 total, carried points, cumulative total and last-correct completion time; answers, native receipt IDs and private sheet references remain staff-only.
 
-Final awards require all 25 frozen questions and every retained window to have reviewed play/void coverage, reproducible sources, final carry-over results, no material gaps/pending batches, the full appeal window and two-person review. Changed points/order require revised provisional results and renewed appeals.
+Final awards require all 25 frozen questions and every retained window to have reviewed play/void coverage, reproducible sources, final prior qualification results, no material gaps/pending batches, the full appeal window and two-person review. Changed points/order require revised provisional results and renewed appeals.
 
 The final snapshot stores one `winner_codes` entry and the event title. `qualifier_codes` is empty; no Round 6 access is created. Historical awards are retained. A later material incident marks the award under review without silently promoting another team. Ordinary edits/imports cannot replace finalized awards.
 
 M14 implements [signed native export/reconciliation](EVIDENCE_RECOVERY.md) of host evidence, ledgers, original timing and winner history with exact carried-result dependencies. Use the [host/scorekeeper rehearsal procedure](ROUND5_REHEARSAL.md). Full competitive-chain, load/outage and actual event rehearsal remain **M11** and organizer release work.
+
+## Apply the revised final scoring to production
+
+After deploying the updated code, prepare only the latest real Round 5 DRAFT:
+
+```bash
+python manage.py configure_round5_only --actor parth --dry-run
+python manage.py configure_round5_only --actor parth
+```
+
+This records the no-carry-over decision and clears stale draft rule approval.
+It does not supply questions, verify content, set the event duration, mark READY,
+change earlier results or start play. Supply and independently verify the actual
+25-question host pack, duration and offline rules before release.
