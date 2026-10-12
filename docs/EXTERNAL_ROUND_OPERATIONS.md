@@ -17,6 +17,11 @@ The workbook contains no authoritative maximum game score. The database storage 
 
 ## Round 4 — names only, no numerical marks
 
+The organizer confirmed on 12 October: **11 Round 3 qualifiers enter Round 4**;
+up to five Green Card recipients advance. Interviews have no fixed website
+question set or numerical criteria. Retain the existing faculty names and
+details, but participant faculty cards display no portraits or initials avatars.
+
 Before READY, configure `ranking_policy = green_card_qualification` and `score_schema = {"version":"round4-green-card-v2","max_score":"0","qualification_only":true,"carry_over_points":0}`. Real advancement is capped at five, demo at the configured count. Approved faculty information and optional interview allocations remain separate from scoring; the new intake does not require criterion marks or faculty IDs.
 
 After ENDED, select the exact attempt on `/staff/scores`. Enter a private intake reason and Green Card recipient **team names/codes, one per line**. Confirm the list is complete; every unlisted prior finalist is recorded as no card. Dry-run checks unknown/ambiguous/duplicate/inactive/unqualified names and too many recipients. A different verifier reviews the complete original list and commits it. Corrections append replacement card evidence for all entrants rather than adding credit.
