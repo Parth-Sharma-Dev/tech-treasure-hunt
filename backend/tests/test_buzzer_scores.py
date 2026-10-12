@@ -497,6 +497,71 @@ def test_scoring_seed_preserves_content_and_never_fabricates_final_scores(buzzer
     )
 
 
+def test_round5_only_winner_ignores_earlier_points_but_retains_qualification(final):
+    from competition.buzzer_scores import carry_over, commit_import, validate_import
+    from competition.buzzer_scoring_rules import ROUND5_ONLY_CONTRACT
+    from competition.results import build_preview
+
+    round = final[0]
+    round.rules = {
+        **round.rules,
+        "score_schema": dict(ROUND5_ONLY_CONTRACT),
+        "ranking_policy": "round5_score_then_last_correct",
+    }
+    round.save()
+    previous = ResultSnapshot.objects.get(round__number=2)
+    entries = previous.ranked_entries
+    entries[0]["score"] = 999999
+    entries[0]["max_score"] = 1000000
+    entries[1]["score"] = 0
+    ResultSnapshot.objects.filter(pk=previous.pk).update(ranked_entries=entries)
+    rows = played(final, count=25, winners=[1] * 25)
+    codes, carried, _, gaps = carry_over(round)
+    assert gaps == [] and codes == [team.code for team in final[2][:2]]
+    assert all(value["score"] == 0 and value["maximum"] == 0 for value in carried.values())
+    batch = validate_import(round.pk, final[3], action(schema_version="round5-v3", rows=rows))
+    assert not batch["errors"]
+    commit_import(round.pk, final[4], action(batch_id=batch["batch_id"], evidence_confirmed=True))
+    round.refresh_from_db()
+    preview = build_preview(round, timezone.now())
+    assert preview["evidence_gaps"] == []
+    assert preview["entries"][0]["team_code"] == final[2][1].code
+    assert preview["entries"][0]["score"] == 30
+    assert preview["entries"][0]["max_score"] == 30
+    assert all(
+        e["carry_over_score"] == 0 and e["score_basis"] == "ROUND5_ONLY" for e in preview["entries"]
+    )
+    publish(final)
+    provisional = ResultSnapshot.objects.filter(round=round).latest("revision")
+    with patch(
+        "competition.results.database_now",
+        return_value=provisional.appeal_deadline + timedelta(seconds=1),
+    ):
+        publish(final, "FINAL")
+    assert ResultSnapshot.objects.filter(round=round).latest("revision").metadata[
+        "winner_codes"
+    ] == [final[2][1].code]
+    assert ResultSnapshot.objects.get(pk=previous.pk).ranked_entries == entries
+
+
+def test_configure_real_round5_only_is_draft_guarded_and_dry_run_rolls_back(final):
+    from django.core.management import call_command
+    from django.core.management.base import CommandError
+
+    round = Round.objects.create(number=5, attempt_no=2, is_demo=False, title="Real final draft")
+    call_command("configure_round5_only", actor=final[3].username, dry_run=True)
+    round.refresh_from_db()
+    assert round.rules == {}
+    call_command("configure_round5_only", actor=final[3].username)
+    round.refresh_from_db()
+    assert round.rules["score_schema"]["carry_over"] == "none"
+    assert round.state == "DRAFT" and round.approved_at is None
+    round.state = "READY"
+    round.save()
+    with pytest.raises(CommandError, match="DRAFT"):
+        call_command("configure_round5_only", actor=final[3].username)
+
+
 @pytest.mark.django_db(transaction=True)
 def test_real_browser_final_scores_and_independent_winner_publication(final, live_server):
     import os

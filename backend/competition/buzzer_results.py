@@ -12,7 +12,7 @@ from .buzzer_scores import (
     source_digest,
     validate_rows,
 )
-from .buzzer_scoring_rules import points_for_stage
+from .buzzer_scoring_rules import contract_for, points_for_stage
 from .clock import milliseconds
 from .models import BuzzerClosure, BuzzerWindow, ImportBatch, Incident, RoundPhase, Team
 from .participant import round_eligible
@@ -122,7 +122,9 @@ def build_preview(round, now):
                 "carry_over_score": float(prior["score"]),
                 "score": float(total),
                 **(
-                    {"score_basis": "CUMULATIVE_RAW"}
+                    {"score_basis": "ROUND5_ONLY"}
+                    if contract_for(round)["carry_over"] == "none"
+                    else {"score_basis": "CUMULATIVE_RAW"}
                     if prior.get("maximum_is_storage_bound")
                     else {}
                 ),

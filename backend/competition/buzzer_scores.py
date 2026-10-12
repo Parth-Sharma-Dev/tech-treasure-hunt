@@ -62,6 +62,7 @@ def require_schema(round):
 
 
 def carry_over(round):
+    score_only = contract_for(round)["carry_over"] == "none"
     teams = {item.code: item for item in Team.objects.filter(is_demo=round.is_demo)}
     basis, errors = {}, []
     kinds = {}
@@ -79,7 +80,7 @@ def carry_over(round):
             or snapshot.status != "FINAL"
             or Incident.objects.filter(round=prior, material=True, closed_at__isnull=True).exists()
         ):
-            errors.append(f"Round {number} needs final, reviewed carry-over results.")
+            errors.append(f"Round {number} needs final, reviewed qualification results.")
             continue
         basis[number] = {
             "snapshot_id": snapshot.pk,
@@ -103,8 +104,12 @@ def carry_over(round):
                     or code not in item["qualifiers"]
                 ):
                     raise ValueError()
+                if score_only and number < 4:
+                    parts[str(number)], maxima[str(number)] = "0", "0"
+                    continue
                 if number == 4 and (
-                    contract_for(round)["version"] == "round5-v2" or kinds.get(4) == "GREEN_CARDS"
+                    contract_for(round)["version"] in ["round5-v2", "round5-v3"]
+                    or kinds.get(4) == "GREEN_CARDS"
                 ):
                     if kinds.get(4) == "GREEN_CARDS" and (
                         matches[0].get("green_card") is not True
@@ -133,7 +138,7 @@ def carry_over(round):
                 "parts": parts,
                 "score": sum(map(Decimal, parts.values())),
                 "maximum": sum(map(Decimal, maxima.values())),
-                "maximum_is_storage_bound": kinds.get(2) == "WAYGROUND_RAW",
+                "maximum_is_storage_bound": not score_only and kinds.get(2) == "WAYGROUND_RAW",
             }
     return codes, totals, basis, list(dict.fromkeys(errors))
 

@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from competition.buzzer_scoring_rules import CONTRACT
+from competition.buzzer_scoring_rules import ROUND5_ONLY_CONTRACT as CONTRACT
 from competition.models import AuditEvent, BuzzerQuestion, Round
 from competition.rules import require_staff_permission
 
@@ -64,13 +64,13 @@ class Command(BaseCommand):
         changed = (
             created
             or round.rules.get("score_schema") != CONTRACT
-            or round.rules.get("ranking_policy") != "cumulative_score_then_last_correct"
+            or round.rules.get("ranking_policy") != "round5_score_then_last_correct"
         )
         if changed:
             round.rules = {
                 **round.rules,
                 "score_schema": dict(CONTRACT),
-                "ranking_policy": "cumulative_score_then_last_correct",
+                "ranking_policy": "round5_score_then_last_correct",
             }
             if round.rules.get("qualification_tie_policy") not in [
                 "block_exact_ties",

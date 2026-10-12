@@ -22,9 +22,13 @@ CONTRACT = {
 }
 CONTRACT.pop("points_per_correct")
 
+ROUND5_ONLY_CONTRACT = {**CONTRACT, "version": "round5-v3", "carry_over": "none"}
+
 
 def contract_for(round):
     schema = round.rules_snapshot.get("rules", round.rules).get("score_schema", {})
+    if schema.get("version") == "round5-v3":
+        return ROUND5_ONLY_CONTRACT
     return LEGACY_CONTRACT if schema.get("version") == "round5-v1" else CONTRACT
 
 
@@ -45,6 +49,8 @@ def schema_errors(round, rules=None):
     expected = (
         LEGACY_CONTRACT
         if isinstance(schema, dict) and schema.get("version") == "round5-v1"
+        else ROUND5_ONLY_CONTRACT
+        if isinstance(schema, dict) and schema.get("version") == "round5-v3"
         else CONTRACT
     )
     if (
@@ -55,11 +61,16 @@ def schema_errors(round, rules=None):
         and any(type(value) is not int for value in schema["points_per_stage"].values())
     ):
         return [
-            "Configure round5-v2: 5 questions/stage, 1 mark in stages 1–4, 2 in stage 5, 30 total."
+            "Use a supported Round 5 contract: 25 questions; v3 has 30 marks and no carry-over."
         ]
     errors = []
-    if rules.get("ranking_policy") != "cumulative_score_then_last_correct":
-        errors.append("Use cumulative_score_then_last_correct ranking.")
+    ranking = (
+        "round5_score_then_last_correct"
+        if expected is ROUND5_ONLY_CONTRACT
+        else "cumulative_score_then_last_correct"
+    )
+    if rules.get("ranking_policy") != ranking:
+        errors.append(f"Use {ranking} ranking.")
     if rules.get("qualification_tie_policy") not in [
         "supervised_reserve_question",
         "block_exact_ties",
