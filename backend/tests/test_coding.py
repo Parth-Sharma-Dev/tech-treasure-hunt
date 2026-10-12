@@ -132,6 +132,18 @@ def test_native_coding_readiness_freezes_the_verified_task_set(coding):
         task.save()
 
 
+def test_real_round3_new_cut_is_eleven_and_frozen_legacy_ten_is_preserved():
+    from competition.coding_content import readiness_errors as coding_errors
+
+    round = Round(number=3, is_demo=False, active_budget_ms=2700000, advancement_count=11)
+    round.save()
+    assert not any("advancement" in e for e in coding_errors(round))
+    round.advancement_count = 10
+    assert any("top 11" in e for e in coding_errors(round))
+    round.rules_snapshot = {"advancement_count": 10}
+    assert not any("advancement" in e for e in coding_errors(round))
+
+
 def test_coding_rejects_wrong_totals_and_unverified_content(coding):
     round, tasks, _, _, _ = coding
     tasks[0].points = 14

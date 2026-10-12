@@ -121,6 +121,12 @@ def readiness_errors(round):
         )
     ):
         errors.append("Record the approved lab Python and C toolchain versions.")
-    if not round.is_demo and (round.active_budget_ms != 2700000 or round.advancement_count != 10):
-        errors.append("The real Round 3 requires 45 active minutes and top 10 advancement.")
+    # Retain the contract of historical frozen ten-qualifier attempts.
+    expected_cut = 10 if round.rules_snapshot.get("advancement_count") == 10 else 11
+    if not round.is_demo and (
+        round.active_budget_ms != 2700000 or round.advancement_count != expected_cut
+    ):
+        errors.append(
+            f"The real Round 3 requires 45 active minutes and top {expected_cut} advancement."
+        )
     return errors

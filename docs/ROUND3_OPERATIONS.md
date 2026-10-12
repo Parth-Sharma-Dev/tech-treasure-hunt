@@ -4,7 +4,7 @@ Implemented 8 October 2026. Participants use approved Python/C tools on the lab 
 
 ## Prepare a round
 
-1. In Django admin, configure Round 3 delivery as **Supervised Python/C competition (CODING)**. The real competition requires 45 active minutes and advancement count 10. Demo attempts may use explicitly approved shorter durations/cuts.
+1. In Django admin, configure Round 3 delivery as **Supervised Python/C competition (CODING)**. On 12 October the organizer revised real advancement to **11 qualifiers**, retaining 45 active minutes. Historical frozen ten-qualifier attempts retain their original contract. Demo attempts may use explicitly approved shorter durations/cuts.
 2. Assign the normal round owners, allowed tools, appeal/retention rules and supporting policies. Set the native coding policies below.
 3. Add Coding tasks. Their category totals must be OUTPUT 15, DEBUG 25, FILL 20, SHORT 30 and LOGIC 10, totaling 100. There may be multiple questions in a category, up to 100 total tasks.
 4. Each task needs a prompt, allowed response languages, points, a version and a private lab rubric. Debugging/fill/short tasks support PYTHON/C; output/logic tasks can also accept TEXT. Keep actual answers and hidden tests out of prompts/starter code.
