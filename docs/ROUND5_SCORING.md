@@ -1,5 +1,8 @@
 # Round 5 scoring and the event winner
 
+**13 October update:** the new final uses **-1 for wrong answers in every stage, -1 once per team/question for a pre-GO buzz, and no passing**. Use [the v4 penalty release instructions](ROUND5_PENALTY_RELEASE.md); earlier zero-penalty examples describe historical contracts.
+
+
 The organizer confirmed on 12 October: stages 1-4 earn one point per correct answer, stage 5 earns two, five questions per stage, no penalties and one overall winner. **Only Round 5 points determine the winner; no earlier scores carry over.** Earlier frozen v1/v2 attempts retain their historical contracts. Answers and judging remain offline.
 
 ## Confirmed contract

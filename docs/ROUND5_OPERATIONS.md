@@ -1,5 +1,8 @@
 # Round 5: website buzzer and offline answers
 
+**13 October update:** the new final uses **-1 for wrong answers in every stage, -1 once per team/question for a pre-GO buzz, and no passing**. Use [the v4 penalty release instructions](ROUND5_PENALTY_RELEASE.md); earlier zero-penalty examples describe historical contracts.
+
+
 Implemented locally in M12–M14 on 9 October 2026. All five stages use the same buzzer; presentation and answers remain offline. M13 adds host completion records, reviewed ledgers, cumulative scores and one winner. M14 adds [signed native recovery](EVIDENCE_RECOVERY.md) and the [host/rehearsal run sheet](ROUND5_REHEARSAL.md). See [scoring instructions](ROUND5_SCORING.md) and [remaining inputs](ROUND5_FORMAT.md).
 
 ## Prepare an attempt

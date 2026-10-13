@@ -123,7 +123,7 @@ Finalized Green Card recipients qualify for Round 5. Check your team's status an
 ```text
 📢 Final-round scoring: ONLY Round 5 points determine the winner. Scores from Rounds 1–4 do not carry over.
 
-25 questions across 5 stages: correct answers earn 1 point in stages 1–4 and 2 in stage 5. Wrong/unanswered answers earn 0; no negative marking. Maximum: 30 points before any reviewed question voids.
+25 questions across 5 stages: correct answers earn 1 point in stages 1-4 and 2 in stage 5. Wrong: -1 in every stage. An early buzz before host GO costs -1 once per team/question. No passing. Only Round 5 points count.
 ```
 
 ## Round 5: buzzer ready
@@ -139,9 +139,9 @@ Keep the buzzer page open and your device connected. Questions appear on the pre
 
 ```text
 🚀 Round 5 has started!
-Watch the presentation. Press “BUZZ” only when the host opens that question's buzzer.
+Watch the presentation. Wait until the host finishes reading and announces GO, then press BUZZ. An early press costs one point.
 
-The host will confirm the order and call teams. Do not shout answers before being called. A wrong/no answer may pass to the next buzzing team; a correct answer stops passing.
+The host will confirm the order and call only the first valid buzzing team. Do not shout before being called. No passing after wrong/no answer.
 ```
 
 ## Round 5: buzzer clarification

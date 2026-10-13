@@ -14,7 +14,7 @@ remain DRAFT until its actual host pack and rules are independently approved.
 | 5 | Presentation + website buzzer | **Only Round 5 points**, maximum 30 before reviewed voids | One overall winner |
 
 Round 5: five questions in each of five stages. Stages 1–4 award one point per
-correct answer; stage 5 awards two. Wrong/unanswered: zero, no penalties. Earlier
+correct answer; stage 5 awards two. Wrong: -1 in every stage; unanswered: zero. Early press before host GO: -1 once per team/question. No passing. Earlier
 rounds determine eligibility but contribute **no points to the final**. Equal R5
 scores use earlier host-recorded completion of the last credited correct R5
 answer; any unresolved exact tie needs the approved reserve/review procedure.
@@ -109,7 +109,7 @@ Counts do not establish independent content correctness or physical readiness.
 ## 5. Round 5: complete later, before READY
 
 - [ ] Deploy the revised scoring release and apply `configure_round5_only` to the real R5 DRAFT after reviewing its dry run.
-- [ ] Confirm schema **round5-v3**, `carry_over: none`, ranking **round5_score_then_last_correct**, no advancement count and one winner.
+- [ ] Confirm schema **round5-v4**, `carry_over: none`, ranking **round5_score_then_last_correct**, no advancement count and one winner.
 - [ ] Earlier R1–R4 results/points remain historical; only R5 points contribute to the final standings.
 - [ ] Obtain the organizer's verified actual content: exactly five questions per stage, **25 total**. No placeholders remain.
 - [ ] Stages match the presentation: 1 AI image recognition; 2 keywords; 3 image abnormalities; 4 progressive image guessing; 5 word encoding/decoding.
@@ -125,8 +125,8 @@ Counts do not establish independent content correctness or physical readiness.
 To apply the revised scoring configuration after deployment, while R5 is DRAFT:
 
 ```bash
-python manage.py configure_round5_only --actor parth --dry-run
-python manage.py configure_round5_only --actor parth
+python manage.py configure_round5_only --actor parth --penalties --dry-run
+python manage.py configure_round5_only --actor parth --penalties
 ```
 
 This does not create questions, approve content, set the actual duration or start
@@ -135,12 +135,12 @@ play. Do not mark READY while Round 5 content verification is still pending.
 ## 6. Round 5 host sequence: repeat for every question
 
 - [ ] Start R5 through `/staff/rounds`; keep `/staff/buzzer` ready on the operator's device.
-- [ ] Select the question matching the slide, present it, then **Open question buzzer** at the announced opportunity.
+- [ ] Open the selected question buzzer before reading. After reading, click **Question read complete / GO**, confirm acknowledgment and announce GO. Early receipts cost one point each per team/question and do not enter priority.
 - [ ] **Close buzzer and confirm order** before calling the first team. Do not choose from a still-changing open queue.
 - [ ] Call teams in confirmed server order. Exact equal buzz times require reviewed priority evidence; do not reorder distinct timestamps.
 - [ ] Record the spoken answer, CORRECT/WRONG/NO_ANSWER, host-sheet reference and reason immediately in **Offline answer evidence**.
 - [ ] Confirm the save before opening the next question. The host-recorded completion timestamp supplies the score tie-break.
-- [ ] WRONG/NO_ANSWER permits the next native buzzing team; CORRECT stops passing. No negative marks.
+- [ ] Only the first valid post-GO team answers. WRONG costs one point in any stage; NO_ANSWER costs zero. No passing to another team.
 - [ ] Stage 4 reveal steps do not reduce its one-point award; stage 5 earns two per correct answer.
 - [ ] If a write outcome is uncertain, recover/retry the same saved request before continuing.
 - [ ] On an interruption, pause through controls and retain the incident/evidence. A resumed round needs a fresh buzzer window.
