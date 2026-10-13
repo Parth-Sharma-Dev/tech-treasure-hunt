@@ -40,6 +40,20 @@ STAGES = [
 
 def stages_for(round):
     version = round.rules_snapshot.get("rules", round.rules).get("score_schema", {}).get("version")
+    if version == "round5-v4":
+        return [
+            *STAGES[:3],
+            {
+                "number": 4,
+                "title": "Alphabetical reasoning",
+                "description": "Find the letter or sequence pattern presented by the host.",
+            },
+            {
+                "number": 5,
+                "title": "Progressive image guessing",
+                "description": "Identify the image as the host reveals it in steps.",
+            },
+        ]
     return STAGES if version in ["round5-v2", "round5-v3", "round5-v4"] else LEGACY_STAGES
 
 

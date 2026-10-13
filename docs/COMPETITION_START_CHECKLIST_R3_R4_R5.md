@@ -112,7 +112,7 @@ Counts do not establish independent content correctness or physical readiness.
 - [ ] Confirm schema **round5-v4**, `carry_over: none`, ranking **round5_score_then_last_correct**, no advancement count and one winner.
 - [ ] Earlier R1–R4 results/points remain historical; only R5 points contribute to the final standings.
 - [ ] Obtain the organizer's verified actual content: exactly five questions per stage, **25 total**. No placeholders remain.
-- [ ] Stages match the presentation: 1 AI image recognition; 2 keywords; 3 image abnormalities; 4 progressive image guessing; 5 word encoding/decoding.
+- [ ] Stages match the presentation: 1 AI image recognition; 2 keywords; 3 image abnormalities; 4 alphabetical reasoning; 5 progressive image guessing. Stage 5 still awards two points per correct answer.
 - [ ] Every website question ID/version maps to the correct slide and has a private answer, accepted alternatives/judging notes and presentation reference.
 - [ ] All images, progressive reveal sequences, answer keys and host packs are privately retained. Unrevealed questions/answers are absent from participant pages.
 - [ ] Agree the total active duration, answer opportunity time, passing rules, accessibility arrangements and exact-tie/reserve procedure.
@@ -141,7 +141,7 @@ play. Do not mark READY while Round 5 content verification is still pending.
 - [ ] Record the spoken answer, CORRECT/WRONG/NO_ANSWER, host-sheet reference and reason immediately in **Offline answer evidence**.
 - [ ] Confirm the save before opening the next question. The host-recorded completion timestamp supplies the score tie-break.
 - [ ] Only the first valid post-GO team answers. WRONG costs one point in any stage; NO_ANSWER costs zero. No passing to another team.
-- [ ] Stage 4 reveal steps do not reduce its one-point award; stage 5 earns two per correct answer.
+- [ ] Stage 5 progressive reveals do not reduce its two-point award. Record the correct question ID and use the approved source-entry fields.
 - [ ] If a write outcome is uncertain, recover/retry the same saved request before continuing.
 - [ ] On an interruption, pause through controls and retain the incident/evidence. A resumed round needs a fresh buzzer window.
 

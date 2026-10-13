@@ -1,5 +1,10 @@
 # Round 5 penalty rules: organizer revision, 13 October
 
+Presentation labels for the current v4 final: stage 4 is **Alphabetical reasoning**;
+stage 5 is **Progressive image guessing**. The organizer confirmed that website
+scoring stays unchanged: stage 5 still awards two points for a correct answer.
+Questions/images remain on the presentation, not participant website pages.
+
 This supersedes the earlier zero-penalty/passing instructions for the new real
 Round 5 DRAFT. Frozen historical attempts keep their original contracts.
 
