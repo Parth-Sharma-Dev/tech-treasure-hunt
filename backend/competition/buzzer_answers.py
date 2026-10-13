@@ -95,6 +95,8 @@ def record_answer(round_id, actor, data):
         raise ApiProblem(
             "invalid_press", "Choose the native earliest press for the responding team."
         )
+    if press.is_early:
+        raise ApiProblem("invalid_press", "Early buzzes cannot supply answer priority.", 409)
     if not round_eligible(press.team, round):
         raise ApiProblem(
             "not_eligible", "The responding team needs current final qualification.", 403
@@ -114,6 +116,16 @@ def record_answer(round_id, actor, data):
         item.team.code: item
         for item in BuzzerAnswerEvidence.objects.filter(window=window).select_related("team")
     }
+    from .buzzer_scoring_rules import contract_for
+
+    if contract_for(round)["answer_passing"] == "first_team_only" and (
+        prior or press.team.code != order[0]
+    ):
+        raise ApiProblem(
+            "answer_priority",
+            "Only the first valid buzzing team may answer; passing is disabled.",
+            409,
+        )
     if press.team.code in prior:
         raise ApiProblem(
             "already_recorded",

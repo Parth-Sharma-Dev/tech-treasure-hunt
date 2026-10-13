@@ -2,9 +2,9 @@ import { useRef, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { ApiError, getJson } from './api'
 
-export type BuzzWindow = { id: number; version: number; stage: number; question_id: number; question_label: string; accepting: boolean; opened_at: string; closed_at: string | null }
-export type BuzzReceipt = { id: string; window_id: number; received_at: string; admitted_at: string }
-type Status = { round_id: number; team_code: string; state: string; eligible: boolean; eligibility_reason: string; window: BuzzWindow | null; own_press: BuzzReceipt | null; can_press: boolean }
+export type BuzzWindow = { id: number; version: number; stage: number; question_id: number; question_label: string; accepting: boolean; go_required?: boolean; prompted_at?: string | null; opened_at: string; closed_at: string | null }
+export type BuzzReceipt = { id: string; window_id: number; received_at: string; admitted_at: string; is_early?: boolean }
+type Status = { round_id: number; team_code: string; state: string; eligible: boolean; eligibility_reason: string; window: BuzzWindow | null; own_press: BuzzReceipt | null; own_early_press?: BuzzReceipt | null; can_press: boolean }
 type Pending = { action_id: string; window_id: number; team_code: string }
 
 export function serverTime(value: string) {
@@ -52,8 +52,10 @@ function PressButton({ status, refresh }: { status: Status; refresh: () => void 
   return <>
     <p>Server-recorded order decides who answers first. Keep your phone connected; network or phone delays are not compensated.</p>
     {status.window && <p className="eyebrow">STAGE {status.window.stage} · {status.window.question_label} · WINDOW {status.window.version}</p>}
-    <button className="buzzer-button" disabled={!status.can_press || !!receipt || !!pending || mutation.isPending || !csrf.data} onClick={() => send(false)} aria-label="Press Round 5 buzzer">{mutation.isPending ? 'Sending…' : receipt ? 'Recorded' : 'BUZZ'}</button>
-    {receipt && <p role="status">Your press is recorded at <time dateTime={receipt.received_at}>{serverTime(receipt.received_at)}</time>. Wait for the host to call your team.</p>}
+    {status.window?.go_required && <p role="status">{status.window.prompted_at ? 'GO: the question has been read. You may buzz.' : 'The host is reading. Wait for GO: an early press costs 1 point.'}</p>}
+    {(status.own_early_press || receipt?.is_early) && <p role="alert">Early press recorded: one minus-one penalty for this question. You may buzz again after GO.</p>}
+    <button className="buzzer-button" disabled={!status.can_press || (!!receipt && !receipt.is_early) || !!pending || mutation.isPending || !csrf.data} onClick={() => send(false)} aria-label="Press Round 5 buzzer">{mutation.isPending ? 'Sending…' : receipt && !receipt.is_early ? 'Recorded' : 'BUZZ'}</button>
+    {receipt && !receipt.is_early && <p role="status">Your press is recorded at <time dateTime={receipt.received_at}>{serverTime(receipt.received_at)}</time>. Wait for the host to call your team.</p>}
     {!status.can_press && !status.own_press && <p role="status">{!status.eligible ? status.eligibility_reason : status.state === 'FROZEN' ? 'Round 5 is paused.' : ['ENDED', 'PROVISIONAL', 'FINALIZED'].includes(status.state) ? 'Round 5 has closed.' : 'Wait for the host to open the next question’s buzzer.'}</p>}
     {mutation.isError && <p role="alert">{mutation.error instanceof Error ? mutation.error.message : 'Connection unavailable.'}</p>}
     {csrf.isError && <p role="alert">The buzzer connection is unavailable. <button className="secondary" onClick={() => void csrf.refetch()}>Reconnect</button></p>}

@@ -128,6 +128,7 @@ def round_queries(round, extended=True):
                 [
                     m.BuzzerQuestion.objects.filter(round=round),
                     m.BuzzerWindow.objects.filter(round=round),
+                    m.BuzzerPrompt.objects.filter(window__round=round),
                     m.BuzzerClosure.objects.filter(window__round=round),
                     m.BuzzerPress.objects.filter(window__round=round),
                     m.BuzzerAnswerEvidence.objects.filter(window__round=round),

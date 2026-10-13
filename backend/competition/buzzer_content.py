@@ -40,7 +40,7 @@ STAGES = [
 
 def stages_for(round):
     version = round.rules_snapshot.get("rules", round.rules).get("score_schema", {}).get("version")
-    return STAGES if version in ["round5-v2", "round5-v3"] else LEGACY_STAGES
+    return STAGES if version in ["round5-v2", "round5-v3", "round5-v4"] else LEGACY_STAGES
 
 
 def question_errors(question):
@@ -117,7 +117,9 @@ def readiness_errors(round):
         "buzzer_order_policy": "database_receipt_time",
         "buzzer_latency_policy": "no_compensation",
         "buzzer_equal_time_policy": "staff_review_required",
-        "buzzer_early_policy": "reject_closed_window",
+        "buzzer_early_policy": "penalize_before_host_go"
+        if round.rules.get("score_schema", {}).get("version") == "round5-v4"
+        else "reject_closed_window",
     }.items():
         if round.rules.get(key) != expected:
             errors.append(f"Configure the supported buzzer policy for {key}.")
@@ -132,7 +134,8 @@ def readiness_errors(round):
         errors.append("Round 5 is the final; leave advancement count empty.")
     if not round.is_demo or (
         isinstance(round.rules.get("score_schema"), dict)
-        and round.rules["score_schema"].get("version") in ["round5-v1", "round5-v2", "round5-v3"]
+        and round.rules["score_schema"].get("version")
+        in ["round5-v1", "round5-v2", "round5-v3", "round5-v4"]
     ):
         from .buzzer_scoring_rules import schema_errors
 

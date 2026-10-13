@@ -106,7 +106,7 @@ def build_preview(round, now):
             for row in ledger.payload["rows"]:
                 if row["team_code"] == team.code:
                     stages[str(ledger.payload["stage"])] += row["points"]
-                    if row["points"]:
+                    if row["verdict"] == "CORRECT":
                         completions.append(row["completed_at"])
         score5 = sum(stages.values())
         total = prior["score"] + Decimal(score5)

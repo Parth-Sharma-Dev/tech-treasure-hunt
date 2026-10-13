@@ -11,6 +11,7 @@ from .models import (
     BuzzerAnswerEvidence,
     BuzzerClosure,
     BuzzerPress,
+    BuzzerPrompt,
     BuzzerWindow,
     Round,
     Team,
@@ -78,6 +79,9 @@ def window_payload(round, window, now):
     if window is None:
         return None
     closure = BuzzerClosure.objects.filter(window=window).first()
+    from .buzzer_scoring_rules import contract_for
+
+    prompt = BuzzerPrompt.objects.filter(window=window).first()
     return {
         "id": window.pk,
         "version": window.version,
@@ -87,6 +91,8 @@ def window_payload(round, window, now):
         "opened_at": window.opened_at.isoformat(),
         "closed_at": closure.closed_at.isoformat() if closure else None,
         "accepting": is_open(round, window, now),
+        "go_required": contract_for(round).get("early_points") == -1,
+        "prompted_at": prompt.prompted_at.isoformat() if prompt else None,
     }
 
 
@@ -96,12 +102,15 @@ def press_payload(item):
         "window_id": item.window_id,
         "received_at": item.received_at.isoformat(timespec="microseconds"),
         "admitted_at": item.admitted_at.isoformat(timespec="microseconds"),
+        "is_early": item.is_early,
     }
 
 
 def earliest_press(window, team):
     return (
-        BuzzerPress.objects.filter(window=window, team=team).order_by("received_at", "id").first()
+        BuzzerPress.objects.filter(window=window, team=team, is_early=False)
+        .order_by("received_at", "id")
+        .first()
     )
 
 
@@ -110,7 +119,7 @@ def queue(window):
         return [], []
     # DISTINCT ON chooses one earliest immutable receipt per team; UUID orders display only.
     candidates = list(
-        BuzzerPress.objects.filter(window=window)
+        BuzzerPress.objects.filter(window=window, is_early=False)
         .select_related("team")
         .order_by("team_id", "received_at", "id")
         .distinct("team_id")
@@ -141,6 +150,19 @@ def participant_status(request, round_id):
     eligible = round_eligible(team, round)
     window = latest_window(round) if eligible and round.state != "DRAFT" else None
     own = earliest_press(window, team) if window else None
+    from .buzzer_scoring_rules import contract_for
+
+    early = (
+        BuzzerPress.objects.filter(window=window, team=team, is_early=True)
+        .order_by("received_at")
+        .first()
+        if window
+        else None
+    )
+    waiting = (
+        contract_for(round).get("early_points") == -1
+        and not BuzzerPrompt.objects.filter(window=window).exists()
+    )
     return {
         "round_id": round.pk,
         "team_code": team.code,
@@ -149,7 +171,11 @@ def participant_status(request, round_id):
         "eligibility_reason": eligibility_reason(team, round, eligible),
         "window": window_payload(round, window, now),
         "own_press": press_payload(own) if own else None,
-        "can_press": eligible and is_open(round, window, now) and own is None,
+        "own_early_press": press_payload(early) if early else None,
+        "can_press": eligible
+        and is_open(round, window, now)
+        and own is None
+        and not (early and waiting),
     }
 
 
@@ -222,6 +248,8 @@ def press(request, round_id, data):
         )
     try:
         with transaction.atomic():
+            from .buzzer_scoring_rules import contract_for
+
             item = BuzzerPress.objects.create(
                 id=identity,
                 window=window,
@@ -229,6 +257,8 @@ def press(request, round_id, data):
                 session=session,
                 received_at=received,
                 admitted_at=database_now(),
+                is_early=contract_for(round).get("early_points") == -1
+                and not BuzzerPrompt.objects.filter(window=window).exists(),
             )
     except IntegrityError:
         raise ApiProblem(
@@ -249,7 +279,7 @@ def close_current_window(round, actor, reason, now=None):
 def control_window(round_id, actor, data):
     require_staff_permission(actor, "control_round")
     action_id, reason = validate_request(data)
-    if data.get("operation") not in ["open", "close"]:
+    if data.get("operation") not in ["open", "close", "go"]:
         raise ApiProblem("invalid_request", "Choose open or close buzzer.")
     native_round(round_id)
     admission_fence(round_id)
@@ -269,7 +299,19 @@ def control_window(round_id, actor, data):
             "stale_control", "Refresh the round and buzzer window before applying this action.", 409
         )
     now = database_now()
-    if data["operation"] == "close":
+    if data["operation"] == "go":
+        from .buzzer_scoring_rules import contract_for
+
+        if contract_for(round).get("early_points") != -1 or not is_open(round, window, now):
+            raise ApiProblem(
+                "invalid_transition",
+                "Use GO in an open question under the early-penalty rules.",
+                409,
+            )
+        if BuzzerPrompt.objects.filter(window=window).exists():
+            raise ApiProblem("already_prompted", "GO is already recorded for this question.", 409)
+        BuzzerPrompt.objects.create(window=window, prompted_at=now, actor=actor, reason=reason)
+    elif data["operation"] == "close":
         if window is None or BuzzerClosure.objects.filter(window=window).exists():
             raise ApiProblem("buzzer_closed", "No open buzzer window remains.", 409)
         close_current_window(round, actor, reason, now)
@@ -319,6 +361,8 @@ def control_window(round_id, actor, data):
 
 @transaction.atomic
 def staff_desk(round_id, actor):
+    from .buzzer_scoring_rules import contract_for
+
     require_result_view(actor)
     native_round(round_id)
     admission_fence(round_id, shared=True, wait=True)
@@ -355,6 +399,16 @@ def staff_desk(round_id, actor):
         "state": clock_payload(round, now)["state"],
         "control_version": round.control_version,
         "can_control": has_role(actor, "control_round"),
+        "answer_passing": contract_for(round)["answer_passing"],
+        "early_presses": [
+            {**press_payload(item), "team_code": item.team.code}
+            for item in BuzzerPress.objects.filter(window=window, is_early=True)
+            .select_related("team")
+            .order_by("team_id", "received_at", "id")
+            .distinct("team_id")
+        ]
+        if window
+        else [],
         "window": window_payload(round, window, now),
         "entries": entries,
         "first_team_codes": first,

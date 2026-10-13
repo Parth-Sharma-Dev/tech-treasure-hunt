@@ -299,6 +299,15 @@ class BuzzerClosure(ImmutableEvidence):
     reason = models.TextField()
 
 
+class BuzzerPrompt(ImmutableEvidence):
+    """The host's server-timed question-read-complete signal."""
+
+    window = models.OneToOneField(BuzzerWindow, on_delete=models.PROTECT)
+    prompted_at = models.DateTimeField()
+    actor = staff_reference()
+    reason = models.TextField()
+
+
 class BuzzerPress(ImmutableEvidence):
     id = models.UUIDField(primary_key=True, editable=False)
     window = models.ForeignKey(BuzzerWindow, on_delete=models.PROTECT)
@@ -306,6 +315,7 @@ class BuzzerPress(ImmutableEvidence):
     session = models.ForeignKey("TeamSession", on_delete=models.PROTECT)
     received_at = models.DateTimeField()
     admitted_at = models.DateTimeField()
+    is_early = models.BooleanField(default=False)
 
     class Meta:
         indexes = [models.Index(fields=["window", "team", "received_at"], name="buzzer_team_time")]

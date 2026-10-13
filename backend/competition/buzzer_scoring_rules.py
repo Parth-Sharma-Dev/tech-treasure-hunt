@@ -23,10 +23,21 @@ CONTRACT = {
 CONTRACT.pop("points_per_correct")
 
 ROUND5_ONLY_CONTRACT = {**CONTRACT, "version": "round5-v3", "carry_over": "none"}
+PENALTY_CONTRACT = {
+    **ROUND5_ONLY_CONTRACT,
+    "version": "round5-v4",
+    "wrong_points": -1,
+    "answer_passing": "first_team_only",
+    "early_points": -1,
+    "early_repeat_policy": "once_per_team_question",
+    "early_timing_policy": "before_server_host_go",
+}
 
 
 def contract_for(round):
     schema = round.rules_snapshot.get("rules", round.rules).get("score_schema", {})
+    if schema.get("version") == "round5-v4":
+        return PENALTY_CONTRACT
     if schema.get("version") == "round5-v3":
         return ROUND5_ONLY_CONTRACT
     return LEGACY_CONTRACT if schema.get("version") == "round5-v1" else CONTRACT
@@ -49,6 +60,8 @@ def schema_errors(round, rules=None):
     expected = (
         LEGACY_CONTRACT
         if isinstance(schema, dict) and schema.get("version") == "round5-v1"
+        else PENALTY_CONTRACT
+        if isinstance(schema, dict) and schema.get("version") == "round5-v4"
         else ROUND5_ONLY_CONTRACT
         if isinstance(schema, dict) and schema.get("version") == "round5-v3"
         else CONTRACT
@@ -66,7 +79,7 @@ def schema_errors(round, rules=None):
     errors = []
     ranking = (
         "round5_score_then_last_correct"
-        if expected is ROUND5_ONLY_CONTRACT
+        if expected in (ROUND5_ONLY_CONTRACT, PENALTY_CONTRACT)
         else "cumulative_score_then_last_correct"
     )
     if rules.get("ranking_policy") != ranking:

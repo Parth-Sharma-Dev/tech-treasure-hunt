@@ -16,6 +16,7 @@ from .models import (
     BuzzerAnswerEvidence,
     BuzzerClosure,
     BuzzerPress,
+    BuzzerPrompt,
     BuzzerScoreRevision,
     BuzzerWindow,
     ImportBatch,
@@ -108,7 +109,7 @@ def carry_over(round):
                     parts[str(number)], maxima[str(number)] = "0", "0"
                     continue
                 if number == 4 and (
-                    contract_for(round)["version"] in ["round5-v2", "round5-v3"]
+                    contract_for(round)["version"] in ["round5-v2", "round5-v3", "round5-v4"]
                     or kinds.get(4) == "GREEN_CARDS"
                 ):
                     if kinds.get(4) == "GREEN_CARDS" and (
@@ -159,6 +160,9 @@ def source_digest(round):
             "carry": basis,
             "teams": list(Team.objects.filter(is_demo=round.is_demo).order_by("pk").values()),
             "windows": list(BuzzerWindow.objects.filter(round=round).order_by("pk").values()),
+            "prompts": list(
+                BuzzerPrompt.objects.filter(window__round=round).order_by("pk").values()
+            ),
             "closures": list(
                 BuzzerClosure.objects.filter(window__round=round).order_by("pk").values()
             ),
@@ -288,6 +292,24 @@ def validate_rows(round, rows):
                 )
             if row["verdict"] == "VOID" and not row["adjudication_reference"].strip():
                 raise ValueError("Global voids need private adjudication evidence for every team.")
+            contract = contract_for(round)
+            early_penalty = 0
+            if contract.get("early_points") == -1 and row["verdict"] != "VOID":
+                prompt = BuzzerPrompt.objects.filter(window=window).first()
+                closure = BuzzerClosure.objects.get(window=window)
+                if not prompt or not window.opened_at <= prompt.prompted_at <= closure.closed_at:
+                    raise ValueError(
+                        "The question needs retained host GO timing, or a reviewed global void."
+                    )
+                if any(
+                    p.is_early != (p.received_at < prompt.prompted_at)
+                    for p in BuzzerPress.objects.filter(window=window)
+                ):
+                    raise ValueError("Early-press flags differ from retained host GO timing.")
+                if BuzzerPress.objects.filter(
+                    window=window, team__code=code, is_early=True
+                ).exists():
+                    early_penalty = -1
             normalized = {
                 **row,
                 "window_id": window_id,
@@ -295,11 +317,16 @@ def validate_rows(round, rows):
                 "reveal_step": int(reveal),
                 "points": points_for_stage(round, window.question.stage)
                 if row["verdict"] == "CORRECT"
+                else contract["wrong_points"]
+                if row["verdict"] == "WRONG"
                 else 0,
                 "completed_at": note.completed_at.isoformat(timespec="microseconds")
                 if note
                 else None,
             }
+            normalized["points"] += early_penalty
+            if contract.get("early_points") == -1:
+                normalized["early_penalty"] = early_penalty
             seen.add((window_id, code))
             groups.setdefault(window_id, []).append(normalized)
         except (ValueError, TypeError, KeyError) as error:
@@ -344,6 +371,8 @@ def validate_rows(round, rows):
                         stopped = True
                     elif verdict not in ["WRONG", "NO_ANSWER"]:
                         raise ValueError("Pass only through earlier wrong/no-answer native buzzes.")
+                    if contract_for(round)["answer_passing"] == "first_team_only":
+                        stopped = True
                 for item in items:
                     if item["answer_evidence_id"]:
                         note = BuzzerAnswerEvidence.objects.get(pk=item["answer_evidence_id"])
@@ -399,6 +428,9 @@ def source_context(round):
         for code in codes:
             own = next((item for item in entries if item["team_code"] == code), None)
             note = notes.get(code)
+            automatic_verdict = ""
+            if contract_for(round)["answer_passing"] == "first_team_only" and not note:
+                automatic_verdict = "NO_BUZZ" if not own else "NOT_CALLED" if notes else ""
             order = retained_priority.get("order", [])
             tied = len({item["received_at"] for item in entries}) != len(entries)
             draft.append(
@@ -407,12 +439,16 @@ def source_context(round):
                     "team_code": code,
                     "press_id": own["id"] if own else "",
                     "answer_evidence_id": str(note.pk) if note else "",
-                    "verdict": note.verdict if note else "",
+                    "verdict": note.verdict if note else automatic_verdict,
                     "answer": note.answer if note else "",
                     "reveal_step": "0",
                     "buzzer_tie_order": "|".join(order) if tied and order else "",
                     "adjudication_reference": retained_priority.get("adjudication_reference", ""),
-                    "source_reference": note.source_reference if note else "",
+                    "source_reference": note.source_reference
+                    if note
+                    else f"native-window:{window.pk}:valid-buzz-coverage"
+                    if automatic_verdict
+                    else "",
                 }
             )
     return {"draft_source_rows": draft, "carry_over_gaps": gaps}
